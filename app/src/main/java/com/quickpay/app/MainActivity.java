@@ -1,3 +1,5 @@
+
+        
 package com.quickpay.app;
 
 import android.app.Activity;
@@ -6,268 +8,158 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.view.Gravity;
 import android.view.View;
-import android.widget.*;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 public class MainActivity extends Activity {
 
-    LinearLayout main;
-
-    int blue = Color.rgb(10, 96, 190);
+    int blue = Color.rgb(10, 98, 190);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         showLogin();
     }
 
-    TextView text(String s, int size) {
+    private TextView text(String value, int size) {
         TextView t = new TextView(this);
-        t.setText(s);
+        t.setText(value);
         t.setTextSize(size);
         t.setTextColor(Color.WHITE);
         t.setGravity(Gravity.CENTER);
         return t;
     }
 
-    EditText box(String hint) {
+    private EditText input(String hint) {
         EditText e = new EditText(this);
         e.setHint(hint);
-        e.setTextSize(20);
+        e.setTextSize(18);
         e.setSingleLine(true);
-        e.setPadding(25, 0, 25, 0);
+        e.setPadding(30, 5, 30, 5);
         e.setBackgroundColor(Color.WHITE);
 
         LinearLayout.LayoutParams p =
-                new LinearLayout.LayoutParams(-1, 80);
-        p.setMargins(35, 15, 35, 15);
+                new LinearLayout.LayoutParams(-1, 65);
+        p.setMargins(30, 15, 30, 15);
         e.setLayoutParams(p);
 
         return e;
     }
 
-    Button button(String name) {
+    private Button button(String value) {
         Button b = new Button(this);
-        b.setText(name);
-        b.setTextSize(22);
+        b.setText(value);
+        b.setTextSize(20);
         b.setTextColor(blue);
         b.setTypeface(null, Typeface.BOLD);
         b.setBackgroundColor(Color.WHITE);
 
         LinearLayout.LayoutParams p =
-                new LinearLayout.LayoutParams(-1, 80);
-        p.setMargins(35, 20, 35, 10);
+                new LinearLayout.LayoutParams(-1, 65);
+        p.setMargins(30, 20, 30, 10);
         b.setLayoutParams(p);
 
         return b;
     }
 
-    void showLogin() {
-
-        main = new LinearLayout(this);
+    private LinearLayout baseLayout() {
+        LinearLayout main = new LinearLayout(this);
         main.setOrientation(LinearLayout.VERTICAL);
         main.setGravity(Gravity.CENTER_HORIZONTAL);
-        main.setPadding(0, 40, 0, 20);
+        main.setPadding(0, 35, 0, 20);
         main.setBackgroundColor(blue);
+        return main;
+    }
 
-        TextView logo = text("loadbazar", 38);
+    private TextView logo() {
+        TextView logo = new TextView(this);
+        logo.setText("Quick Pay");
+        logo.setTextSize(34);
         logo.setTypeface(null, Typeface.BOLD);
+        logo.setTextColor(Color.rgb(20, 70, 150));
+        logo.setGravity(Gravity.CENTER);
 
-        TextView subtitle =
-                text("বাংলাদেশের সেরা রিচার্জ ব্যবসা প্ল্যাটফর্ম", 17);
+        LinearLayout.LayoutParams p =
+                new LinearLayout.LayoutParams(320, 110);
+        p.setMargins(0, 20, 0, 5);
+        logo.setLayoutParams(p);
+        logo.setBackgroundColor(Color.WHITE);
 
-        main.addView(logo);
-        main.addView(subtitle);
+        return logo;
+    }
 
-        EditText phone = box("📞  ফোন");
-        EditText password = box("🔒  ৬ ডিজিট পাসওয়ার্ড");
+    private void showLogin() {
 
+        LinearLayout main = baseLayout();
+
+        main.addView(logo());
+
+        main.addView(text(
+                "বাংলাদেশের সেরা রিচার্জ ব্যবসা প্ল্যাটফর্ম", 18));
+
+        EditText phone = input("ফোন");
         main.addView(phone);
+
+        EditText password = input("৬ ডিজিট পাসওয়ার্ড");
+        password.setInputType(2 | 0x00000080);
         main.addView(password);
 
         Button login = button("লগইন");
         main.addView(login);
 
-        TextView forgot =
-                text("পাসওয়ার্ড ভুলে গেছেন?", 17);
+        TextView forgot = text("পাসওয়ার্ড ভুলে গেছেন?", 17);
+        forgot.setPadding(0, 15, 0, 10);
         main.addView(forgot);
 
-        TextView register =
-                text("অ্যাকাউন্ট নেই?  রেজিস্টার করুন", 18);
+        TextView register = text("অ্যাকাউন্ট নেই?  রেজিস্টার করুন", 18);
+        register.setPadding(0, 15, 0, 10);
         main.addView(register);
 
-        login.setOnClickListener(v ->
-                Toast.makeText(this,
-                        "লগইন সিস্টেম পরে যুক্ত করা হবে",
-                        Toast.LENGTH_SHORT).show());
-
-        register.setOnClickListener(v ->
-                showRegister());
+        register.setOnClickListener(v -> showRegister());
 
         setContentView(main);
     }
 
-    void showRegister() {
+    private void showRegister() {
 
-        main.removeAllViews();
+        LinearLayout main = baseLayout();
 
-        TextView title = text("loadbazar", 36);
-        title.setTypeface(null, Typeface.BOLD);
-        main.addView(title);
+        main.addView(logo());
 
         main.addView(text(
-                "বাংলাদেশের সেরা রিচার্জ ব্যবসা প্ল্যাটফর্ম", 17));
+                "বাংলাদেশের সেরা রিচার্জ ব্যবসা প্ল্যাটফর্ম", 18));
 
-        main.addView(box("🇧🇩  বাংলাদেশ"));
-        main.addView(box("🎁  রিসেলার এজেন্ট কোড"));
-        main.addView(box("👤  পূর্ণ নাম"));
-        main.addView(box("+880   ফোন নম্বর"));
-        main.addView(box("🔒  ৬ ডিজিট পাসওয়ার্ড"));
-        main.addView(box("🔒  ৬ ডিজিট পাসওয়ার্ড নিশ্চিত করুন"));
+        EditText country = input("🇧🇩  বাংলাদেশ");
+        main.addView(country);
 
-        Button next = button("পরবর্তী");
-        main.addView(next);
+        EditText agent = input("রিসেলার এজেন্ট কোড");
+        main.addView(agent);
 
-        TextView login =
-                text("অ্যাকাউন্ট আছে?  লগইন", 18);
-        main.addView(login);
+        EditText name = input("পূর্ণ নাম");
+        main.addView(name);
 
-        login.setOnClickListener(v -> showLogin());
-    }
-  }package com.quickpay.app;
-
-import android.app.Activity;
-import android.os.Bundle;
-import android.graphics.Color;
-import android.graphics.Typeface;
-import android.view.Gravity;
-import android.view.View;
-import android.widget.*;
-
-public class MainActivity extends Activity {
-
-    LinearLayout main;
-
-    int blue = Color.rgb(10, 96, 190);
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        showLogin();
-    }
-
-    TextView text(String s, int size) {
-        TextView t = new TextView(this);
-        t.setText(s);
-        t.setTextSize(size);
-        t.setTextColor(Color.WHITE);
-        t.setGravity(Gravity.CENTER);
-        return t;
-    }
-
-    EditText box(String hint) {
-        EditText e = new EditText(this);
-        e.setHint(hint);
-        e.setTextSize(20);
-        e.setSingleLine(true);
-        e.setPadding(25, 0, 25, 0);
-        e.setBackgroundColor(Color.WHITE);
-
-        LinearLayout.LayoutParams p =
-                new LinearLayout.LayoutParams(-1, 80);
-        p.setMargins(35, 15, 35, 15);
-        e.setLayoutParams(p);
-
-        return e;
-    }
-
-    Button button(String name) {
-        Button b = new Button(this);
-        b.setText(name);
-        b.setTextSize(22);
-        b.setTextColor(blue);
-        b.setTypeface(null, Typeface.BOLD);
-        b.setBackgroundColor(Color.WHITE);
-
-        LinearLayout.LayoutParams p =
-                new LinearLayout.LayoutParams(-1, 80);
-        p.setMargins(35, 20, 35, 10);
-        b.setLayoutParams(p);
-
-        return b;
-    }
-
-    void showLogin() {
-
-        main = new LinearLayout(this);
-        main.setOrientation(LinearLayout.VERTICAL);
-        main.setGravity(Gravity.CENTER_HORIZONTAL);
-        main.setPadding(0, 40, 0, 20);
-        main.setBackgroundColor(blue);
-
-        TextView logo = text("loadbazar", 38);
-        logo.setTypeface(null, Typeface.BOLD);
-
-        TextView subtitle =
-                text("বাংলাদেশের সেরা রিচার্জ ব্যবসা প্ল্যাটফর্ম", 17);
-
-        main.addView(logo);
-        main.addView(subtitle);
-
-        EditText phone = box("📞  ফোন");
-        EditText password = box("🔒  ৬ ডিজিট পাসওয়ার্ড");
-
+        EditText phone = input("+880   ফোন নম্বর");
         main.addView(phone);
-        main.addView(password);
 
-        Button login = button("লগইন");
-        main.addView(login);
+        EditText pass = input("৬ ডিজিট পাসওয়ার্ড");
+        pass.setInputType(2 | 0x00000080);
+        main.addView(pass);
 
-        TextView forgot =
-                text("পাসওয়ার্ড ভুলে গেছেন?", 17);
-        main.addView(forgot);
-
-        TextView register =
-                text("অ্যাকাউন্ট নেই?  রেজিস্টার করুন", 18);
-        main.addView(register);
-
-        login.setOnClickListener(v ->
-                Toast.makeText(this,
-                        "লগইন সিস্টেম পরে যুক্ত করা হবে",
-                        Toast.LENGTH_SHORT).show());
-
-        register.setOnClickListener(v ->
-                showRegister());
-
-        setContentView(main);
-    }
-
-    void showRegister() {
-
-        main.removeAllViews();
-
-        TextView title = text("loadbazar", 36);
-        title.setTypeface(null, Typeface.BOLD);
-        main.addView(title);
-
-        main.addView(text(
-                "বাংলাদেশের সেরা রিচার্জ ব্যবসা প্ল্যাটফর্ম", 17));
-
-        main.addView(box("🇧🇩  বাংলাদেশ"));
-        main.addView(box("🎁  রিসেলার এজেন্ট কোড"));
-        main.addView(box("👤  পূর্ণ নাম"));
-        main.addView(box("+880   ফোন নম্বর"));
-        main.addView(box("🔒  ৬ ডিজিট পাসওয়ার্ড"));
-        main.addView(box("🔒  ৬ ডিজিট পাসওয়ার্ড নিশ্চিত করুন"));
+        EditText confirm = input("৬ ডিজিট পাসওয়ার্ড নিশ্চিত করুন");
+        confirm.setInputType(2 | 0x00000080);
+        main.addView(confirm);
 
         Button next = button("পরবর্তী");
         main.addView(next);
 
-        TextView login =
-                text("অ্যাকাউন্ট আছে?  লগইন", 18);
+        TextView login = text("অ্যাকাউন্ট আছে?  লগইন", 18);
+        login.setPadding(0, 15, 0, 10);
         main.addView(login);
 
         login.setOnClickListener(v -> showLogin());
+
+        setContentView(main);
     }
 }
