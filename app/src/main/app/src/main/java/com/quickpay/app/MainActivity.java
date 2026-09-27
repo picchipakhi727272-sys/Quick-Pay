@@ -15,7 +15,7 @@ public class MainActivity extends Activity {
 
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setGravity(Gravity.CENTER);
+        title.setGravity(Gravity.CENTER);
         layout.setPadding(30, 30, 30, 30);
         layout.setBackgroundColor(Color.WHITE);
 
