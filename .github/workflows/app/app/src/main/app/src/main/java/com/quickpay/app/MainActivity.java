@@ -4,245 +4,134 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.graphics.Color;
 import android.graphics.Typeface;
-import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.TextView;
+import android.widget.*;
 
 public class MainActivity extends Activity {
 
-    int blue = Color.rgb(10, 96, 190);
-    int darkBlue = Color.rgb(0, 70, 150);
-    int white = Color.WHITE;
-    int gray = Color.rgb(130, 135, 140);
-
     LinearLayout main;
-    boolean bangla = true;
+
+    int blue = Color.rgb(10, 96, 190);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         showLogin();
     }
 
-    TextView text(String value, int size) {
+    TextView text(String s, int size) {
         TextView t = new TextView(this);
-        t.setText(value);
+        t.setText(s);
         t.setTextSize(size);
-        t.setTextColor(white);
+        t.setTextColor(Color.WHITE);
         t.setGravity(Gravity.CENTER);
         return t;
     }
 
-    EditText input(String hint) {
+    EditText box(String hint) {
         EditText e = new EditText(this);
         e.setHint(hint);
         e.setTextSize(20);
         e.setSingleLine(true);
-        e.setPadding(25, 5, 25, 5);
-        e.setTextColor(darkBlue);
-        e.setHintTextColor(gray);
-
-        GradientHelper.setBackground(e, white, 18);
+        e.setPadding(25, 0, 25, 0);
+        e.setBackgroundColor(Color.WHITE);
 
         LinearLayout.LayoutParams p =
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT, 64);
-        p.setMargins(0, 12, 0, 12);
+                new LinearLayout.LayoutParams(-1, 80);
+        p.setMargins(35, 15, 35, 15);
         e.setLayoutParams(p);
 
         return e;
     }
 
-    Button button(String value) {
+    Button button(String name) {
         Button b = new Button(this);
-        b.setText(value);
-        b.setTextSize(21);
-        b.setTextColor(darkBlue);
-        b.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        GradientHelper.setBackground(b, white, 18);
+        b.setText(name);
+        b.setTextSize(22);
+        b.setTextColor(blue);
+        b.setTypeface(null, Typeface.BOLD);
+        b.setBackgroundColor(Color.WHITE);
 
         LinearLayout.LayoutParams p =
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT, 65);
-        p.setMargins(0, 18, 0, 10);
+                new LinearLayout.LayoutParams(-1, 80);
+        p.setMargins(35, 20, 35, 10);
         b.setLayoutParams(p);
 
         return b;
     }
 
-    void baseLayout() {
-        ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(blue);
+    void showLogin() {
 
         main = new LinearLayout(this);
         main.setOrientation(LinearLayout.VERTICAL);
         main.setGravity(Gravity.CENTER_HORIZONTAL);
-        main.setPadding(35, 35, 35, 35);
+        main.setPadding(0, 40, 0, 20);
+        main.setBackgroundColor(blue);
 
-        scroll.addView(main);
-        setContentView(scroll);
-    }
+        TextView logo = text("loadbazar", 38);
+        logo.setTypeface(null, Typeface.BOLD);
 
-    void header() {
-        TextView title = text("Quick Pay", 34);
-        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        TextView subtitle =
+                text("বাংলাদেশের সেরা রিচার্জ ব্যবসা প্ল্যাটফর্ম", 17);
 
-        LinearLayout.LayoutParams p =
-                new LinearLayout.LayoutParams(
-                        -1, 80);
-        p.setMargins(0, 20, 0, 5);
-        title.setLayoutParams(p);
-
-        main.addView(title);
-
-        TextView subtitle = text(
-                bangla ? "বাংলাদেশের সেরা রিচার্জ ব্যবসা প্ল্যাটফর্ম"
-                       : "Bangladesh's smart recharge platform", 18);
-
+        main.addView(logo);
         main.addView(subtitle);
 
-        // বাংলা / English
-        Button language = button(bangla ? "বাংলা        EN" : "বাংলা        EN");
-        language.setTextSize(16);
-        language.setBackgroundColor(Color.TRANSPARENT);
+        EditText phone = box("📞  ফোন");
+        EditText password = box("🔒  ৬ ডিজিট পাসওয়ার্ড");
 
-        language.setOnClickListener(v -> {
-            bangla = !bangla;
-            showLogin();
-        });
-
-        main.addView(language);
-    }
-
-    void showLogin() {
-        baseLayout();
-        header();
-
-        EditText phone = input(bangla ? "ফোন" : "Phone");
-        phone.setInputType(InputType.TYPE_CLASS_PHONE);
         main.addView(phone);
-
-        EditText password = input(
-                bangla ? "৬ ডিজিট পাসওয়ার্ড" : "6 digit password");
-        password.setInputType(
-                InputType.TYPE_CLASS_NUMBER |
-                InputType.TYPE_NUMBER_VARIATION_PASSWORD);
         main.addView(password);
 
-        Button login = button(bangla ? "লগইন" : "LOGIN");
-
-        login.setOnClickListener(v -> {
-            // পরে এখানে Login system যোগ করা যাবে
-        });
-
+        Button login = button("লগইন");
         main.addView(login);
 
-        TextView forgot = text(
-                bangla ? "পাসওয়ার্ড ভুলে গেছেন?"
-                       : "Forgot password?", 17);
-
-        forgot.setPadding(0, 20, 0, 20);
+        TextView forgot =
+                text("পাসওয়ার্ড ভুলে গেছেন?", 17);
         main.addView(forgot);
 
-        TextView register = text(
-                bangla ? "অ্যাকাউন্ট নেই? রেজিস্টার করুন"
-                       : "Don't have an account? Register", 18);
-
-        register.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-
-        register.setOnClickListener(v -> showRegister());
-
+        TextView register =
+                text("অ্যাকাউন্ট নেই?  রেজিস্টার করুন", 18);
         main.addView(register);
+
+        login.setOnClickListener(v ->
+                Toast.makeText(this,
+                        "লগইন সিস্টেম পরে যুক্ত করা হবে",
+                        Toast.LENGTH_SHORT).show());
+
+        register.setOnClickListener(v ->
+                showRegister());
+
+        setContentView(main);
     }
 
     void showRegister() {
-        baseLayout();
-        header();
 
-        TextView country = text(
-                bangla ? "🇧🇩   বাংলাদেশ        ▼"
-                       : "🇧🇩   Bangladesh        ▼", 20);
+        main.removeAllViews();
 
-        GradientHelper.setBackground(country, white, 18);
+        TextView title = text("loadbazar", 36);
+        title.setTypeface(null, Typeface.BOLD);
+        main.addView(title);
 
-        country.setTextColor(darkBlue);
-        country.setGravity(Gravity.CENTER_VERTICAL);
-        country.setPadding(25, 0, 25, 0);
+        main.addView(text(
+                "বাংলাদেশের সেরা রিচার্জ ব্যবসা প্ল্যাটফর্ম", 17));
 
-        LinearLayout.LayoutParams cp =
-                new LinearLayout.LayoutParams(-1, 65);
-        cp.setMargins(0, 15, 0, 10);
-        country.setLayoutParams(cp);
+        main.addView(box("🇧🇩  বাংলাদেশ"));
+        main.addView(box("🎁  রিসেলার এজেন্ট কোড"));
+        main.addView(box("👤  পূর্ণ নাম"));
+        main.addView(box("+880   ফোন নম্বর"));
+        main.addView(box("🔒  ৬ ডিজিট পাসওয়ার্ড"));
+        main.addView(box("🔒  ৬ ডিজিট পাসওয়ার্ড নিশ্চিত করুন"));
 
-        main.addView(country);
-
-        EditText agent = input(
-                bangla ? "রিসেলার এজেন্ট কোড"
-                       : "Reseller Agent Code");
-        main.addView(agent);
-
-        EditText name = input(
-                bangla ? "পূর্ণ নাম" : "Full Name");
-        main.addView(name);
-
-        EditText phone = input(
-                bangla ? "+880    ফোন নম্বর"
-                       : "+880    Phone Number");
-        phone.setInputType(InputType.TYPE_CLASS_PHONE);
-        main.addView(phone);
-
-        EditText password = input(
-                bangla ? "৬ ডিজিট পাসওয়ার্ড"
-                       : "6 digit password");
-        password.setInputType(
-                InputType.TYPE_CLASS_NUMBER |
-                InputType.TYPE_NUMBER_VARIATION_PASSWORD);
-        main.addView(password);
-
-        EditText confirm = input(
-                bangla ? "৬ ডিজিট পাসওয়ার্ড নিশ্চিত করুন"
-                       : "Confirm 6 digit password");
-        confirm.setInputType(
-                InputType.TYPE_CLASS_NUMBER |
-                InputType.TYPE_NUMBER_VARIATION_PASSWORD);
-        main.addView(confirm);
-
-        Button next = button(bangla ? "পরবর্তী" : "NEXT");
-
-        next.setOnClickListener(v -> {
-            // পরে Registration system যোগ করা যাবে
-        });
-
+        Button next = button("পরবর্তী");
         main.addView(next);
 
-        TextView login = text(
-                bangla ? "অ্যাকাউন্ট আছে? লগইন"
-                       : "Already have an account? Login", 18);
-
-        login.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        TextView login =
+                text("অ্যাকাউন্ট আছে?  লগইন", 18);
+        main.addView(login);
 
         login.setOnClickListener(v -> showLogin());
-
-        main.addView(login);
-    }
-
-    public static class GradientHelper {
-
-        public static void setBackground(
-                View view, int color, int radius) {
-
-            android.graphics.drawable.GradientDrawable bg =
-                    new android.graphics.drawable.GradientDrawable();
-
-            bg.setColor(color);
-            bg.setCornerRadius(radius);
-
-            view.setBackground(bg);
-        }
     }
 }
