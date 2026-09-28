@@ -2773,5 +2773,5 @@ private void addBankMethod(
             dp(10)
     );
 
-    parent.addView(card, params);
+    parent.addView(card, params); {
 }
