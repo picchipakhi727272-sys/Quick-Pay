@@ -16,14 +16,25 @@ public class MainActivity extends Activity {
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setGravity(Gravity.CENTER);
+        layout.setPadding(30, 30, 30, 30);
         layout.setBackgroundColor(Color.WHITE);
 
         TextView title = new TextView(this);
         title.setText("Quick Pay");
-        title.setTextSize(30);
-        title.setTextColor(Color.BLACK);
+        title.setTextSize(32);
+        title.setTextColor(Color.rgb(0, 92, 65));
+        title.setGravity(Gravity.CENTER);
 
         layout.addView(title);
+
+        TextView subtitle = new TextView(this);
+        subtitle.setText("Welcome to Quick Pay");
+        subtitle.setTextSize(18);
+        subtitle.setTextColor(Color.DKGRAY);
+        subtitle.setGravity(Gravity.CENTER);
+        subtitle.setPadding(0, 20, 0, 0);
+
+        layout.addView(subtitle);
 
         setContentView(layout);
     }
