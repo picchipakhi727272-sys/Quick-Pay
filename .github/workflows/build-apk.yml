@@ -37,7 +37,7 @@ jobs:
 
       - name: Build Quick Pay APK
         run: |
-          gradle :app:assembleDebug --no-daemon
+          ./gradlew :app:assembleDebug --no-daemon
 
       - name: Upload Quick Pay APK
         uses: actions/upload-artifact@v4
