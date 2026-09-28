@@ -6,36 +6,36 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
-import android.view.View;
-import android.view.ViewGroup;
 import android.widget.*;
 
 public class MainActivity extends Activity {
 
-    int green = Color.rgb(7, 103, 68);
-    int greenDark = Color.rgb(5, 82, 54);
-    int yellow = Color.rgb(255, 201, 0);
+    int green = Color.rgb(6, 103, 68);
+    int yellow = Color.rgb(255, 199, 0);
     int bg = Color.rgb(247, 247, 247);
-    int text = Color.rgb(35, 35, 35);
+    int dark = Color.rgb(35, 35, 35);
 
-    int dp(float v) {
-        return (int) (v * getResources().getDisplayMetrics().density + 0.5f);
+    int dp(float n) {
+        return (int)(n * getResources().getDisplayMetrics().density + 0.5f);
     }
 
-    GradientDrawable roundBg(int color, float radius) {
+    GradientDrawable box(int color, float radius) {
         GradientDrawable g = new GradientDrawable();
         g.setColor(color);
         g.setCornerRadius(dp(radius));
         return g;
     }
 
-    TextView tv(String s, float size, int color, boolean bold) {
+    TextView text(String s, float size, int color, boolean bold) {
         TextView t = new TextView(this);
         t.setText(s);
         t.setTextSize(size);
         t.setTextColor(color);
         t.setGravity(Gravity.CENTER);
-        t.setTypeface(Typeface.create("sans", bold ? Typeface.BOLD : Typeface.NORMAL));
+        t.setTypeface(Typeface.create(
+                "sans",
+                bold ? Typeface.BOLD : Typeface.NORMAL
+        ));
         return t;
     }
 
@@ -46,10 +46,10 @@ public class MainActivity extends Activity {
         getWindow().setStatusBarColor(green);
         getWindow().setNavigationBarColor(Color.WHITE);
 
-        buildHome();
+        home();
     }
 
-    void buildHome() {
+    void home() {
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -59,288 +59,378 @@ public class MainActivity extends Activity {
 
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.VERTICAL);
-        header.setPadding(dp(20), dp(18), dp(20), dp(18));
-        header.setBackground(roundBg(green, 28));
+        header.setPadding(dp(18), dp(8), dp(18), dp(10));
+        header.setBackground(box(green, 25));
 
-        // TOP ROW
+        // TOP
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView logo = tv("loadbazar", 20, Color.rgb(15, 70, 140), true);
-        logo.setBackground(roundBg(Color.WHITE, 16));
-        logo.setPadding(dp(20), dp(10), dp(20), dp(10));
+        TextView logo = text(
+                "Quick Pay",
+                21,
+                Color.rgb(20, 65, 125),
+                true
+        );
 
-        top.addView(logo,
-                new LinearLayout.LayoutParams(dp(190), dp(70)));
+        logo.setBackground(box(Color.WHITE, 15));
 
-        Space space = new Space(this);
-        top.addView(space,
-                new LinearLayout.LayoutParams(0, 1, 1));
+        top.addView(
+                logo,
+                new LinearLayout.LayoutParams(dp(175), dp(55))
+        );
 
-        TextView en = tv("EN", 16, Color.WHITE, true);
-        top.addView(en,
-                new LinearLayout.LayoutParams(dp(45), dp(55)));
+        Space sp = new Space(this);
 
-        TextView bell = tv("♧", 32, Color.WHITE, false);
-        bell.setText("♧");
-        top.addView(bell,
-                new LinearLayout.LayoutParams(dp(48), dp(55)));
+        top.addView(
+                sp,
+                new LinearLayout.LayoutParams(0, 1, 1)
+        );
 
-        TextView logout = tv("⇥", 34, Color.WHITE, false);
-        top.addView(logout,
-                new LinearLayout.LayoutParams(dp(48), dp(55)));
+        top.addView(
+                text("EN", 15, Color.WHITE, true),
+                new LinearLayout.LayoutParams(dp(40), dp(50))
+        );
+
+        top.addView(
+                text("♧", 30, Color.WHITE, false),
+                new LinearLayout.LayoutParams(dp(45), dp(50))
+        );
+
+        top.addView(
+                text("⇥", 31, Color.WHITE, false),
+                new LinearLayout.LayoutParams(dp(45), dp(50))
+        );
 
         header.addView(top);
 
         // USER + BALANCE
-        LinearLayout userBalance = new LinearLayout(this);
-        userBalance.setGravity(Gravity.CENTER_VERTICAL);
-        userBalance.setPadding(0, dp(10), 0, dp(10));
+        LinearLayout userRow = new LinearLayout(this);
+        userRow.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView user = tv("Rosy", 28, Color.WHITE, true);
+        TextView user = text(
+                "Rosy",
+                26,
+                Color.WHITE,
+                true
+        );
+
         user.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
 
-        userBalance.addView(user,
-                new LinearLayout.LayoutParams(dp(170), dp(65)));
+        userRow.addView(
+                user,
+                new LinearLayout.LayoutParams(dp(155), dp(65))
+        );
 
         LinearLayout balance = new LinearLayout(this);
         balance.setGravity(Gravity.CENTER_VERTICAL);
-        balance.setPadding(dp(18), 0, dp(12), 0);
-        balance.setBackground(roundBg(yellow, 40));
+        balance.setPadding(dp(12), 0, dp(5), 0);
+        balance.setBackground(box(yellow, 35));
 
-        TextView balanceText =
-                tv("মেইন ব্যালেন্স: • • • • / উইথড্র ব্যালেন্স: • • • •",
-                        14, Color.DKGRAY, true);
+        TextView balanceText = text(
+                "মেইন ব্যালেন্স: • • • •\nড্রাইভ ব্যালেন্স: • • • •",
+                12,
+                Color.DKGRAY,
+                true
+        );
 
-        balance.addView(balanceText,
-                new LinearLayout.LayoutParams(0, dp(60), 1));
+        balance.addView(
+                balanceText,
+                new LinearLayout.LayoutParams(0, dp(58), 1)
+        );
 
-        TextView eye = tv("◉", 22, Color.DKGRAY, true);
-        balance.addView(eye,
-                new LinearLayout.LayoutParams(dp(40), dp(60)));
+        balance.addView(
+                text("◉", 21, Color.DKGRAY, true),
+                new LinearLayout.LayoutParams(dp(35), dp(58))
+        );
 
-        userBalance.addView(balance,
-                new LinearLayout.LayoutParams(0, dp(65), 1));
+        userRow.addView(
+                balance,
+                new LinearLayout.LayoutParams(0, dp(58), 1)
+        );
 
-        header.addView(userBalance);
+        header.addView(userRow);
 
         // NOTICE
-        TextView notice =
-                tv("●   রাকিব রহমান (016********) ৭৯৯ টাকা এয়ারটেল রিচার্জ করলেন",
-                        14, Color.DKGRAY, false);
+        TextView notice = text(
+                "●   রাকিব রহমান (016********) ৭৯৯ টাকা এয়ারটেল রিচার্জ করলেন",
+                12,
+                Color.DKGRAY,
+                false
+        );
 
         notice.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
-        notice.setPadding(dp(15), 0, dp(10), 0);
-        notice.setBackground(roundBg(Color.WHITE, 18));
+        notice.setPadding(dp(10), 0, dp(8), 0);
+        notice.setBackground(box(Color.WHITE, 15));
 
-        header.addView(notice,
+        header.addView(
+                notice,
+                new LinearLayout.LayoutParams(-1, dp(48))
+        );
+
+        root.addView(
+                header,
+                new LinearLayout.LayoutParams(-1, dp(215))
+        );
+
+        // ================= SERVICES =================
+
+        LinearLayout services = new LinearLayout(this);
+        services.setOrientation(LinearLayout.VERTICAL);
+        services.setPadding(dp(12), dp(6), dp(12), dp(2));
+
+        serviceRow(
+                services,
+                "👛", "ওয়ালেট\nডিপোজিট",
+                "💵", "মোবাইল\nব্যাংকিং",
+                "🏦", "ব্যাংক\nট্রান্সফার",
+                "📱", "মোবাইল\nরিচার্জ"
+        );
+
+        serviceRow(
+                services,
+                "💬", "গ্রুপ\nচ্যাট",
+                "🎁", "ইনভাইট\nবোনাস",
+                "🧾", "বিল\nপে",
+                "🏷", "বিশেষ\nঅফার"
+        );
+
+        serviceRow(
+                services,
+                "🎧", "কাস্টমার\nকেয়ার",
+                "⭐", "কাস্টমার\nরিভিউ",
+                "▶", "ভিডিও\nটিউটোরিয়াল",
+                "👥", "আমাদের\nসম্পর্কে"
+        );
+
+        root.addView(
+                services,
                 new LinearLayout.LayoutParams(
-                        -1, dp(58)));
+                        -1,
+                        0,
+                        1
+                )
+        );
 
-        root.addView(header,
-                new LinearLayout.LayoutParams(-1, dp(300)));
+        // ================= OFFER =================
 
-        // ================= SCROLL CONTENT =================
+        LinearLayout offer = new LinearLayout(this);
+        offer.setOrientation(LinearLayout.VERTICAL);
+        offer.setPadding(dp(10), dp(4), dp(10), dp(4));
+        offer.setBackground(box(green, 16));
 
-        ScrollView scroll = new ScrollView(this);
-        scroll.setFillViewport(true);
-        scroll.setBackgroundColor(bg);
+        TextView offerTitle = text(
+                "🎁  ডিপোজিট বোনাস অফার",
+                17,
+                Color.WHITE,
+                true
+        );
 
-        LinearLayout content = new LinearLayout(this);
-        content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(dp(20), dp(20), dp(20), dp(10));
+        offerTitle.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
 
-        // ================= SERVICE CARD 1 =================
+        offer.addView(
+                offerTitle,
+                new LinearLayout.LayoutParams(-1, dp(28))
+        );
 
-        LinearLayout card1 = serviceCard();
+        TextView offerSub = text(
+                "এখনই করুন, বোনাস নিয়ে নিন!",
+                11,
+                Color.WHITE,
+                false
+        );
 
-        addService(card1, "👛", "ওয়ালেট\nডিপোজিট");
-        addService(card1, "💵", "মোবাইল\nব্যাংকিং");
-        addService(card1, "🏦", "ব্যাংক\nট্রান্সফার");
-        addService(card1, "📱", "মোবাইল\nরিচার্জ");
+        offerSub.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
 
-        content.addView(card1);
+        offer.addView(
+                offerSub,
+                new LinearLayout.LayoutParams(-1, dp(22))
+        );
 
-        // ================= SERVICE CARD 2 =================
+        LinearLayout offerBoxes = new LinearLayout(this);
+        offerBoxes.setGravity(Gravity.CENTER);
+        offerBoxes.setWeightSum(3);
 
-        LinearLayout card2 = serviceCard();
+        smallOffer(offerBoxes, "৳১২৯৯", "৳৩৯৯");
+        smallOffer(offerBoxes, "৳২৫৯৯", "৳৭৯৯");
+        smallOffer(offerBoxes, "৳৪৯৯৯", "৳১৪৯৯");
 
-        addService(card2, "💬", "গ্রুপ\nচ্যাট");
-        addService(card2, "🎁", "ইনভাইট\nবোনাস");
-        addService(card2, "🧾", "বিল\nপে");
-        addService(card2, "🏷️", "বিশেষ\nঅফার");
+        offer.addView(
+                offerBoxes,
+                new LinearLayout.LayoutParams(-1, dp(50))
+        );
 
-        content.addView(card2);
-
-        // ================= SERVICE CARD 3 =================
-
-        LinearLayout card3 = serviceCard();
-
-        addService(card3, "🎧", "কাস্টমার\nকেয়ার");
-        addService(card3, "⭐", "কাস্টমার\nরিভিউ");
-        addService(card3, "▶️", "ভিডিও\nটিউটোরিয়াল");
-        addService(card3, "👥", "আমাদের\nসম্পর্কে");
-
-        content.addView(card3);
-
-        // ================= BONUS BANNER =================
-
-        LinearLayout banner = new LinearLayout(this);
-        banner.setOrientation(LinearLayout.VERTICAL);
-        banner.setPadding(dp(12), dp(12), dp(12), dp(12));
-        banner.setBackground(roundBg(greenDark, 20));
-
-        TextView bannerTitle =
-                tv("🎁  ডিপোজিট বোনাস অফার", 23, Color.WHITE, true);
-        bannerTitle.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
-
-        TextView bannerSub =
-                tv("এখনই করুন, বোনাস নিয়ে নিন! 🎉",
-                        14, Color.WHITE, false);
-        bannerSub.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
-
-        banner.addView(bannerTitle,
-                new LinearLayout.LayoutParams(-1, dp(42)));
-
-        banner.addView(bannerSub,
-                new LinearLayout.LayoutParams(-1, dp(32)));
-
-        LinearLayout offers = new LinearLayout(this);
-        offers.setGravity(Gravity.CENTER);
-        offers.setWeightSum(3);
-
-        addOffer(offers, "১২৯৯", "৩৯৯");
-        addOffer(offers, "২৫৯৯", "৭৯৯");
-        addOffer(offers, "৪৯৯৯", "১৪৯৯");
-
-        banner.addView(offers,
-                new LinearLayout.LayoutParams(-1, dp(115)));
-
-        content.addView(banner,
+        root.addView(
+                offer,
                 new LinearLayout.LayoutParams(
-                        -1, dp(210)));
+                        -1,
+                        dp(105)
+                )
+        );
 
-        scroll.addView(content);
-
-        root.addView(scroll,
-                new LinearLayout.LayoutParams(
-                        -1, 0, 1));
-
-        // ================= BOTTOM NAV =================
+        // ================= BOTTOM =================
 
         LinearLayout bottom = new LinearLayout(this);
         bottom.setGravity(Gravity.CENTER);
         bottom.setBackgroundColor(Color.WHITE);
-        bottom.setPadding(0, dp(8), 0, dp(8));
 
-        addBottom(bottom, "⌂", "হোম", true);
-        addBottom(bottom, "◷", "লেনদেন", false);
-        addBottom(bottom, "♙", "প্রোফাইল", false);
+        bottomItem(bottom, "⌂", "হোম", true);
+        bottomItem(bottom, "◷", "লেনদেন", false);
+        bottomItem(bottom, "♙", "প্রোফাইল", false);
 
-        root.addView(bottom,
-                new LinearLayout.LayoutParams(-1, dp(82)));
+        root.addView(
+                bottom,
+                new LinearLayout.LayoutParams(-1, dp(65))
+        );
 
         setContentView(root);
     }
 
-    LinearLayout serviceCard() {
+    void serviceRow(
+            LinearLayout parent,
+            String i1, String n1,
+            String i2, String n2,
+            String i3, String n3,
+            String i4, String n4) {
 
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.HORIZONTAL);
-        card.setGravity(Gravity.CENTER);
-        card.setPadding(dp(5), dp(8), dp(5), dp(8));
-        card.setBackground(roundBg(Color.WHITE, 22));
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER);
 
-        LinearLayout.LayoutParams p =
-                new LinearLayout.LayoutParams(-1, dp(195));
+        addService(row, i1, n1);
+        addService(row, i2, n2);
+        addService(row, i3, n3);
+        addService(row, i4, n4);
 
-        p.setMargins(0, 0, 0, dp(18));
-
-        card.setLayoutParams(p);
-
-        return card;
+        parent.addView(
+                row,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        0,
+                        1
+                )
+        );
     }
 
-    void addService(LinearLayout row, String icon, String name) {
+    void addService(
+            LinearLayout row,
+            String icon,
+            String name) {
 
         LinearLayout item = new LinearLayout(this);
         item.setOrientation(LinearLayout.VERTICAL);
         item.setGravity(Gravity.CENTER);
 
-        TextView ic = tv(icon, 38, Color.DKGRAY, false);
+        TextView ic = text(
+                icon,
+                29,
+                dark,
+                false
+        );
 
-        TextView label = tv(name, 14, text, false);
-        label.setGravity(Gravity.CENTER);
-        label.setTypeface(Typeface.DEFAULT);
+        TextView nm = text(
+                name,
+                12,
+                dark,
+                false
+        );
 
-        item.addView(ic,
-                new LinearLayout.LayoutParams(-1, dp(65)));
+        item.addView(
+                ic,
+                new LinearLayout.LayoutParams(-1, dp(40))
+        );
 
-        item.addView(label,
-                new LinearLayout.LayoutParams(-1, dp(55)));
+        item.addView(
+                nm,
+                new LinearLayout.LayoutParams(-1, dp(38))
+        );
 
-        row.addView(item,
-                new LinearLayout.LayoutParams(0, -1, 1));
+        row.addView(
+                item,
+                new LinearLayout.LayoutParams(
+                        0,
+                        -1,
+                        1
+                )
+        );
     }
 
-    void addOffer(LinearLayout parent, String deposit, String bonus) {
+    void smallOffer(
+            LinearLayout parent,
+            String deposit,
+            String bonus) {
 
-        LinearLayout offer = new LinearLayout(this);
-        offer.setOrientation(LinearLayout.VERTICAL);
-        offer.setGravity(Gravity.CENTER);
-        offer.setPadding(dp(4), dp(5), dp(4), dp(5));
-        offer.setBackground(roundBg(Color.WHITE, 14));
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER);
+        box.setBackground(box(Color.WHITE, 10));
 
-        TextView d =
-                tv("৳ " + deposit, 18, greenDark, true);
+        TextView d = text(
+                deposit,
+                12,
+                green,
+                true
+        );
 
-        TextView d2 =
-                tv("ডিপোজিট করুন", 11, Color.DKGRAY, false);
+        TextView b = text(
+                "বোনাস " + bonus,
+                10,
+                Color.RED,
+                true
+        );
 
-        TextView b =
-                tv("পেয়ে যান ৳ " + bonus, 12, Color.rgb(190, 20, 20), true);
+        box.addView(
+                d,
+                new LinearLayout.LayoutParams(-1, dp(24))
+        );
 
-        offer.addView(d,
-                new LinearLayout.LayoutParams(-1, dp(32)));
-
-        offer.addView(d2,
-                new LinearLayout.LayoutParams(-1, dp(25)));
-
-        offer.addView(b,
-                new LinearLayout.LayoutParams(-1, dp(30)));
+        box.addView(
+                b,
+                new LinearLayout.LayoutParams(-1, dp(20))
+        );
 
         LinearLayout.LayoutParams p =
-                new LinearLayout.LayoutParams(0, dp(100), 1);
+                new LinearLayout.LayoutParams(
+                        0,
+                        dp(45),
+                        1
+                );
 
-        p.setMargins(dp(4), 0, dp(4), 0);
+        p.setMargins(dp(3), 0, dp(3), 0);
 
-        parent.addView(offer, p);
+        parent.addView(box, p);
     }
 
-    void addBottom(LinearLayout parent,
-                   String icon,
-                   String name,
-                   boolean active) {
+    void bottomItem(
+            LinearLayout parent,
+            String icon,
+            String name,
+            boolean active) {
 
-        LinearLayout item = new LinearLayout(this);
-        item.setOrientation(LinearLayout.VERTICAL);
-        item.setGravity(Gravity.CENTER);
-
-        int c = active
-                ? Color.rgb(220, 55, 55)
+        int color = active
+                ? Color.rgb(210, 55, 55)
                 : Color.GRAY;
 
-        TextView i = tv(icon, 34, c, false);
+        LinearLayout item = new LinearLayout(this);
+        item.setOrientation(LinearLayout.VERTICAL);
+        item.setGravity(Gravity.CENTER);
 
-        TextView n = tv(name, 14, c, active);
+        item.addView(
+                text(icon, 27, color, false),
+                new LinearLayout.LayoutParams(-1, dp(32))
+        );
 
-        item.addView(i,
-                new LinearLayout.LayoutParams(-1, dp(40)));
+        item.addView(
+                text(name, 12, color, active),
+                new LinearLayout.LayoutParams(-1, dp(22))
+        );
 
-        item.addView(n,
-                new LinearLayout.LayoutParams(-1, dp(25)));
-
-        parent.addView(item,
-                new LinearLayout.LayoutParams(0, -1, 1));
+        parent.addView(
+                item,
+                new LinearLayout.LayoutParams(
+                        0,
+                        -1,
+                        1
+                )
+        );
     }
 }
