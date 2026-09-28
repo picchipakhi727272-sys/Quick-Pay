@@ -1789,18 +1789,20 @@ public class MainActivity extends Activity {
                 p
         );
 
-        box.setOnClickListener(v ->
+        box.setOnClickListener(v -> {
 
-                Toast.makeText(
-                        this,
-                        title.replace(
-                                "\n",
-                                " "
-                        ),
-                        Toast.LENGTH_SHORT
-                ).show()
-        );
+    String item = title.replace("\n", " ");
+
+    if (item.contains("মোবাইল ব্যাংকিং")) {
+        showMobileBanking();
+    } else {
+        Toast.makeText(
+                this,
+                item,
+                Toast.LENGTH_SHORT
+        ).show();
     }
+});
 
     // =========================================================
     // BONUS BOX
@@ -2401,4 +2403,375 @@ public class MainActivity extends Activity {
             super.onBackPressed();
         }
     }
+}
+
+// =========================================================
+// MOBILE BANKING
+// =========================================================
+
+private void showMobileBanking() {
+
+    getWindow().setStatusBarColor(BLUE);
+    getWindow().setNavigationBarColor(Color.WHITE);
+
+    LinearLayout main = new LinearLayout(this);
+    main.setOrientation(LinearLayout.VERTICAL);
+    main.setBackgroundColor(Color.rgb(248, 249, 251));
+
+    setContentView(main);
+
+    // HEADER
+    LinearLayout header = new LinearLayout(this);
+    header.setGravity(Gravity.CENTER_VERTICAL);
+    header.setPadding(dp(10), 0, dp(10), 0);
+    header.setBackgroundColor(BLUE);
+
+    main.addView(
+            header,
+            new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    dp(62)
+            )
+    );
+
+    TextView back = text("‹", 38, WHITE);
+    back.setGravity(Gravity.CENTER);
+
+    header.addView(
+            back,
+            new LinearLayout.LayoutParams(
+                    dp(55),
+                    dp(62)
+            )
+    );
+
+    back.setOnClickListener(v -> showHome());
+
+    TextView title = text(
+            "মোবাইল ব্যাংকিং",
+            21,
+            WHITE
+    );
+
+    title.setGravity(Gravity.CENTER_VERTICAL);
+    title.setTypeface(
+            Typeface.DEFAULT,
+            Typeface.BOLD
+    );
+
+    header.addView(
+            title,
+            new LinearLayout.LayoutParams(
+                    0,
+                    dp(62),
+                    1
+            )
+    );
+
+    TextView bell = text("♧", 27, WHITE);
+    bell.setGravity(Gravity.CENTER);
+
+    header.addView(
+            bell,
+            new LinearLayout.LayoutParams(
+                    dp(55),
+                    dp(62)
+            )
+    );
+
+    // NOTICE
+    TextView notice = text(
+            "●  মোবাইল ব্যাংকিং এর মাধ্যমে সহজেই ডিপোজিট করুন",
+            14,
+            Color.DKGRAY
+    );
+
+    notice.setGravity(Gravity.CENTER_VERTICAL);
+    notice.setPadding(dp(15), 0, dp(10), 0);
+    notice.setBackground(
+            bg(WHITE, 12)
+    );
+
+    LinearLayout.LayoutParams noticeParams =
+            new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    dp(48)
+            );
+
+    noticeParams.setMargins(
+            dp(12),
+            dp(12),
+            dp(12),
+            dp(10)
+    );
+
+    main.addView(notice, noticeParams);
+
+    // PAYMENT METHODS
+    ScrollView scroll = new ScrollView(this);
+
+    LinearLayout content = new LinearLayout(this);
+    content.setOrientation(LinearLayout.VERTICAL);
+    content.setPadding(
+            dp(12),
+            dp(2),
+            dp(12),
+            dp(15)
+    );
+
+    scroll.addView(content);
+
+    main.addView(
+            scroll,
+            new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    0,
+                    1
+            )
+    );
+
+    addBankMethod(
+            content,
+            "bKash",
+            "বিকাশ এজেন্ট নম্বর",
+            "01XXXXXXXXX"
+    );
+
+    addBankMethod(
+            content,
+            "Nagad",
+            "নগদ এজেন্ট নম্বর",
+            "01XXXXXXXXX"
+    );
+
+    addBankMethod(
+            content,
+            "Rocket",
+            "রকেট এজেন্ট নম্বর",
+            "01XXXXXXXXX"
+    );
+
+    addBankMethod(
+            content,
+            "Upay",
+            "উপায় এজেন্ট নম্বর",
+            "01XXXXXXXXX"
+    );
+
+    // AUTO DEPOSIT BUTTON
+    TextView autoDeposit = text(
+            "অটো ডিপোজিট  →",
+            19,
+            WHITE
+    );
+
+    autoDeposit.setGravity(Gravity.CENTER);
+    autoDeposit.setTypeface(
+            Typeface.DEFAULT,
+            Typeface.BOLD
+    );
+
+    autoDeposit.setBackground(
+            bg(BLUE, 14)
+    );
+
+    LinearLayout.LayoutParams autoParams =
+            new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    dp(60)
+            );
+
+    autoParams.setMargins(
+            dp(12),
+            dp(5),
+            dp(12),
+            dp(15)
+    );
+
+    main.addView(
+            autoDeposit,
+            autoParams
+    );
+
+    autoDeposit.setOnClickListener(v -> {
+
+        Toast.makeText(
+                this,
+                "অটো ডিপোজিট শীঘ্রই চালু হবে",
+                Toast.LENGTH_SHORT
+        ).show();
+
+    });
+}
+
+
+// =========================================================
+// MOBILE BANKING METHOD CARD
+// =========================================================
+
+private void addBankMethod(
+        LinearLayout parent,
+        String name,
+        String subtitle,
+        String number
+) {
+
+    LinearLayout card =
+            new LinearLayout(this);
+
+    card.setOrientation(
+            LinearLayout.VERTICAL
+    );
+
+    card.setPadding(
+            dp(15),
+            dp(12),
+            dp(15),
+            dp(12)
+    );
+
+    card.setBackground(
+            bg(WHITE, 16)
+    );
+
+    TextView nameText =
+            text(
+                    name,
+                    21,
+                    BLUE
+            );
+
+    nameText.setTypeface(
+            Typeface.DEFAULT,
+            Typeface.BOLD
+    );
+
+    card.addView(
+            nameText,
+            new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    dp(32)
+            )
+    );
+
+    TextView subText =
+            text(
+                    subtitle,
+                    14,
+                    Color.DKGRAY
+            );
+
+    card.addView(
+            subText,
+            new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    dp(25)
+            )
+    );
+
+    LinearLayout numberRow =
+            new LinearLayout(this);
+
+    numberRow.setGravity(
+            Gravity.CENTER_VERTICAL
+    );
+
+    TextView numberText =
+            text(
+                    number,
+                    18,
+                    Color.BLACK
+            );
+
+    numberText.setTypeface(
+            Typeface.DEFAULT,
+            Typeface.BOLD
+    );
+
+    numberRow.addView(
+            numberText,
+            new LinearLayout.LayoutParams(
+                    0,
+                    dp(45),
+                    1
+            )
+    );
+
+    TextView copy =
+            text(
+                    "কপি",
+                    15,
+                    BLUE
+            );
+
+    copy.setGravity(
+            Gravity.CENTER
+    );
+
+    copy.setTypeface(
+            Typeface.DEFAULT,
+            Typeface.BOLD
+    );
+
+    copy.setBackground(
+            strokeBg(
+                    Color.TRANSPARENT,
+                    BLUE,
+                    10
+            )
+    );
+
+    numberRow.addView(
+            copy,
+            new LinearLayout.LayoutParams(
+                    dp(65),
+                    dp(40)
+            )
+    );
+
+    copy.setOnClickListener(v -> {
+
+        android.content.ClipboardManager clipboard =
+                (android.content.ClipboardManager)
+                        getSystemService(
+                                Context.CLIPBOARD_SERVICE
+                        );
+
+        android.content.ClipData clip =
+                android.content.ClipData.newPlainText(
+                        "Mobile Banking Number",
+                        number
+                );
+
+        clipboard.setPrimaryClip(clip);
+
+        Toast.makeText(
+                this,
+                "নম্বর কপি হয়েছে",
+                Toast.LENGTH_SHORT
+        ).show();
+    });
+
+    card.addView(
+            numberRow,
+            new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    dp(50)
+            )
+    );
+
+    LinearLayout.LayoutParams params =
+            new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    dp(130)
+            );
+
+    params.setMargins(
+            0,
+            0,
+            0,
+            dp(10)
+    );
+
+    parent.addView(card, params);
 }
