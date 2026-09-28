@@ -5,154 +5,225 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.text.InputType;
+import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.*;
 
 public class MainActivity extends Activity {
 
-    private static final int BLUE = Color.rgb(8,96,190);
-    private static final int GREEN = Color.rgb(0,92,68);
-    private static final int YELLOW = Color.rgb(255,190,25);
-    private static final int DARK = Color.rgb(35,35,35);
+    // =========================================================
+    // COLORS
+    // =========================================================
+
+    private static final int BLUE = Color.rgb(8, 96, 190);
+    private static final int GREEN = Color.rgb(0, 92, 68);
+    private static final int YELLOW = Color.rgb(255, 190, 25);
+    private static final int DARK = Color.rgb(35, 35, 35);
+
+    private static final int BG = Color.rgb(246, 247, 250);
+    private static final int TEXT_GRAY = Color.rgb(105, 110, 120);
+    private static final int BORDER = Color.rgb(225, 227, 232);
+    private static final int SELECTED = Color.rgb(45, 65, 85);
 
     private SharedPreferences pref;
+
+    // =========================================================
+    // MOBILE BANKING STATE
+    // =========================================================
 
     private String selectedMobileProvider = "বিকাশ";
     private String selectedAccountType = "পার্সোনাল";
 
-    private int dp(float n) {
-        return (int)(n * getResources().getDisplayMetrics().density + .5f);
-    }
+    // =========================================================
+    // MOBILE RECHARGE STATE
+    // =========================================================
 
-    private TextView tv(String s, float size, int color) {
-        TextView t = new TextView(this);
-        t.setText(s);
-        t.setTextSize(size);
-        t.setTextColor(color);
-        return t;
-    }
+    private String selectedRechargeOperator = "বাংলালিংক";
+    private String selectedRechargeType = "প্রিপেইড";
 
-    private GradientDrawable bg(int color, float radius) {
-        GradientDrawable d = new GradientDrawable();
-        d.setColor(color);
-        d.setCornerRadius(dp(radius));
-        return d;
-    }
-
-    private GradientDrawable outline(int color, int stroke, float radius) {
-        GradientDrawable d = bg(color, radius);
-        d.setStroke(dp(1), stroke);
-        return d;
-    }
-
-    private void space(LinearLayout p, int h) {
-        p.addView(
-                new Space(this),
-                new LinearLayout.LayoutParams(
-                        1,
-                        dp(h)
-                )
-        );
-    }
+    // =========================================================
+    // ACTIVITY
+    // =========================================================
 
     @Override
-    protected void onCreate(Bundle b) {
-        super.onCreate(b);
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
 
         pref = getSharedPreferences(
                 "quick_pay",
                 Context.MODE_PRIVATE
         );
 
-        if (pref.getBoolean("logged_in", false)) {
+        boolean loggedIn =
+                pref.getBoolean("logged_in", false);
 
-            if (pref.getString("pin", "").length() == 8) {
+        String savedPin =
+                pref.getString("pin", "");
+
+        if (loggedIn) {
+
+            if (savedPin.length() == 8) {
                 showPinUnlock();
             } else {
                 showPinSetup();
             }
 
         } else {
+
             showLogin();
         }
     }
 
-    /* =========================================================
-       INPUT
-       ========================================================= */
+    // =========================================================
+    // BASIC HELPERS
+    // =========================================================
 
-    private EditText input(String hint, boolean password) {
+    private int dp(int value) {
+        return (int) (
+                value *
+                        getResources()
+                                .getDisplayMetrics()
+                                .density
+        );
+    }
 
-        EditText e = new EditText(this);
+    private TextView tv(
+            String text,
+            float size,
+            int color,
+            boolean bold
+    ) {
+
+        TextView t = new TextView(this);
+
+        t.setText(text);
+        t.setTextSize(
+                TypedValue.COMPLEX_UNIT_SP,
+                size
+        );
+        t.setTextColor(color);
+
+        if (bold) {
+            t.setTypeface(
+                    null,
+                    android.graphics.Typeface.BOLD
+            );
+        }
+
+        t.setGravity(Gravity.CENTER_VERTICAL);
+
+        return t;
+    }
+
+    private GradientDrawable bg(
+            int color,
+            int radius
+    ) {
+
+        GradientDrawable d =
+                new GradientDrawable();
+
+        d.setColor(color);
+        d.setCornerRadius(dp(radius));
+
+        return d;
+    }
+
+    private GradientDrawable outline(
+            int strokeColor,
+            int fillColor,
+            int radius
+    ) {
+
+        GradientDrawable d =
+                new GradientDrawable();
+
+        d.setColor(fillColor);
+        d.setStroke(
+                dp(2),
+                strokeColor
+        );
+        d.setCornerRadius(dp(radius));
+
+        return d;
+    }
+
+    private Space space(int height) {
+
+        Space s = new Space(this);
+
+        s.setLayoutParams(
+                new LinearLayout.LayoutParams(
+                        1,
+                        dp(height)
+                )
+        );
+
+        return s;
+    }
+
+    private EditText input(
+            String hint,
+            boolean number
+    ) {
+
+        EditText e =
+                new EditText(this);
 
         e.setHint(hint);
         e.setTextSize(17);
         e.setSingleLine(true);
-
         e.setPadding(
-                dp(18),
+                dp(15),
                 0,
-                dp(18),
+                dp(15),
                 0
         );
 
-        e.setTextColor(DARK);
-        e.setHintTextColor(Color.GRAY);
-        e.setBackground(bg(Color.WHITE, 12));
-
-        String h = hint == null ? "" : hint;
-
-        boolean numeric =
-                password
-                || h.contains("ফোন")
-                || h.contains("নম্বর")
-                || h.contains("টাকার পরিমাণ")
-                || h.contains("PIN")
-                || h.contains("পিন");
-
-        if (numeric) {
-
-            if (password) {
-
-                e.setInputType(
-                        InputType.TYPE_CLASS_NUMBER
-                                | InputType.TYPE_NUMBER_VARIATION_PASSWORD
-                );
-
-            } else {
-
-                e.setInputType(
-                        InputType.TYPE_CLASS_PHONE
-                );
-            }
-
+        if (number) {
+            e.setInputType(
+                    InputType.TYPE_CLASS_PHONE
+            );
         } else {
-
             e.setInputType(
                     InputType.TYPE_CLASS_TEXT
-                            | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
             );
         }
+
+        e.setBackground(
+                outline(
+                        BORDER,
+                        Color.WHITE,
+                        14
+                )
+        );
 
         return e;
     }
 
-    private EditText pinInput(String hint) {
+    private EditText pinInput() {
 
-        EditText e = input(hint, true);
+        EditText e =
+                new EditText(this);
 
+        e.setHint("৮ সংখ্যার PIN");
+        e.setTextSize(18);
+        e.setSingleLine(true);
         e.setGravity(Gravity.CENTER);
-        e.setTextSize(20);
+        e.setInputType(
+                InputType.TYPE_CLASS_NUMBER |
+                        InputType.TYPE_NUMBER_VARIATION_PASSWORD
+        );
 
         e.setBackground(
                 outline(
-                        Color.rgb(248,250,253),
-                        Color.rgb(215,225,235),
-                        15
+                        BORDER,
+                        Color.WHITE,
+                        14
                 )
         );
 
@@ -160,255 +231,170 @@ public class MainActivity extends Activity {
     }
 
     private TextView button(
-            String s,
-            int color,
-            int textColor) {
+            String text,
+            int color
+    ) {
 
-        TextView b = tv(
-                s,
-                20,
-                textColor
-        );
+        TextView b =
+                tv(
+                        text,
+                        17,
+                        Color.WHITE,
+                        true
+                );
 
         b.setGravity(Gravity.CENTER);
 
-        b.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
         b.setBackground(
-                bg(color, 12)
+                bg(
+                        color,
+                        14
+                )
         );
 
         return b;
     }
 
-    /* =========================================================
-       LOGIN
-       ========================================================= */
+    private LinearLayout vertical() {
 
-    private void showLogin() {
-
-        getWindow().setStatusBarColor(BLUE);
-        getWindow().setNavigationBarColor(BLUE);
-
-        LinearLayout root =
+        LinearLayout l =
                 new LinearLayout(this);
 
-        root.setOrientation(
+        l.setOrientation(
                 LinearLayout.VERTICAL
         );
 
-        root.setGravity(
-                Gravity.CENTER_HORIZONTAL
+        return l;
+    }
+
+    private LinearLayout horizontal() {
+
+        LinearLayout l =
+                new LinearLayout(this);
+
+        l.setOrientation(
+                LinearLayout.HORIZONTAL
         );
 
+        return l;
+    }
+
+    // =========================================================
+    // LOGIN
+    // =========================================================
+
+    private void showLogin() {
+
+        LinearLayout root =
+                vertical();
+
+        root.setGravity(Gravity.CENTER);
         root.setPadding(
                 dp(25),
-                dp(18),
                 dp(25),
-                dp(18)
+                dp(25),
+                dp(25)
         );
 
         root.setBackgroundColor(BLUE);
 
-        ScrollView scroll =
-                new ScrollView(this);
-
-        scroll.setFillViewport(true);
-        scroll.addView(root);
-        setContentView(scroll);
-
-        TextView lang =
-                tv(
-                        "বাংলা     EN",
-                        16,
-                        Color.WHITE
-                );
-
-        lang.setGravity(Gravity.CENTER);
-
-        lang.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        lang.setBackground(
-                bg(
-                        Color.rgb(55,130,205),
-                        40
-                )
-        );
-
-        LinearLayout.LayoutParams lp =
-                new LinearLayout.LayoutParams(
-                        dp(175),
-                        dp(50)
-                );
-
-        lp.gravity = Gravity.RIGHT;
-
-        root.addView(lang, lp);
-
-        space(root,45);
-
         TextView logo =
                 tv(
-                        "Quick Pay",
-                        32,
-                        BLUE
+                        "⚡",
+                        55,
+                        Color.WHITE,
+                        true
                 );
 
         logo.setGravity(Gravity.CENTER);
 
-        logo.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        logo.setBackground(
-                bg(Color.WHITE,18)
-        );
-
         root.addView(
                 logo,
                 new LinearLayout.LayoutParams(
-                        dp(300),
-                        dp(95)
+                        -1,
+                        dp(80)
                 )
         );
 
-        TextView sub =
+        TextView title =
                 tv(
-                        "বাংলাদেশের সেরা রিচার্জ ব্যবসা প্ল্যাটফর্ম",
-                        16,
-                        Color.WHITE
+                        "Quick Pay",
+                        30,
+                        Color.WHITE,
+                        true
                 );
 
-        sub.setGravity(Gravity.CENTER);
+        title.setGravity(Gravity.CENTER);
 
         root.addView(
-                sub,
+                title,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(45)
+                        dp(55)
                 )
         );
 
-        space(root,15);
+        TextView subtitle =
+                tv(
+                        "আপনার বিশ্বস্ত ডিজিটাল সেবা",
+                        16,
+                        Color.WHITE,
+                        false
+                );
+
+        subtitle.setGravity(Gravity.CENTER);
+
+        root.addView(
+                subtitle,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(40)
+                )
+        );
+
+        root.addView(space(25));
 
         EditText phone =
                 input(
-                        "ফোন",
-                        false
+                        "মোবাইল নম্বর",
+                        true
                 );
 
         root.addView(
                 phone,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(62)
+                        dp(60)
                 )
         );
 
-        space(root,14);
+        root.addView(space(12));
 
-        LinearLayout passBox =
-                new LinearLayout(this);
-
-        passBox.setGravity(
-                Gravity.CENTER_VERTICAL
-        );
-
-        passBox.setPadding(
-                dp(5),
-                0,
-                dp(5),
-                0
-        );
-
-        passBox.setBackground(
-                bg(Color.WHITE,12)
-        );
-
-        EditText pass =
+        EditText password =
                 input(
-                        "৬ ডিজিট পাসওয়ার্ড",
-                        true
+                        "পাসওয়ার্ড",
+                        false
                 );
 
-        pass.setBackgroundColor(
-                Color.TRANSPARENT
-        );
-
-        passBox.addView(
-                pass,
-                new LinearLayout.LayoutParams(
-                        0,
-                        dp(62),
-                        1
-                )
-        );
-
-        TextView eye =
-                tv(
-                        "◉",
-                        23,
-                        BLUE
-                );
-
-        eye.setGravity(Gravity.CENTER);
-
-        passBox.addView(
-                eye,
-                new LinearLayout.LayoutParams(
-                        dp(52),
-                        dp(62)
-                )
+        password.setInputType(
+                InputType.TYPE_CLASS_TEXT |
+                        InputType.TYPE_TEXT_VARIATION_PASSWORD
         );
 
         root.addView(
-                passBox,
+                password,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(62)
+                        dp(60)
                 )
         );
 
-        eye.setOnClickListener(v -> {
-
-            boolean hidden =
-                    (pass.getInputType()
-                            & InputType.TYPE_NUMBER_VARIATION_PASSWORD)
-                            != 0;
-
-            if (hidden) {
-
-                pass.setInputType(
-                        InputType.TYPE_CLASS_NUMBER
-                );
-
-            } else {
-
-                pass.setInputType(
-                        InputType.TYPE_CLASS_NUMBER
-                                | InputType.TYPE_NUMBER_VARIATION_PASSWORD
-                );
-            }
-
-            pass.setSelection(
-                    pass.length()
-            );
-        });
-
-        space(root,20);
+        root.addView(space(18));
 
         TextView login =
                 button(
                         "লগইন",
-                        Color.WHITE,
-                        BLUE
+                        GREEN
                 );
 
         root.addView(
@@ -421,53 +407,28 @@ public class MainActivity extends Activity {
 
         login.setOnClickListener(v -> {
 
-            String p =
-                    phone.getText()
-                            .toString()
-                            .trim();
-
-            String pw =
-                    pass.getText()
-                            .toString()
-                            .trim();
-
-            if (p.isEmpty()) {
-
-                phone.setError(
-                        "ফোন নম্বর দিন"
-                );
-
-                return;
-            }
-
-            if (pw.isEmpty()) {
-
-                pass.setError(
-                        "পাসওয়ার্ড দিন"
-                );
-
-                return;
-            }
-
-            String sp =
-                    pref.getString(
-                            "phone",
-                            ""
-                    );
-
-            String sw =
-                    pref.getString(
-                            "password",
-                            ""
-                    );
-
-            if (!sp.isEmpty()
-                    && (!sp.equals(p)
-                    || !sw.equals(pw))) {
+            if (phone.getText()
+                    .toString()
+                    .trim()
+                    .isEmpty()) {
 
                 Toast.makeText(
                         this,
-                        "ফোন নম্বর বা পাসওয়ার্ড সঠিক নয়",
+                        "মোবাইল নম্বর দিন",
+                        Toast.LENGTH_SHORT
+                ).show();
+
+                return;
+            }
+
+            if (password.getText()
+                    .toString()
+                    .trim()
+                    .isEmpty()) {
+
+                Toast.makeText(
+                        this,
+                        "পাসওয়ার্ড দিন",
                         Toast.LENGTH_SHORT
                 ).show();
 
@@ -475,26 +436,27 @@ public class MainActivity extends Activity {
             }
 
             pref.edit()
-                    .putString("phone",p)
-                    .putString("password",pw)
-                    .putBoolean("logged_in",true)
+                    .putBoolean(
+                            "logged_in",
+                            true
+                    )
+                    .putString(
+                            "user_name",
+                            "User"
+                    )
                     .apply();
 
-            if (pref.getString("pin","").length() == 8) {
-
-                showHome();
-
-            } else {
-
-                showPinSetup();
-            }
+            showPinSetup();
         });
+
+        root.addView(space(10));
 
         TextView forgot =
                 tv(
-                        "পাসওয়ার্ড ভুলে গেছেন?",
-                        16,
-                        Color.WHITE
+                        "পাসওয়ার্ড ভুলে গেছেন?",
+                        15,
+                        Color.WHITE,
+                        false
                 );
 
         forgot.setGravity(Gravity.CENTER);
@@ -503,7 +465,7 @@ public class MainActivity extends Activity {
                 forgot,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(48)
+                        dp(40)
                 )
         );
 
@@ -511,416 +473,273 @@ public class MainActivity extends Activity {
                 v -> showForgotPassword()
         );
 
-        TextView reg =
+        TextView register =
                 tv(
-                        "অ্যাকাউন্ট নেই?  রেজিস্টার করুন",
-                        17,
-                        Color.WHITE
+                        "নতুন একাউন্ট খুলুন",
+                        16,
+                        Color.WHITE,
+                        true
                 );
 
-        reg.setGravity(Gravity.CENTER);
-
-        reg.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
+        register.setGravity(Gravity.CENTER);
 
         root.addView(
-                reg,
+                register,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(52)
+                        dp(45)
                 )
         );
 
-        reg.setOnClickListener(
+        register.setOnClickListener(
                 v -> showRegister()
         );
+
+        setContentView(root);
     }
 
-    /* =========================================================
-       PIN SETUP
-       ========================================================= */
+    // =========================================================
+    // PIN SETUP
+    // =========================================================
 
     private void showPinSetup() {
 
-        getWindow().setStatusBarColor(BLUE);
-        getWindow().setNavigationBarColor(BLUE);
+        LinearLayout root =
+                vertical();
 
-        LinearLayout screen =
-                new LinearLayout(this);
-
-        screen.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        screen.setGravity(Gravity.CENTER);
-
-        screen.setPadding(
-                dp(20),
-                dp(15),
-                dp(20),
-                dp(15)
-        );
-
-        screen.setBackgroundColor(BLUE);
-
-        setContentView(screen);
-
-        LinearLayout card =
-                new LinearLayout(this);
-
-        card.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        card.setGravity(
-                Gravity.CENTER_HORIZONTAL
-        );
-
-        card.setPadding(
+        root.setGravity(Gravity.CENTER);
+        root.setPadding(
                 dp(25),
-                dp(28),
                 dp(25),
-                dp(22)
+                dp(25),
+                dp(25)
         );
 
-        card.setBackground(
-                bg(
-                        Color.rgb(250,252,250),
-                        28
-                )
-        );
+        root.setBackgroundColor(BG);
 
-        screen.addView(
-                card,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(500)
-                )
-        );
-
-        TextView lock =
+        TextView icon =
                 tv(
-                        "🔒",
-                        50,
-                        BLUE
+                        "🔐",
+                        55,
+                        BLUE,
+                        true
                 );
 
-        lock.setGravity(Gravity.CENTER);
+        icon.setGravity(Gravity.CENTER);
 
-        lock.setBackground(
-                bg(
-                        Color.rgb(232,240,250),
-                        70
-                )
-        );
-
-        card.addView(
-                lock,
+        root.addView(
+                icon,
                 new LinearLayout.LayoutParams(
-                        dp(105),
-                        dp(105)
+                        -1,
+                        dp(80)
                 )
         );
-
-        space(card,18);
 
         TextView title =
                 tv(
-                        "পিন সেট করুন",
-                        26,
-                        BLUE
+                        "PIN সেট করুন",
+                        27,
+                        DARK,
+                        true
                 );
 
         title.setGravity(Gravity.CENTER);
 
-        title.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        card.addView(
+        root.addView(
                 title,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(42)
+                        dp(55)
                 )
         );
 
         TextView sub =
                 tv(
-                        "অ্যাপে ঢোকার জন্য ৮ ডিজিটের পিন দিন",
-                        17,
-                        Color.DKGRAY
+                        "আপনার ৮ সংখ্যার PIN দিন",
+                        16,
+                        TEXT_GRAY,
+                        false
                 );
 
         sub.setGravity(Gravity.CENTER);
 
-        card.addView(
+        root.addView(
                 sub,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(42)
+                        dp(45)
                 )
         );
 
-        space(card,8);
+        root.addView(space(20));
 
-        EditText p =
-                pinInput("৮ ডিজিট PIN");
+        EditText pin =
+                pinInput();
 
-        EditText c =
-                pinInput("PIN আবার দিন");
-
-        card.addView(
-                p,
+        root.addView(
+                pin,
                 new LinearLayout.LayoutParams(
                         -1,
                         dp(60)
                 )
         );
 
-        space(card,10);
-
-        card.addView(
-                c,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(60)
-                )
-        );
-
-        space(card,16);
+        root.addView(space(18));
 
         TextView save =
                 button(
-                        "পিন সেট করুন  ✓",
-                        Color.TRANSPARENT,
+                        "PIN সংরক্ষণ করুন",
                         BLUE
                 );
 
-        save.setBackground(
-                outline(
-                        Color.TRANSPARENT,
-                        Color.rgb(80,145,205),
-                        16
-                )
-        );
-
-        card.addView(
+        root.addView(
                 save,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(58)
+                        dp(60)
                 )
         );
 
         save.setOnClickListener(v -> {
 
-            String a =
-                    p.getText()
+            String p =
+                    pin.getText()
                             .toString()
                             .trim();
 
-            String b =
-                    c.getText()
-                            .toString()
-                            .trim();
+            if (p.length() != 8) {
 
-            if (a.length() != 8) {
-
-                p.setError(
-                        "৮ ডিজিটের PIN দিন"
-                );
-
-                return;
-            }
-
-            if (!a.equals(b)) {
-
-                c.setError(
-                        "দুইটি PIN একই নয়"
-                );
+                Toast.makeText(
+                        this,
+                        "৮ সংখ্যার PIN দিন",
+                        Toast.LENGTH_SHORT
+                ).show();
 
                 return;
             }
 
             pref.edit()
-                    .putString("pin",a)
-                    .putBoolean("logged_in",true)
+                    .putString("pin", p)
+                    .putBoolean(
+                            "logged_in",
+                            true
+                    )
                     .apply();
 
             showHome();
         });
+
+        setContentView(root);
     }
 
-    /* =========================================================
-       PIN UNLOCK
-       ========================================================= */
+    // =========================================================
+    // PIN UNLOCK
+    // =========================================================
 
     private void showPinUnlock() {
 
-        getWindow().setStatusBarColor(BLUE);
-        getWindow().setNavigationBarColor(BLUE);
+        LinearLayout root =
+                vertical();
 
-        LinearLayout screen =
-                new LinearLayout(this);
-
-        screen.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        screen.setGravity(Gravity.CENTER);
-
-        screen.setPadding(
-                dp(20),
-                dp(15),
-                dp(20),
-                dp(15)
-        );
-
-        screen.setBackgroundColor(BLUE);
-
-        setContentView(screen);
-
-        LinearLayout card =
-                new LinearLayout(this);
-
-        card.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        card.setGravity(
-                Gravity.CENTER_HORIZONTAL
-        );
-
-        card.setPadding(
+        root.setGravity(Gravity.CENTER);
+        root.setPadding(
                 dp(25),
-                dp(28),
                 dp(25),
-                dp(20)
+                dp(25),
+                dp(25)
         );
 
-        card.setBackground(
-                bg(
-                        Color.rgb(250,252,250),
-                        28
-                )
-        );
+        root.setBackgroundColor(BG);
 
-        screen.addView(
-                card,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(480)
-                )
-        );
-
-        TextView lock =
+        TextView icon =
                 tv(
-                        "🔒",
-                        50,
-                        BLUE
+                        "🔐",
+                        55,
+                        BLUE,
+                        true
                 );
 
-        lock.setGravity(Gravity.CENTER);
+        icon.setGravity(Gravity.CENTER);
 
-        lock.setBackground(
-                bg(
-                        Color.rgb(232,240,250),
-                        70
-                )
-        );
-
-        card.addView(
-                lock,
+        root.addView(
+                icon,
                 new LinearLayout.LayoutParams(
-                        dp(105),
-                        dp(105)
+                        -1,
+                        dp(80)
                 )
         );
-
-        space(card,18);
 
         TextView title =
                 tv(
-                        "পিন যাচাই করুন",
-                        26,
-                        BLUE
+                        "Quick Pay",
+                        28,
+                        DARK,
+                        true
                 );
 
         title.setGravity(Gravity.CENTER);
 
-        title.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        card.addView(
+        root.addView(
                 title,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(42)
+                        dp(55)
                 )
         );
 
         TextView sub =
                 tv(
-                        "আপনার ৮ ডিজিটের পিন দিন",
-                        17,
-                        Color.DKGRAY
+                        "PIN দিয়ে প্রবেশ করুন",
+                        16,
+                        TEXT_GRAY,
+                        false
                 );
 
         sub.setGravity(Gravity.CENTER);
 
-        card.addView(
+        root.addView(
                 sub,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(42)
+                        dp(40)
                 )
         );
 
-        space(card,8);
+        root.addView(space(20));
 
-        EditText p =
-                pinInput("PIN");
+        EditText pin =
+                pinInput();
 
-        card.addView(
-                p,
+        root.addView(
+                pin,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(62)
+                        dp(60)
                 )
         );
 
-        space(card,18);
+        root.addView(space(18));
 
-        TextView verify =
+        TextView unlock =
                 button(
-                        "যাচাই করুন  ✓",
-                        Color.TRANSPARENT,
+                        "প্রবেশ করুন",
                         BLUE
                 );
 
-        verify.setBackground(
-                outline(
-                        Color.TRANSPARENT,
-                        Color.rgb(80,145,205),
-                        16
-                )
-        );
-
-        card.addView(
-                verify,
+        root.addView(
+                unlock,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(58)
+                        dp(60)
                 )
         );
 
-        verify.setOnClickListener(v -> {
+        unlock.setOnClickListener(v -> {
+
+            String entered =
+                    pin.getText()
+                            .toString()
+                            .trim();
 
             String saved =
                     pref.getString(
@@ -928,1003 +747,284 @@ public class MainActivity extends Activity {
                             ""
                     );
 
-            if (p.getText()
-                    .toString()
-                    .trim()
-                    .equals(saved)) {
+            if (entered.equals(saved)) {
 
                 showHome();
 
             } else {
 
-                p.setError("ভুল PIN");
+                Toast.makeText(
+                        this,
+                        "PIN সঠিক নয়",
+                        Toast.LENGTH_SHORT
+                ).show();
             }
         });
 
-        TextView forgot =
-                tv(
-                        "PIN ভুলে গেছেন?  লগইন করুন",
-                        16,
-                        BLUE
-                );
-
-        forgot.setGravity(Gravity.CENTER);
-
-        card.addView(
-                forgot,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(48)
-                )
-        );
-
-        forgot.setOnClickListener(v -> {
-
-            pref.edit()
-                    .putBoolean("logged_in",false)
-                    .apply();
-
-            showLogin();
-        });
+        setContentView(root);
     }
 
-    /* =========================================================
-       HOME SERVICE
-       ========================================================= */
-
-    private LinearLayout serviceRow(
-            LinearLayout parent) {
-
-        LinearLayout r =
-                new LinearLayout(this);
-
-        r.setGravity(
-                Gravity.CENTER
-        );
-
-        parent.addView(
-                r,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        0,
-                        1
-                )
-        );
-
-        return r;
-    }
-
-    private void service(
-            LinearLayout row,
-            String icon,
-            String title) {
-
-        LinearLayout box =
-                new LinearLayout(this);
-
-        box.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        box.setGravity(
-                Gravity.CENTER
-        );
-
-        TextView i =
-                tv(
-                        icon,
-                        27,
-                        DARK
-                );
-
-        i.setGravity(
-                Gravity.CENTER
-        );
-
-        box.addView(
-                i,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(38)
-                )
-        );
-
-        TextView t =
-                tv(
-                        title,
-                        11,
-                        DARK
-                );
-
-        t.setGravity(
-                Gravity.CENTER
-        );
-
-        box.addView(
-                t,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(38)
-                )
-        );
-
-        LinearLayout.LayoutParams p =
-                new LinearLayout.LayoutParams(
-                        0,
-                        -1,
-                        1
-                );
-
-        p.setMargins(
-                dp(1),
-                dp(1),
-                dp(1),
-                dp(1)
-        );
-
-        row.addView(box,p);
-
-        if (title.contains("অ্যাড\nব্যালেন্স")) {
-
-            box.setOnClickListener(
-                    v -> showAddBalance()
-            );
-
-        } else if (
-                title.contains("মোবাইল\nব্যাংকিং")
-        ) {
-
-            box.setOnClickListener(
-                    v -> showMobileBanking()
-            );
-        }
-    }
-
-    private void bonusBox(
-            LinearLayout parent,
-            String amount,
-            String bonus) {
-
-        LinearLayout b =
-                new LinearLayout(this);
-
-        b.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        b.setGravity(
-                Gravity.CENTER
-        );
-
-        b.setBackground(
-                bg(Color.WHITE,10)
-        );
-
-        TextView a =
-                tv(
-                        amount,
-                        13,
-                        DARK
-                );
-
-        a.setGravity(Gravity.CENTER);
-
-        TextView x =
-                tv(
-                        bonus,
-                        10,
-                        Color.rgb(170,40,40)
-                );
-
-        x.setGravity(Gravity.CENTER);
-
-        b.addView(
-                a,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(22)
-                )
-        );
-
-        b.addView(
-                x,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(20)
-                )
-        );
-
-        LinearLayout.LayoutParams p =
-                new LinearLayout.LayoutParams(
-                        0,
-                        dp(44),
-                        1
-                );
-
-        p.setMargins(
-                dp(3),
-                0,
-                dp(3),
-                0
-        );
-
-        parent.addView(b,p);
-    }
-
-    private void nav(
-            LinearLayout parent,
-            String s) {
-
-        TextView n =
-                tv(
-                        s,
-                        14,
-                        DARK
-                );
-
-        n.setGravity(Gravity.CENTER);
-
-        parent.addView(
-                n,
-                new LinearLayout.LayoutParams(
-                        0,
-                        dp(58),
-                        1
-                )
-        );
-    }
-
-    /* =========================================================
-       HOME
-       ========================================================= */
+    // =========================================================
+    // HOME
+    // =========================================================
 
     private void showHome() {
 
-        getWindow().setStatusBarColor(GREEN);
-        getWindow().setNavigationBarColor(Color.WHITE);
+        LinearLayout root =
+                vertical();
 
-        LinearLayout main =
-                new LinearLayout(this);
+        root.setBackgroundColor(BG);
 
-        main.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        main.setBackgroundColor(
-                Color.WHITE
-        );
-
-        setContentView(main);
-
+        // HEADER
         LinearLayout header =
-                new LinearLayout(this);
-
-        header.setOrientation(
-                LinearLayout.VERTICAL
-        );
+                vertical();
 
         header.setPadding(
-                dp(10),
-                dp(6),
-                dp(10),
-                dp(6)
+                dp(20),
+                dp(15),
+                dp(20),
+                dp(15)
         );
 
-        header.setBackgroundColor(
-                GREEN
-        );
+        header.setBackgroundColor(GREEN);
 
-        main.addView(
-                header,
+        TextView brand =
+                tv(
+                        "⚡ Quick Pay",
+                        25,
+                        Color.WHITE,
+                        true
+                );
+
+        header.addView(
+                brand,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(178)
+                        dp(45)
                 )
         );
 
-        LinearLayout top =
-                new LinearLayout(this);
+        String userName =
+                pref.getString(
+                        "user_name",
+                        "User"
+                );
 
-        top.setGravity(
-                Gravity.CENTER_VERTICAL
-        );
+        TextView welcome =
+                tv(
+                        "স্বাগতম, " + userName,
+                        16,
+                        Color.WHITE,
+                        false
+                );
 
         header.addView(
-                top,
+                welcome,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(35)
+                )
+        );
+
+        root.addView(header);
+
+        // BALANCE
+        LinearLayout balance =
+                vertical();
+
+        balance.setPadding(
+                dp(18),
+                dp(15),
+                dp(18),
+                dp(15)
+        );
+
+        balance.setBackground(
+                bg(
+                        Color.WHITE,
+                        16
+                )
+        );
+
+        TextView mainBalance =
+                tv(
+                        "Main Balance  ৳ ১২,৫০০",
+                        21,
+                        DARK,
+                        true
+                );
+
+        balance.addView(
+                mainBalance,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(45)
+                )
+        );
+
+        TextView driveBalance =
+                tv(
+                        "Drive Balance  ৳ ১৮০",
+                        17,
+                        TEXT_GRAY,
+                        false
+                );
+
+        balance.addView(
+                driveBalance,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(35)
+                )
+        );
+
+        LinearLayout.LayoutParams balLp =
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(100)
+                );
+
+        balLp.setMargins(
+                dp(15),
+                dp(15),
+                dp(15),
+                dp(10)
+        );
+
+        root.addView(balance, balLp);
+
+        // SCROLL
+        ScrollView scroll =
+                new ScrollView(this);
+
+        LinearLayout content =
+                vertical();
+
+        content.setPadding(
+                dp(15),
+                dp(5),
+                dp(15),
+                dp(25)
+        );
+
+        scroll.addView(content);
+
+        // SECTION
+        TextView serviceTitle =
+                tv(
+                        "Quick Services",
+                        22,
+                        DARK,
+                        true
+                );
+
+        content.addView(
+                serviceTitle,
                 new LinearLayout.LayoutParams(
                         -1,
                         dp(50)
                 )
         );
 
-        TextView brand =
-                tv(
-                        "Quick Pay",
-                        21,
-                        DARK
-                );
+        // ROW 1
+        LinearLayout row1 =
+                horizontal();
 
-        brand.setGravity(Gravity.CENTER);
-
-        brand.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        brand.setBackground(
-                bg(Color.WHITE,15)
-        );
-
-        top.addView(
-                brand,
-                new LinearLayout.LayoutParams(
-                        dp(145),
-                        dp(45)
-                )
-        );
-
-        top.addView(
-                new Space(this),
-                new LinearLayout.LayoutParams(
-                        0,
-                        1,
-                        1
-                )
-        );
-
-        TextView en =
-                tv(
-                        "EN",
-                        15,
-                        Color.WHITE
-                );
-
-        en.setGravity(Gravity.CENTER);
-
-        top.addView(
-                en,
-                new LinearLayout.LayoutParams(
-                        dp(38),
-                        dp(45)
-                )
-        );
-
-        TextView bell =
-                tv(
-                        "🔔",
-                        19,
-                        Color.WHITE
-                );
-
-        bell.setGravity(Gravity.CENTER);
-
-        top.addView(
-                bell,
-                new LinearLayout.LayoutParams(
-                        dp(42),
-                        dp(45)
-                )
-        );
-
-        TextView out =
-                tv(
-                        "⇥",
-                        25,
-                        Color.WHITE
-                );
-
-        out.setGravity(Gravity.CENTER);
-
-        top.addView(
-                out,
-                new LinearLayout.LayoutParams(
-                        dp(42),
-                        dp(45)
-                )
-        );
-
-        out.setOnClickListener(v -> {
-
-            pref.edit()
-                    .putBoolean("logged_in",false)
-                    .apply();
-
-            showLogin();
-        });
-
-        LinearLayout user =
-                new LinearLayout(this);
-
-        user.setGravity(
-                Gravity.CENTER_VERTICAL
-        );
-
-        header.addView(
-                user,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(62)
-                )
-        );
-
-        TextView name =
-                tv(
-                        pref.getString(
-                                "name",
-                                "Rosy"
-                        ),
-                        25,
-                        Color.WHITE
-                );
-
-        name.setGravity(
-                Gravity.CENTER_VERTICAL
-        );
-
-        name.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        user.addView(
-                name,
-                new LinearLayout.LayoutParams(
-                        0,
-                        dp(62),
-                        1
-                )
-        );
-
-        TextView bal =
-                tv(
-                        "Main Balance  ৳ ১২,৫০০\nDrive Balance  ৳ ১৮০",
-                        12,
-                        DARK
-                );
-
-        bal.setGravity(Gravity.CENTER);
-
-        bal.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        bal.setBackground(
-                bg(YELLOW,30)
-        );
-
-        user.addView(
-                bal,
-                new LinearLayout.LayoutParams(
-                        dp(190),
-                        dp(56)
-                )
-        );
-
-        TextView notice =
-                tv(
-                        "●  সর্বশেষ আপডেট: Quick Pay-এ স্বাগতম",
-                        12,
-                        Color.DKGRAY
-                );
-
-        notice.setGravity(
-                Gravity.CENTER_VERTICAL
-        );
-
-        notice.setPadding(
-                dp(10),
-                0,
-                dp(5),
-                0
-        );
-
-        notice.setSingleLine(true);
-
-        notice.setBackground(
-                bg(Color.WHITE,12)
-        );
-
-        header.addView(
-                notice,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(38)
-                )
-        );
-
-        LinearLayout services =
-                new LinearLayout(this);
-
-        services.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        services.setPadding(
-                dp(12),
-                dp(4),
-                dp(12),
-                dp(2)
-        );
-
-        main.addView(
-                services,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        0,
-                        1
-                )
-        );
-
-        LinearLayout r =
-                serviceRow(services);
-
-        service(
-                r,
-                "👛",
-                "অ্যাড\nব্যালেন্স"
-        );
-
-        service(
-                r,
-                "💵",
-                "মোবাইল\nব্যাংকিং"
-        );
-
-        service(
-                r,
-                "🏦",
-                "ব্যাংক\nট্রান্সফার"
-        );
-
-        service(
-                r,
+        addHomeService(
+                row1,
                 "📱",
-                "মোবাইল\nরিচার্জ"
+                "মোবাইল রিচার্জ",
+                v -> showMobileRecharge()
         );
 
-        r = serviceRow(services);
-
-        service(
-                r,
-                "💬",
-                "গ্রুপ\nচ্যাট"
-        );
-
-        service(
-                r,
-                "🎁",
-                "ইনভাইট\nবোনাস"
-        );
-
-        service(
-                r,
-                "🧾",
-                "বিল\nপে"
-        );
-
-        service(
-                r,
-                "🏷",
-                "বিশেষ\nঅফার"
-        );
-
-        r = serviceRow(services);
-
-        service(
-                r,
-                "🎧",
-                "কাস্টমার\nকেয়ার"
-        );
-
-        service(
-                r,
-                "⭐",
-                "কাস্টমার\nরিভিউ"
-        );
-
-        service(
-                r,
-                "▶",
-                "ভিডিও\nটিউটোরিয়াল"
-        );
-
-        service(
-                r,
-                "👥",
-                "কন্টাক্ট\nআস"
-        );
-
-        LinearLayout bonus =
-                new LinearLayout(this);
-
-        bonus.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        bonus.setPadding(
-                dp(10),
-                dp(2),
-                dp(10),
-                dp(3)
-        );
-
-        bonus.setBackground(
-                bg(GREEN,16)
-        );
-
-        main.addView(
-                bonus,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(98)
-                )
-        );
-
-        TextView bt =
-                tv(
-                        "🎁  ডিপোজিট বোনাস অফার",
-                        18,
-                        Color.WHITE
-                );
-
-        bt.setGravity(
-                Gravity.CENTER_VERTICAL
-        );
-
-        bt.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        bonus.addView(
-                bt,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(32)
-                )
-        );
-
-        TextView bs =
-                tv(
-                        "এখনই করুন, বোনাস নিয়ে নিন!",
-                        11,
-                        Color.WHITE
-                );
-
-        bonus.addView(
-                bs,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(20)
-                )
-        );
-
-        LinearLayout bb =
-                new LinearLayout(this);
-
-        bb.setGravity(Gravity.CENTER);
-
-        bonus.addView(
-                bb,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(42)
-                )
-        );
-
-        bonusBox(
-                bb,
-                "৳ ৫০০",
-                "বোনাস ৳ ৫০"
-        );
-
-        bonusBox(
-                bb,
-                "৳ ১০০০",
-                "বোনাস ৳ ১০০"
-        );
-
-        bonusBox(
-                bb,
-                "৳ ২০০০",
-                "বোনাস ৳ ২০০"
-        );
-
-        LinearLayout bottom =
-                new LinearLayout(this);
-
-        bottom.setGravity(Gravity.CENTER);
-
-        bottom.setBackgroundColor(
-                Color.WHITE
-        );
-
-        main.addView(
-                bottom,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(58)
-                )
-        );
-
-        nav(
-                bottom,
-                "⌂\nহোম"
-        );
-
-        nav(
-                bottom,
-                "◷\nলেনদেন"
-        );
-
-        nav(
-                bottom,
-                "♙\nপ্রোফাইল"
-        );
-    }
-
-    /* =========================================================
-       ADD BALANCE
-       ========================================================= */
-
-    private void showAddBalance() {
-
-        getWindow().setStatusBarColor(BLUE);
-        getWindow().setNavigationBarColor(Color.WHITE);
-
-        LinearLayout main =
-                new LinearLayout(this);
-
-        main.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        main.setBackgroundColor(
-                Color.WHITE
-        );
-
-        setContentView(main);
-
-        LinearLayout header =
-                new LinearLayout(this);
-
-        header.setGravity(
-                Gravity.CENTER_VERTICAL
-        );
-
-        header.setPadding(
-                dp(8),
-                0,
-                dp(8),
-                0
-        );
-
-        header.setBackgroundColor(
-                BLUE
-        );
-
-        main.addView(
-                header,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(62)
-                )
-        );
-
-        TextView back =
-                tv(
-                        "‹",
-                        38,
-                        Color.WHITE
-                );
-
-        back.setGravity(Gravity.CENTER);
-
-        header.addView(
-                back,
-                new LinearLayout.LayoutParams(
-                        dp(52),
-                        dp(62)
-                )
-        );
-
-        back.setOnClickListener(
-                v -> showHome()
-        );
-
-        TextView title =
-                tv(
-                        "অ্যাড ব্যালেন্স",
-                        21,
-                        Color.WHITE
-                );
-
-        title.setGravity(
-                Gravity.CENTER_VERTICAL
-        );
-
-        title.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        header.addView(
-                title,
-                new LinearLayout.LayoutParams(
-                        0,
-                        dp(62),
-                        1
-                )
-        );
-
-        TextView info =
-                tv(
-                        "আপনার Quick Pay ওয়ালেটে টাকা যোগ করুন।\n\n"
-                                + "টাকা যোগ করার জন্য নিচের অটো ডিপোজিট অপশন ব্যবহার করুন।",
-                        17,
-                        DARK
-                );
-
-        info.setPadding(
-                dp(28),
-                dp(35),
-                dp(28),
-                dp(20)
-        );
-
-        main.addView(
-                info,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(150)
-                )
-        );
-
-        TextView auto =
-                button(
-                        "অটো ডিপোজিট",
-                        BLUE,
-                        Color.WHITE
-                );
-
-        LinearLayout.LayoutParams ap =
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(60)
-                );
-
-        ap.setMargins(
-                dp(20),
-                dp(10),
-                dp(20),
-                0
-        );
-
-        main.addView(
-                auto,
-                ap
-        );
-
-        auto.setOnClickListener(
-                v -> showAutoDeposit()
-        );
-    }
-
-    /* =========================================================
-       AUTO DEPOSIT
-       ========================================================= */
-
-    private void showAutoDeposit() {
-
-        getWindow().setStatusBarColor(BLUE);
-        getWindow().setNavigationBarColor(Color.WHITE);
-
-        LinearLayout root =
-                new LinearLayout(this);
-
-        root.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        root.setBackgroundColor(
-                Color.rgb(248,249,251)
-        );
-
-        setContentView(root);
-
-        LinearLayout header =
-                new LinearLayout(this);
-
-        header.setGravity(
-                Gravity.CENTER_VERTICAL
-        );
-
-        header.setPadding(
-                dp(8),
-                0,
-                dp(8),
-                0
-        );
-
-        header.setBackgroundColor(
-                BLUE
-        );
-
-        root.addView(
-                header,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(62)
-                )
-        );
-
-        TextView back =
-                tv(
-                        "‹",
-                        38,
-                        Color.WHITE
-                );
-
-        back.setGravity(
-                Gravity.CENTER
-        );
-
-        header.addView(
-                back,
-                new LinearLayout.LayoutParams(
-                        dp(52),
-                        dp(62)
-                )
-        );
-
-        back.setOnClickListener(
+        addHomeService(
+                row1,
+                "💰",
+                "অ্যাড ব্যালেন্স",
                 v -> showAddBalance()
         );
 
-        TextView title =
-                tv(
-                        "অটো ডিপোজিট",
-                        21,
-                        Color.WHITE
-                );
+        content.addView(row1);
 
-        title.setGravity(
-                Gravity.CENTER_VERTICAL
+        // ROW 2
+        LinearLayout row2 =
+                horizontal();
+
+        addHomeService(
+                row2,
+                "🏦",
+                "মোবাইল ব্যাংকিং",
+                v -> showMobileBanking()
         );
 
-        title.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
+        addHomeService(
+                row2,
+                "🌐",
+                "ইন্টারনেট প্যাক",
+                v -> Toast.makeText(
+                        this,
+                        "ইন্টারনেট প্যাক শিগগির আসছে",
+                        Toast.LENGTH_SHORT
+                ).show()
         );
 
-        header.addView(
-                title,
-                new LinearLayout.LayoutParams(
-                        0,
-                        dp(62),
-                        1
-                )
+        content.addView(row2);
+
+        // ROW 3
+        LinearLayout row3 =
+                horizontal();
+
+        addHomeService(
+                row3,
+                "📜",
+                "লেনদেন ইতিহাস",
+                v -> Toast.makeText(
+                        this,
+                        "লেনদেন ইতিহাস শিগগির আসছে",
+                        Toast.LENGTH_SHORT
+                ).show()
         );
 
-        ScrollView scroll =
-                new ScrollView(this);
-
-        LinearLayout content =
-                new LinearLayout(this);
-
-        content.setOrientation(
-                LinearLayout.VERTICAL
+        addHomeService(
+                row3,
+                "🎁",
+                "বোনাস / কমিশন",
+                v -> Toast.makeText(
+                        this,
+                        "বোনাস / কমিশন শিগগির আসছে",
+                        Toast.LENGTH_SHORT
+                ).show()
         );
 
-        content.setPadding(
-                dp(14),
-                dp(15),
-                dp(14),
-                dp(20)
+        content.addView(row3);
+
+        // ROW 4
+        LinearLayout row4 =
+                horizontal();
+
+        addHomeService(
+                row4,
+                "🎧",
+                "কাস্টমার কেয়ার",
+                v -> Toast.makeText(
+                        this,
+                        "কাস্টমার কেয়ার",
+                        Toast.LENGTH_SHORT
+                ).show()
         );
 
-        scroll.addView(content);
+        addHomeService(
+                row4,
+                "⚙️",
+                "আরও সেবা",
+                v -> Toast.makeText(
+                        this,
+                        "আরও সেবা শিগগির আসছে",
+                        Toast.LENGTH_SHORT
+                ).show()
+        );
+
+        content.addView(row4);
 
         root.addView(
                 scroll,
@@ -1935,152 +1035,306 @@ public class MainActivity extends Activity {
                 )
         );
 
-        TextView notice =
-                tv(
-                        "নিচের যেকোনো নম্বরে টাকা পাঠান।\n"
-                                + "টাকা পাঠানোর পর সঠিক টাকার পরিমাণ ও Transaction ID দিয়ে সাবমিট করুন।",
-                        16,
-                        DARK
-                );
+        setContentView(root);
+    }
 
-        notice.setPadding(
-                dp(18),
-                dp(18),
-                dp(18),
-                dp(18)
-        );
+    private void addHomeService(
+            LinearLayout row,
+            String icon,
+            String text,
+            View.OnClickListener click
+    ) {
 
-        notice.setBackground(
-                bg(Color.WHITE,18)
-        );
+        LinearLayout box =
+                vertical();
 
-        content.addView(
-                notice,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(105)
+        box.setGravity(Gravity.CENTER);
+
+        box.setBackground(
+                outline(
+                        BORDER,
+                        Color.WHITE,
+                        16
                 )
         );
 
-        space(content,12);
-
-        addDepositProvider(
-                content,
-                "bKash",
-                "বিকাশ পার্সোনাল",
-                ""
-        );
-
-        addDepositProvider(
-                content,
-                "Nagad",
-                "নগদ পার্সোনাল",
-                ""
-        );
-
-        addDepositProvider(
-                content,
-                "Rocket",
-                "রকেট পার্সোনাল",
-                ""
-        );
-
-        addDepositProvider(
-                content,
-                "Upay",
-                "উপায় পার্সোনাল",
-                ""
-        );
-
-        space(content,12);
-
-        TextView amountTitle =
+        TextView i =
                 tv(
-                        "টাকার পরিমাণ",
-                        16,
+                        icon,
+                        30,
+                        DARK,
+                        false
+                );
+
+        i.setGravity(Gravity.CENTER);
+
+        box.addView(
+                i,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(50)
+                )
+        );
+
+        TextView t =
+                tv(
+                        text,
+                        14,
+                        DARK,
+                        true
+                );
+
+        t.setGravity(Gravity.CENTER);
+
+        box.addView(
+                t,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(45)
+                )
+        );
+
+        LinearLayout.LayoutParams lp =
+                new LinearLayout.LayoutParams(
+                        0,
+                        dp(110),
+                        1
+                );
+
+        lp.setMargins(
+                dp(5),
+                dp(5),
+                dp(5),
+                dp(5)
+        );
+
+        row.addView(box, lp);
+
+        box.setOnClickListener(click);
+    }
+
+    // =========================================================
+    // ADD BALANCE
+    // =========================================================
+
+    private void showAddBalance() {
+
+        LinearLayout root =
+                vertical();
+
+        root.setBackgroundColor(BG);
+
+        addBlueHeader(
+                root,
+                "অ্যাড ব্যালেন্স",
+                v -> showHome()
+        );
+
+        LinearLayout content =
+                vertical();
+
+        content.setPadding(
+                dp(20),
+                dp(20),
+                dp(20),
+                dp(20)
+        );
+
+        TextView info =
+                tv(
+                        "আপনার Quick Pay একাউন্টে ব্যালেন্স যোগ করুন",
+                        18,
+                        DARK,
+                        true
+                );
+
+        content.addView(
+                info,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(70)
+                )
+        );
+
+        TextView auto =
+                button(
+                        "অটো ডিপোজিট",
                         BLUE
                 );
 
-        amountTitle.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
         content.addView(
-                amountTitle,
+                auto,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(32)
+                        dp(65)
                 )
         );
+
+        auto.setOnClickListener(
+                v -> showAutoDeposit()
+        );
+
+        TextView note =
+                tv(
+                        "\nMain Balance সর্বনিম্ন ৳50\nDirect Balance সর্বনিম্ন ৳500",
+                        16,
+                        TEXT_GRAY,
+                        false
+                );
+
+        content.addView(
+                note,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(100)
+                )
+        );
+
+        root.addView(
+                content,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        0,
+                        1
+                )
+        );
+
+        setContentView(root);
+    }
+
+    // =========================================================
+    // AUTO DEPOSIT
+    // =========================================================
+
+    private void showAutoDeposit() {
+
+        LinearLayout root =
+                vertical();
+
+        root.setBackgroundColor(BG);
+
+        addBlueHeader(
+                root,
+                "অটো ডিপোজিট",
+                v -> showAddBalance()
+        );
+
+        ScrollView scroll =
+                new ScrollView(this);
+
+        LinearLayout content =
+                vertical();
+
+        content.setPadding(
+                dp(15),
+                dp(15),
+                dp(15),
+                dp(25)
+        );
+
+        TextView title =
+                tv(
+                        "টাকা জমা দেওয়ার মাধ্যম",
+                        21,
+                        DARK,
+                        true
+                );
+
+        content.addView(
+                title,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(50)
+                )
+        );
+
+        String[] providers = {
+                "বিকাশ Personal",
+                "নগদ Personal",
+                "রকেট Personal",
+                "উপায় Personal"
+        };
+
+        String[] numbers = {
+                "",
+                "",
+                "",
+                ""
+        };
+
+        for (int i = 0; i < providers.length; i++) {
+
+            addDepositProvider(
+                    content,
+                    providers[i],
+                    numbers[i]
+            );
+        }
+
+        content.addView(space(15));
+
+        TextView amountTitle =
+                tv(
+                        "পরিমাণ লিখুন",
+                        19,
+                        DARK,
+                        true
+                );
+
+        content.addView(amountTitle);
 
         EditText amount =
                 input(
                         "টাকার পরিমাণ",
-                        false
+                        true
                 );
 
         amount.setInputType(
                 InputType.TYPE_CLASS_NUMBER
-                        | InputType.TYPE_NUMBER_FLAG_DECIMAL
         );
 
         content.addView(
                 amount,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(58)
+                        dp(60)
                 )
         );
 
-        space(content,12);
+        content.addView(space(10));
 
-        TextView trxTitle =
+        TextView transactionTitle =
                 tv(
                         "Transaction ID",
-                        16,
-                        BLUE
+                        19,
+                        DARK,
+                        true
                 );
 
-        trxTitle.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
         content.addView(
-                trxTitle,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(32)
-                )
+                transactionTitle
         );
 
-        EditText trx =
+        EditText transactionId =
                 input(
                         "Transaction ID লিখুন",
                         false
                 );
 
-        trx.setInputType(
-                InputType.TYPE_CLASS_TEXT
-                        | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
-        );
-
         content.addView(
-                trx,
+                transactionId,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(58)
+                        dp(60)
                 )
         );
 
-        space(content,18);
+        content.addView(space(18));
 
         TextView submit =
                 button(
-                        "ডিপোজিট সাবমিট করুন",
-                        BLUE,
-                        Color.WHITE
+                        "রিকোয়েস্ট পাঠান",
+                        BLUE
                 );
 
         content.addView(
@@ -2093,218 +1347,174 @@ public class MainActivity extends Activity {
 
         submit.setOnClickListener(v -> {
 
-            String money =
+            String a =
                     amount.getText()
                             .toString()
                             .trim();
 
-            String transaction =
-                    trx.getText()
+            String trx =
+                    transactionId.getText()
                             .toString()
                             .trim();
 
-            if (money.isEmpty()) {
+            if (a.isEmpty()) {
 
-                amount.setError(
-                        "টাকার পরিমাণ দিন"
-                );
-
-                return;
-            }
-
-            if (transaction.isEmpty()) {
-
-                trx.setError(
-                        "Transaction ID দিন"
-                );
+                Toast.makeText(
+                        this,
+                        "টাকার পরিমাণ লিখুন",
+                        Toast.LENGTH_SHORT
+                ).show();
 
                 return;
             }
+
+            int value;
 
             try {
 
-                double value =
-                        Double.parseDouble(money);
-
-                if (value <= 0) {
-
-                    amount.setError(
-                            "সঠিক টাকার পরিমাণ দিন"
-                    );
-
-                    return;
-                }
+                value =
+                        Integer.parseInt(a);
 
             } catch (Exception e) {
 
-                amount.setError(
-                        "সঠিক টাকার পরিমাণ দিন"
-                );
+                Toast.makeText(
+                        this,
+                        "সঠিক পরিমাণ লিখুন",
+                        Toast.LENGTH_SHORT
+                ).show();
+
+                return;
+            }
+
+            if (value < 50) {
+
+                Toast.makeText(
+                        this,
+                        "সর্বনিম্ন ৳50 জমা দিন",
+                        Toast.LENGTH_SHORT
+                ).show();
+
+                return;
+            }
+
+            if (trx.isEmpty()) {
+
+                Toast.makeText(
+                        this,
+                        "Transaction ID দিন",
+                        Toast.LENGTH_SHORT
+                ).show();
 
                 return;
             }
 
             new AlertDialog.Builder(this)
-
-                    .setTitle(
-                            "ডিপোজিট সাবমিট"
-                    )
-
+                    .setTitle("রিকোয়েস্ট পাঠানো হয়েছে")
                     .setMessage(
-                            "টাকার পরিমাণ: ৳ "
-                                    + money
-                                    + "\nTransaction ID: "
-                                    + transaction
-                                    + "\n\nআপনার ডিপোজিট রিকোয়েস্ট সাবমিট করা হবে।"
+                            "পরিমাণ: ৳ " + value
+                                    + "\n"
+                                    + "Transaction ID: "
+                                    + trx
+                                    + "\n\n"
+                                    + "আপনার ডিপোজিট রিকোয়েস্ট "
+                                    + "অ্যাডমিন ভেরিফাই করার পর "
+                                    + "ব্যালেন্স যোগ করা হবে।"
                     )
-
-                    .setNegativeButton(
-                            "বাতিল",
+                    .setPositiveButton(
+                            "ঠিক আছে",
                             null
                     )
-
-                    .setPositiveButton(
-                            "সাবমিট",
-                            (dialog, which) -> {
-
-                                Toast.makeText(
-                                        this,
-                                        "ডিপোজিট রিকোয়েস্ট সাবমিট হয়েছে। অ্যাডমিন ভেরিফাই করার পর ব্যালেন্স যোগ হবে।",
-                                        Toast.LENGTH_LONG
-                                ).show();
-
-                                amount.setText("");
-                                trx.setText("");
-                            }
-                    )
-
                     .show();
         });
-    }
 
-    /* =========================================================
-       DEPOSIT PROVIDER
-       ========================================================= */
+        scroll.addView(content);
+
+        root.addView(
+                scroll,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        0,
+                        1
+                )
+        );
+
+        setContentView(root);
+    }
 
     private void addDepositProvider(
             LinearLayout parent,
             String name,
-            String subtitle,
-            String number) {
+            String number
+    ) {
 
-        LinearLayout card =
-                new LinearLayout(this);
+        LinearLayout box =
+                horizontal();
 
-        card.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        card.setPadding(
-                dp(12),
-                dp(7),
-                dp(12),
-                dp(7)
-        );
-
-        card.setBackground(
-                bg(Color.WHITE,14)
-        );
-
-        LinearLayout.LayoutParams cardParams =
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(86)
-                );
-
-        cardParams.setMargins(
-                0,
-                0,
-                0,
-                dp(7)
-        );
-
-        parent.addView(
-                card,
-                cardParams
-        );
-
-        TextView title =
-                tv(
-                        name + "  •  " + subtitle,
-                        17,
-                        BLUE
-                );
-
-        title.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        card.addView(
-                title,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(28)
-                )
-        );
-
-        LinearLayout row =
-                new LinearLayout(this);
-
-        row.setGravity(
+        box.setGravity(
                 Gravity.CENTER_VERTICAL
         );
 
-        card.addView(
-                row,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(42)
+        box.setPadding(
+                dp(15),
+                dp(5),
+                dp(8),
+                dp(5)
+        );
+
+        box.setBackground(
+                outline(
+                        BORDER,
+                        Color.WHITE,
+                        14
                 )
         );
 
-        TextView phone =
+        TextView nameView =
                 tv(
-                        number.isEmpty()
-                                ? "নম্বর এখনো সেট করা হয়নি"
-                                : number,
-                        15,
-                        number.isEmpty()
-                                ? Color.GRAY
-                                : DARK
+                        name,
+                        16,
+                        DARK,
+                        true
                 );
 
-        phone.setGravity(
-                Gravity.CENTER_VERTICAL
-        );
-
-        row.addView(
-                phone,
+        box.addView(
+                nameView,
                 new LinearLayout.LayoutParams(
                         0,
-                        dp(40),
+                        dp(65),
                         1
                 )
         );
 
         TextView copy =
-                button(
+                tv(
                         "কপি",
+                        15,
                         BLUE,
-                        Color.WHITE
+                        true
                 );
 
-        row.addView(
+        copy.setGravity(Gravity.CENTER);
+
+        copy.setBackground(
+                bg(
+                        Color.rgb(232, 241, 252),
+                        10
+                )
+        );
+
+        box.addView(
                 copy,
                 new LinearLayout.LayoutParams(
-                        dp(68),
-                        dp(38)
+                        dp(65),
+                        dp(45)
                 )
         );
 
         copy.setOnClickListener(v -> {
 
-            if (number.isEmpty()) {
+            if (number == null ||
+                    number.trim().isEmpty()) {
 
                 Toast.makeText(
                         this,
@@ -2315,170 +1525,639 @@ public class MainActivity extends Activity {
                 return;
             }
 
-            android.content.ClipboardManager clipboard =
+            android.content.ClipboardManager cm =
                     (android.content.ClipboardManager)
                             getSystemService(
-                                    Context.CLIPBOARD_SERVICE
+                                    CLIPBOARD_SERVICE
                             );
 
-            clipboard.setPrimaryClip(
+            cm.setPrimaryClip(
                     android.content.ClipData.newPlainText(
-                            "Company Number",
+                            "Number",
                             number
                     )
             );
 
             Toast.makeText(
                     this,
-                    name + " নম্বর কপি হয়েছে",
+                    "নম্বর কপি হয়েছে",
                     Toast.LENGTH_SHORT
             ).show();
         });
-    }
 
-    /* =========================================================
-       MOBILE BANKING
-       ========================================================= */
-
-    private void showMobileBanking() {
-        showMobileBanking(selectedMobileProvider);
-    }
-
-    private void showMobileBanking(String provider) {
-
-        selectedMobileProvider = provider;
-
-        getWindow().setStatusBarColor(BLUE);
-        getWindow().setNavigationBarColor(Color.WHITE);
-
-        LinearLayout main =
-                new LinearLayout(this);
-
-        main.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        main.setBackgroundColor(
-                Color.rgb(248,249,251)
-        );
-
-        setContentView(main);
-
-        /* HEADER */
-
-        LinearLayout header =
-                new LinearLayout(this);
-
-        header.setGravity(
-                Gravity.CENTER_VERTICAL
-        );
-
-        header.setPadding(
-                dp(8),
-                0,
-                dp(8),
-                0
-        );
-
-        header.setBackgroundColor(
-                BLUE
-        );
-
-        main.addView(
-                header,
+        LinearLayout.LayoutParams lp =
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(62)
-                )
-        );
-
-        TextView back =
-                tv(
-                        "‹",
-                        38,
-                        Color.WHITE
+                        dp(75)
                 );
 
-        back.setGravity(
-                Gravity.CENTER
+        lp.setMargins(
+                0,
+                0,
+                0,
+                dp(8)
         );
 
-        header.addView(
-                back,
-                new LinearLayout.LayoutParams(
-                        dp(52),
-                        dp(62)
-                )
-        );
+        parent.addView(box, lp);
+    }
 
-        back.setOnClickListener(
+    // =========================================================
+    // MOBILE BANKING
+    // =========================================================
+
+    private void showMobileBanking() {
+
+        LinearLayout root =
+                vertical();
+
+        root.setBackgroundColor(BG);
+
+        addBlueHeader(
+                root,
+                "মোবাইল ব্যাংকিং",
                 v -> showHome()
         );
-
-        TextView title =
-                tv(
-                        "মোবাইল ব্যাংকিং",
-                        21,
-                        Color.WHITE
-                );
-
-        title.setGravity(
-                Gravity.CENTER_VERTICAL
-        );
-
-        title.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        header.addView(
-                title,
-                new LinearLayout.LayoutParams(
-                        0,
-                        dp(62),
-                        1
-                )
-        );
-
-        TextView bell =
-                tv(
-                        "🔔",
-                        19,
-                        Color.WHITE
-                );
-
-        bell.setGravity(Gravity.CENTER);
-
-        header.addView(
-                bell,
-                new LinearLayout.LayoutParams(
-                        dp(52),
-                        dp(62)
-                )
-        );
-
-        /* SCROLL */
 
         ScrollView scroll =
                 new ScrollView(this);
 
         LinearLayout content =
-                new LinearLayout(this);
-
-        content.setOrientation(
-                LinearLayout.VERTICAL
-        );
+                vertical();
 
         content.setPadding(
-                dp(12),
-                dp(12),
-                dp(12),
-                dp(20)
+                dp(20),
+                dp(15),
+                dp(20),
+                dp(30)
         );
+
+        TextView providerTitle =
+                tv(
+                        "একটি মাধ্যম নির্বাচন করুন",
+                        18,
+                        TEXT_GRAY,
+                        false
+                );
+
+        content.addView(
+                providerTitle,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(45)
+                )
+        );
+
+        LinearLayout providerRow =
+                horizontal();
+
+        String[] providers = {
+                "বিকাশ",
+                "নগদ",
+                "রকেট",
+                "উপায়"
+        };
+
+        String[] icons = {
+                "b",
+                "ন",
+                "R",
+                "u"
+        };
+
+        for (int i = 0; i < providers.length; i++) {
+
+            final String provider =
+                    providers[i];
+
+            LinearLayout box =
+                    vertical();
+
+            box.setGravity(Gravity.CENTER);
+
+            boolean selected =
+                    selectedMobileProvider
+                            .equals(provider);
+
+            box.setBackground(
+                    selected
+                            ? outline(
+                                    SELECTED,
+                                    Color.rgb(
+                                            239,
+                                            246,
+                                            253
+                                    ),
+                                    12
+                            )
+                            : bg(
+                                    Color.WHITE,
+                                    12
+                            )
+            );
+
+            TextView icon =
+                    tv(
+                            icons[i],
+                            22,
+                            selected
+                                    ? BLUE
+                                    : DARK,
+                            true
+                    );
+
+            icon.setGravity(Gravity.CENTER);
+
+            box.addView(
+                    icon,
+                    new LinearLayout.LayoutParams(
+                            dp(65),
+                            dp(55)
+                    )
+            );
+
+            TextView name =
+                    tv(
+                            provider,
+                            14,
+                            DARK,
+                            selected
+                    );
+
+            name.setGravity(Gravity.CENTER);
+
+            box.addView(
+                    name,
+                    new LinearLayout.LayoutParams(
+                            dp(75),
+                            dp(35)
+                    )
+            );
+
+            LinearLayout.LayoutParams lp =
+                    new LinearLayout.LayoutParams(
+                            0,
+                            dp(100),
+                            1
+                    );
+
+            lp.setMargins(
+                    dp(3),
+                    0,
+                    dp(3),
+                    0
+            );
+
+            providerRow.addView(
+                    box,
+                    lp
+            );
+
+            box.setOnClickListener(v -> {
+
+                selectedMobileProvider =
+                        provider;
+
+                showMobileBanking();
+            });
+        }
+
+        content.addView(providerRow);
+
+        content.addView(space(22));
+
+        TextView accountTitle =
+                tv(
+                        "একাউন্ট ধরন",
+                        22,
+                        DARK,
+                        true
+                );
+
+        content.addView(accountTitle);
+
+        LinearLayout accountRow =
+                horizontal();
+
+        String[] types = {
+                "পার্সোনাল",
+                "এজেন্ট"
+        };
+
+        for (String type : types) {
+
+            final String selectedType =
+                    type;
+
+            TextView typeBox =
+                    tv(
+                            type,
+                            17,
+                            DARK,
+                            selectedAccountType
+                                    .equals(type)
+                    );
+
+            typeBox.setGravity(
+                    Gravity.CENTER
+            );
+
+            typeBox.setBackground(
+                    selectedAccountType
+                            .equals(type)
+                            ? outline(
+                                    SELECTED,
+                                    Color.rgb(
+                                            239,
+                                            246,
+                                            253
+                                    ),
+                                    14
+                            )
+                            : outline(
+                                    BORDER,
+                                    Color.WHITE,
+                                    14
+                            )
+            );
+
+            LinearLayout.LayoutParams lp =
+                    new LinearLayout.LayoutParams(
+                            0,
+                            dp(65),
+                            1
+                    );
+
+            lp.setMargins(
+                    dp(4),
+                    dp(10),
+                    dp(4),
+                    0
+            );
+
+            accountRow.addView(
+                    typeBox,
+                    lp
+            );
+
+            typeBox.setOnClickListener(v -> {
+
+                selectedAccountType =
+                        selectedType;
+
+                showMobileBanking();
+            });
+        }
+
+        content.addView(accountRow);
+
+        content.addView(space(25));
+
+        TextView numberTitle =
+                tv(
+                        "মোবাইল নম্বর",
+                        22,
+                        DARK,
+                        true
+                );
+
+        content.addView(numberTitle);
+
+        LinearLayout numberBox =
+                horizontal();
+
+        numberBox.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
+
+        numberBox.setBackground(
+                outline(
+                        BORDER,
+                        Color.WHITE,
+                        14
+                )
+        );
+
+        TextView country =
+                tv(
+                        "+88",
+                        18,
+                        TEXT_GRAY,
+                        true
+                );
+
+        country.setGravity(
+                Gravity.CENTER
+        );
+
+        numberBox.addView(
+                country,
+                new LinearLayout.LayoutParams(
+                        dp(70),
+                        dp(65)
+                )
+        );
+
+        View line =
+                new View(this);
+
+        line.setBackgroundColor(BORDER);
+
+        numberBox.addView(
+                line,
+                new LinearLayout.LayoutParams(
+                        dp(1),
+                        dp(65)
+                )
+        );
+
+        EditText mobile =
+                new EditText(this);
+
+        mobile.setHint(
+                "মোবাইল নম্বর"
+        );
+
+        mobile.setTextSize(17);
+
+        mobile.setSingleLine(true);
+
+        mobile.setInputType(
+                InputType.TYPE_CLASS_PHONE
+        );
+
+        mobile.setPadding(
+                dp(15),
+                0,
+                dp(15),
+                0
+        );
+
+        mobile.setBackgroundColor(
+                Color.TRANSPARENT
+        );
+
+        numberBox.addView(
+                mobile,
+                new LinearLayout.LayoutParams(
+                        0,
+                        dp(65),
+                        1
+                )
+        );
+
+        content.addView(
+                numberBox,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(65)
+                )
+        );
+
+        content.addView(space(25));
+
+        TextView amountTitle =
+                tv(
+                        "পরিমাণ লিখুন",
+                        22,
+                        DARK,
+                        true
+                );
+
+        content.addView(amountTitle);
+
+        EditText amount =
+                new EditText(this);
+
+        amount.setHint(
+                "টাকার পরিমাণ"
+        );
+
+        amount.setTextSize(18);
+
+        amount.setSingleLine(true);
+
+        amount.setInputType(
+                InputType.TYPE_CLASS_NUMBER
+        );
+
+        amount.setPadding(
+                dp(15),
+                0,
+                dp(15),
+                0
+        );
+
+        amount.setBackground(
+                outline(
+                        BORDER,
+                        Color.WHITE,
+                        14
+                )
+        );
+
+        content.addView(
+                amount,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(65)
+                )
+        );
+
+        content.addView(space(12));
+
+        LinearLayout quick =
+                horizontal();
+
+        String[] quickMoney = {
+                "1000",
+                "10000",
+                "20000",
+                "50000"
+        };
+
+        String[] quickText = {
+                "৳ ১,০০০",
+                "৳ ১০,০০০",
+                "৳ ২০,০০০",
+                "৳ ৫০,০০০"
+        };
+
+        for (int i = 0;
+             i < quickMoney.length;
+             i++) {
+
+            TextView q =
+                    tv(
+                            quickText[i],
+                            14,
+                            DARK,
+                            true
+                    );
+
+            q.setGravity(Gravity.CENTER);
+
+            q.setBackground(
+                    outline(
+                            BORDER,
+                            Color.WHITE,
+                            12
+                    )
+            );
+
+            final String value =
+                    quickMoney[i];
+
+            q.setOnClickListener(v -> {
+
+                amount.setText(value);
+
+                amount.setSelection(
+                        amount.length()
+                );
+            });
+
+            LinearLayout.LayoutParams lp =
+                    new LinearLayout.LayoutParams(
+                            0,
+                            dp(55),
+                            1
+                    );
+
+            lp.setMargins(
+                    dp(3),
+                    0,
+                    dp(3),
+                    0
+            );
+
+            quick.addView(q, lp);
+        }
+
+        content.addView(quick);
+
+        content.addView(space(25));
+
+        TextView send =
+                button(
+                        "টাকা পাঠান   →",
+                        GREEN
+                );
+
+        content.addView(
+                send,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(65)
+                )
+        );
+
+        send.setOnClickListener(v -> {
+
+            String number =
+                    mobile.getText()
+                            .toString()
+                            .replaceAll(
+                                    "[^0-9]",
+                                    ""
+                            );
+
+            String money =
+                    amount.getText()
+                            .toString()
+                            .trim();
+
+            if (number.length() != 11) {
+
+                Toast.makeText(
+                        this,
+                        "সঠিক ১১ সংখ্যার মোবাইল নম্বর দিন",
+                        Toast.LENGTH_SHORT
+                ).show();
+
+                return;
+            }
+
+            if (money.isEmpty()) {
+
+                Toast.makeText(
+                        this,
+                        "টাকার পরিমাণ লিখুন",
+                        Toast.LENGTH_SHORT
+                ).show();
+
+                return;
+            }
+
+            int value;
+
+            try {
+
+                value =
+                        Integer.parseInt(money);
+
+            } catch (Exception e) {
+
+                Toast.makeText(
+                        this,
+                        "সঠিক পরিমাণ লিখুন",
+                        Toast.LENGTH_SHORT
+                ).show();
+
+                return;
+            }
+
+            if (value < 500) {
+
+                Toast.makeText(
+                        this,
+                        "সর্বনিম্ন ৳500 পাঠানো যাবে",
+                        Toast.LENGTH_SHORT
+                ).show();
+
+                return;
+            }
+
+            new AlertDialog.Builder(this)
+                    .setTitle(
+                            "লেনদেন নিশ্চিত করুন"
+                    )
+                    .setMessage(
+                            "মাধ্যম: "
+                                    + selectedMobileProvider
+                                    + "\n\n"
+                                    + "একাউন্ট: "
+                                    + selectedAccountType
+                                    + "\n\n"
+                                    + "নম্বর: +88 "
+                                    + number
+                                    + "\n\n"
+                                    + "পরিমাণ: ৳ "
+                                    + value
+                                    + "\n\n"
+                                    + "এটি বর্তমানে ডেমো রিকোয়েস্ট। "
+                                    + "কোনো আসল টাকা পাঠানো হয়নি।"
+                    )
+                    .setNegativeButton(
+                            "বাতিল",
+                            null
+                    )
+                    .setPositiveButton(
+                            "নিশ্চিত",
+                            (dialog, which) -> {
+
+                                Toast.makeText(
+                                        this,
+                                        "রিকোয়েস্ট গ্রহণ করা হয়েছে",
+                                        Toast.LENGTH_LONG
+                                ).show();
+                            }
+                    )
+                    .show();
+        });
 
         scroll.addView(content);
 
-        main.addView(
+        root.addView(
                 scroll,
                 new LinearLayout.LayoutParams(
                         -1,
@@ -2487,319 +2166,820 @@ public class MainActivity extends Activity {
                 )
         );
 
-        /* PROVIDER TITLE */
+        setContentView(root);
+    }
 
-        TextView providerTitle =
+    // =========================================================
+    // MOBILE RECHARGE
+    // =========================================================
+
+    private void showMobileRecharge() {
+
+        LinearLayout root =
+                vertical();
+
+        root.setBackgroundColor(BG);
+
+        addBlueHeader(
+                root,
+                "মোবাইল রিচার্জ",
+                v -> showHome()
+        );
+
+        ScrollView scroll =
+                new ScrollView(this);
+
+        LinearLayout content =
+                vertical();
+
+        content.setPadding(
+                dp(20),
+                dp(10),
+                dp(20),
+                dp(30)
+        );
+
+        TextView operatorTitle =
                 tv(
-                        "মোবাইল ব্যাংকিং নির্বাচন করুন",
-                        16,
-                        DARK
+                        "একটি অপারেটর নির্বাচন করুন",
+                        18,
+                        TEXT_GRAY,
+                        false
                 );
-
-        providerTitle.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        providerTitle.setPadding(
-                dp(4),
-                dp(2),
-                dp(4),
-                dp(7)
-        );
 
         content.addView(
-                providerTitle,
+                operatorTitle,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(34)
+                        dp(45)
                 )
         );
 
-        /* PROVIDER ROW */
+        // OPERATOR SCROLL
+        HorizontalScrollView operatorScroll =
+                new HorizontalScrollView(this);
 
-        LinearLayout providers =
-                new LinearLayout(this);
-
-        providers.setGravity(
-                Gravity.CENTER
+        operatorScroll.setHorizontalScrollBarEnabled(
+                false
         );
 
-        content.addView(
-                providers,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(78)
-                )
+        LinearLayout operatorRow =
+                horizontal();
+
+        operatorScroll.addView(
+                operatorRow
         );
 
-        addMobileProviderTab(
-                providers,
-                "বিকাশ",
-                "💗",
-                "বিকাশ"
-        );
+        String[] operators = {
+                "গ্রামীণফোন",
+                "বাংলালিংক",
+                "রবি",
+                "এয়ারটেল",
+                "টেলিটক"
+        };
 
-        addMobileProviderTab(
-                providers,
-                "নগদ",
-                "🟠",
-                "নগদ"
-        );
+        String[] logo = {
+                "G",
+                "B",
+                "R",
+                "A",
+                "T"
+        };
 
-        addMobileProviderTab(
-                providers,
-                "রকেট",
-                "🟣",
-                "রকেট"
-        );
+        for (int i = 0;
+             i < operators.length;
+             i++) {
 
-        addMobileProviderTab(
-                providers,
-                "উপায়",
-                "🟡",
-                "উপায়"
-        );
+            final String op =
+                    operators[i];
 
-        space(content,10);
+            boolean selected =
+                    selectedRechargeOperator
+                            .equals(op);
 
-        /* FORM CARD */
+            LinearLayout box =
+                    vertical();
 
-        LinearLayout card =
-                new LinearLayout(this);
+            box.setGravity(Gravity.CENTER);
 
-        card.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        card.setPadding(
-                dp(16),
-                dp(15),
-                dp(16),
-                dp(18)
-        );
-
-        card.setBackground(
-                bg(Color.WHITE,18)
-        );
-
-        content.addView(
-                card,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        -2
-                )
-        );
-
-        TextView selected =
-                tv(
-                        "✓ " + selectedMobileProvider,
-                        20,
-                        BLUE
-                );
-
-        selected.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        selected.setGravity(
-                Gravity.CENTER_VERTICAL
-        );
-
-        card.addView(
-                selected,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(42)
-                )
-        );
-
-        TextView accountTitle =
-                tv(
-                        "একাউন্ট ধরন",
-                        15,
-                        DARK
-                );
-
-        accountTitle.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        card.addView(
-                accountTitle,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(30)
-                )
-        );
-
-        LinearLayout accountRow =
-                new LinearLayout(this);
-
-        accountRow.setGravity(
-                Gravity.CENTER
-        );
-
-        card.addView(
-                accountRow,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(52)
-                )
-        );
-
-        TextView personal =
-                mobileChoiceButton(
-                        "পার্সোনাল",
-                        selectedAccountType.equals("পার্সোনাল")
-                );
-
-        TextView agent =
-                mobileChoiceButton(
-                        "এজেন্ট",
-                        selectedAccountType.equals("এজেন্ট")
-                );
-
-        accountRow.addView(
-                personal,
-                new LinearLayout.LayoutParams(
-                        0,
-                        dp(48),
-                        1
-                )
-        );
-
-        LinearLayout.LayoutParams agentParams =
-                new LinearLayout.LayoutParams(
-                        0,
-                        dp(48),
-                        1
-                );
-
-        agentParams.leftMargin = dp(8);
-
-        accountRow.addView(
-                agent,
-                agentParams
-        );
-
-        personal.setOnClickListener(v -> {
-
-            selectedAccountType = "পার্সোনাল";
-
-            showMobileBanking(
-                    selectedMobileProvider
+            box.setPadding(
+                    dp(5),
+                    dp(5),
+                    dp(5),
+                    dp(3)
             );
-        });
 
-        agent.setOnClickListener(v -> {
-
-            selectedAccountType = "এজেন্ট";
-
-            showMobileBanking(
-                    selectedMobileProvider
+            box.setBackground(
+                    selected
+                            ? outline(
+                                    SELECTED,
+                                    Color.rgb(
+                                            239,
+                                            246,
+                                            253
+                                    ),
+                                    14
+                            )
+                            : bg(
+                                    Color.rgb(
+                                            238,
+                                            241,
+                                            246
+                                    ),
+                                    14
+                            )
             );
-        });
 
-        space(card,12);
+            TextView logoView =
+                    tv(
+                            logo[i],
+                            25,
+                            BLUE,
+                            true
+                    );
 
+            logoView.setGravity(
+                    Gravity.CENTER
+            );
+
+            logoView.setBackground(
+                    bg(
+                            selected
+                                    ? Color.rgb(
+                                            225,
+                                            239,
+                                            252
+                                    )
+                                    : Color.rgb(
+                                            238,
+                                            241,
+                                            246
+                                    ),
+                            15
+                    )
+            );
+
+            box.addView(
+                    logoView,
+                    new LinearLayout.LayoutParams(
+                            dp(65),
+                            dp(65)
+                    )
+            );
+
+            TextView name =
+                    tv(
+                            op,
+                            14,
+                            DARK,
+                            selected
+                    );
+
+            name.setGravity(
+                    Gravity.CENTER
+            );
+
+            box.addView(
+                    name,
+                    new LinearLayout.LayoutParams(
+                            dp(90),
+                            dp(35)
+                    )
+            );
+
+            TextView check =
+                    tv(
+                            selected ? "✓" : "",
+                            17,
+                            Color.WHITE,
+                            true
+                    );
+
+            check.setGravity(
+                    Gravity.CENTER
+            );
+
+            if (selected) {
+
+                check.setBackground(
+                        bg(
+                                SELECTED,
+                                50
+                        )
+                );
+            }
+
+            box.addView(
+                    check,
+                    new LinearLayout.LayoutParams(
+                            dp(27),
+                            dp(27)
+                    )
+            );
+
+            LinearLayout.LayoutParams lp =
+                    new LinearLayout.LayoutParams(
+                            dp(105),
+                            dp(140)
+                    );
+
+            lp.setMargins(
+                    0,
+                    0,
+                    dp(8),
+                    0
+            );
+
+            operatorRow.addView(
+                    box,
+                    lp
+            );
+
+            box.setOnClickListener(v -> {
+
+                selectedRechargeOperator =
+                        op;
+
+                showMobileRecharge();
+            });
+        }
+
+        content.addView(
+                operatorScroll
+        );
+
+        content.addView(space(20));
+
+        // RECHARGE TYPE
+        TextView typeTitle =
+                tv(
+                        "রিচার্জ ধরন",
+                        22,
+                        DARK,
+                        true
+                );
+
+        content.addView(typeTitle);
+
+        TextView typeSub =
+                tv(
+                        "রিচার্জের ধরন নির্বাচন করুন",
+                        17,
+                        TEXT_GRAY,
+                        false
+                );
+
+        content.addView(typeSub);
+
+        content.addView(space(10));
+
+        LinearLayout typeRow =
+                horizontal();
+
+        String[] rechargeTypes = {
+                "প্রিপেইড",
+                "পোস্টপেইড"
+        };
+
+        for (String type :
+                rechargeTypes) {
+
+            final String selectedType =
+                    type;
+
+            boolean selected =
+                    selectedRechargeType
+                            .equals(type);
+
+            TextView typeBox =
+                    tv(
+                            type,
+                            17,
+                            DARK,
+                            selected
+                    );
+
+            typeBox.setGravity(
+                    Gravity.CENTER
+            );
+
+            typeBox.setBackground(
+                    selected
+                            ? outline(
+                                    SELECTED,
+                                    Color.rgb(
+                                            239,
+                                            246,
+                                            253
+                                    ),
+                                    14
+                            )
+                            : outline(
+                                    BORDER,
+                                    Color.WHITE,
+                                    14
+                            )
+            );
+
+            LinearLayout.LayoutParams lp =
+                    new LinearLayout.LayoutParams(
+                            0,
+                            dp(75),
+                            1
+                    );
+
+            lp.setMargins(
+                    dp(4),
+                    0,
+                    dp(4),
+                    0
+            );
+
+            typeRow.addView(
+                    typeBox,
+                    lp
+            );
+
+            typeBox.setOnClickListener(v -> {
+
+                selectedRechargeType =
+                        selectedType;
+
+                showMobileRecharge();
+            });
+        }
+
+        content.addView(typeRow);
+
+        content.addView(space(28));
+
+        // MOBILE NUMBER
         TextView numberTitle =
                 tv(
                         "মোবাইল নম্বর",
-                        15,
-                        DARK
+                        22,
+                        DARK,
+                        true
                 );
 
-        numberTitle.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
+        content.addView(numberTitle);
 
-        card.addView(
-                numberTitle,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(30)
-                )
-        );
+        TextView numberSub =
+                tv(
+                        "রিচার্জ করতে চান এমন নম্বর দিন",
+                        17,
+                        TEXT_GRAY,
+                        false
+                );
 
-        LinearLayout phoneBox =
-                new LinearLayout(this);
+        content.addView(numberSub);
 
-        phoneBox.setGravity(
+        content.addView(space(10));
+
+        LinearLayout numberBox =
+                horizontal();
+
+        numberBox.setGravity(
                 Gravity.CENTER_VERTICAL
         );
 
-        phoneBox.setBackground(
+        numberBox.setBackground(
                 outline(
+                        BORDER,
                         Color.WHITE,
-                        Color.rgb(220,225,232),
-                        12
+                        15
                 )
         );
 
-        card.addView(
-                phoneBox,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(58)
-                )
-        );
-
-        TextView country =
+        TextView prefix =
                 tv(
                         "+88",
-                        17,
-                        BLUE
+                        18,
+                        TEXT_GRAY,
+                        true
                 );
 
-        country.setGravity(
+        prefix.setGravity(
                 Gravity.CENTER
         );
 
-        country.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
+        numberBox.addView(
+                prefix,
+                new LinearLayout.LayoutParams(
+                        dp(80),
+                        dp(70)
+                )
         );
 
-        phoneBox.addView(
-                country,
+        View divider =
+                new View(this);
+
+        divider.setBackgroundColor(
+                BORDER
+        );
+
+        numberBox.addView(
+                divider,
                 new LinearLayout.LayoutParams(
-                        dp(55),
+                        dp(1),
+                        dp(70)
+                )
+        );
+
+        EditText mobile =
+                new EditText(this);
+
+        mobile.setHint(
+                "ফোন নম্বর"
+        );
+
+        mobile.setTextSize(18);
+
+        mobile.setSingleLine(true);
+
+        mobile.setInputType(
+                InputType.TYPE_CLASS_PHONE
+        );
+
+        mobile.setPadding(
+                dp(15),
+                0,
+                dp(15),
+                0
+        );
+
+        mobile.setBackgroundColor(
+                Color.TRANSPARENT
+        );
+
+        numberBox.addView(
+                mobile,
+                new LinearLayout.LayoutParams(
+                        0,
+                        dp(70),
+                        1
+                )
+        );
+
+        content.addView(
+                numberBox,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(70)
+                )
+        );
+
+        content.addView(space(28));
+
+        // AMOUNT
+        TextView amountTitle =
+                tv(
+                        "পরিমাণ",
+                        22,
+                        DARK,
+                        true
+                );
+
+        content.addView(amountTitle);
+
+        TextView amountSub =
+                tv(
+                        "কত টাকা রিচার্জ করতে চান?",
+                        17,
+                        TEXT_GRAY,
+                        false
+                );
+
+        content.addView(amountSub);
+
+        content.addView(space(10));
+
+        EditText amount =
+                new EditText(this);
+
+        amount.setHint(
+                "পরিমাণ লিখুন"
+        );
+
+        amount.setTextSize(18);
+
+        amount.setSingleLine(true);
+
+        amount.setInputType(
+                InputType.TYPE_CLASS_NUMBER
+        );
+
+        amount.setPadding(
+                dp(20),
+                0,
+                dp(20),
+                0
+        );
+
+        amount.setBackground(
+                outline(
+                        BORDER,
+                        Color.WHITE,
+                        15
+                )
+        );
+
+        content.addView(
+                amount,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(70)
+                )
+        );
+
+        content.addView(space(15));
+
+        // QUICK MONEY
+        LinearLayout quickRow =
+                horizontal();
+
+        String[] values = {
+                "20",
+                "100",
+                "200",
+                "500"
+        };
+
+        for (String value :
+                values) {
+
+            TextView quick =
+                    tv(
+                            "৳ " + value,
+                            16,
+                            DARK,
+                            true
+                    );
+
+            quick.setGravity(
+                    Gravity.CENTER
+            );
+
+            quick.setBackground(
+                    outline(
+                            BORDER,
+                            Color.WHITE,
+                            15
+                    )
+            );
+
+            final String v =
+                    value;
+
+            quick.setOnClickListener(
+                    view -> {
+
+                        amount.setText(v);
+
+                        amount.setSelection(
+                                amount.length()
+                        );
+                    }
+            );
+
+            LinearLayout.LayoutParams lp =
+                    new LinearLayout.LayoutParams(
+                            0,
+                            dp(65),
+                            1
+                    );
+
+            lp.setMargins(
+                    0,
+                    0,
+                    dp(7),
+                    0
+            );
+
+            quickRow.addView(
+                    quick,
+                    lp
+            );
+        }
+
+        content.addView(quickRow);
+
+        content.addView(space(28));
+
+        // RECHARGE BUTTON
+        TextView recharge =
+                button(
+                        "রিচার্জ করুন   →",
+                        GREEN
+                );
+
+        content.addView(
+                recharge,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(65)
+                )
+        );
+
+        recharge.setOnClickListener(v -> {
+
+            String number =
+                    mobile.getText()
+                            .toString()
+                            .replaceAll(
+                                    "[^0-9]",
+                                    ""
+                            );
+
+            String amountText =
+                    amount.getText()
+                            .toString()
+                            .trim();
+
+            if (number.length() != 11) {
+
+                Toast.makeText(
+                        this,
+                        "সঠিক ১১ সংখ্যার মোবাইল নম্বর দিন",
+                        Toast.LENGTH_SHORT
+                ).show();
+
+                mobile.requestFocus();
+
+                return;
+            }
+
+            if (amountText.isEmpty()) {
+
+                Toast.makeText(
+                        this,
+                        "রিচার্জের পরিমাণ লিখুন",
+                        Toast.LENGTH_SHORT
+                ).show();
+
+                amount.requestFocus();
+
+                return;
+            }
+
+            int rechargeAmount;
+
+            try {
+
+                rechargeAmount =
+                        Integer.parseInt(
+                                amountText
+                        );
+
+            } catch (Exception e) {
+
+                Toast.makeText(
+                        this,
+                        "সঠিক পরিমাণ লিখুন",
+                        Toast.LENGTH_SHORT
+                ).show();
+
+                return;
+            }
+
+            if (rechargeAmount < 20) {
+
+                Toast.makeText(
+                        this,
+                        "সর্বনিম্ন রিচার্জ ৳20",
+                        Toast.LENGTH_SHORT
+                ).show();
+
+                return;
+            }
+
+            new AlertDialog.Builder(this)
+                    .setTitle(
+                            "রিচার্জ নিশ্চিত করুন"
+                    )
+                    .setMessage(
+                            "অপারেটর: "
+                                    + selectedRechargeOperator
+                                    + "\n\n"
+                                    + "রিচার্জ ধরন: "
+                                    + selectedRechargeType
+                                    + "\n\n"
+                                    + "মোবাইল নম্বর: +88 "
+                                    + number
+                                    + "\n\n"
+                                    + "পরিমাণ: ৳ "
+                                    + rechargeAmount
+                                    + "\n\n"
+                                    + "এটি বর্তমানে ডেমো রিকোয়েস্ট। "
+                                    + "কোনো আসল রিচার্জ করা হয়নি।"
+                    )
+                    .setNegativeButton(
+                            "বাতিল",
+                            null
+                    )
+                    .setPositiveButton(
+                            "নিশ্চিত",
+                            (dialog, which) -> {
+
+                                Toast.makeText(
+                                        this,
+                                        selectedRechargeOperator
+                                                + " রিচার্জ রিকোয়েস্ট গ্রহণ করা হয়েছে",
+                                        Toast.LENGTH_LONG
+                                ).show();
+                            }
+                    )
+                    .show();
+        });
+
+        scroll.addView(content);
+
+        root.addView(
+                scroll,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        0,
+                        1
+                )
+        );
+
+        setContentView(root);
+    }
+
+    // =========================================================
+    // BLUE HEADER
+    // =========================================================
+
+    private void addBlueHeader(
+            LinearLayout root,
+            String title,
+            View.OnClickListener backClick
+    ) {
+
+        LinearLayout header =
+                horizontal();
+
+        header.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
+
+        header.setPadding(
+                dp(10),
+                dp(10),
+                dp(10),
+                dp(10)
+        );
+
+        header.setBackgroundColor(
+                BLUE
+        );
+
+        TextView back =
+                tv(
+                        "‹",
+                        42,
+                        Color.WHITE,
+                        false
+                );
+
+        back.setGravity(
+                Gravity.CENTER
+        );
+
+        back.setBackground(
+                bg(
+                        Color.argb(
+                                45,
+                                255,
+                                255,
+                                255
+                        ),
+                        50
+                )
+        );
+
+        header.addView(
+                back,
+                new LinearLayout.LayoutParams(
+                        dp(58),
                         dp(58)
                 )
         );
 
-        EditText number =
-                new EditText(this);
+        TextView titleView =
+                tv(
+                        title,
+                        24,
+                        Color.WHITE,
+                        true
+                );
 
-        number.setHint(
-                "মোবাইল নম্বর লিখুন"
+        titleView.setGravity(
+                Gravity.CENTER
         );
 
-        number.setTextSize(17);
-        number.setSingleLine(true);
-        number.setTextColor(DARK);
-        number.setHintTextColor(Color.GRAY);
-        number.setInputType(
-                InputType.TYPE_CLASS_PHONE
-        );
-
-        number.setPadding(
-                dp(8),
-                0,
-                dp(12),
-                0
-        );
-
-        number.setBackgroundColor(
-                Color.TRANSPARENT
-        );
-
-        phoneBox.addView(
-                number,
+        header.addView(
+                titleView,
                 new LinearLayout.LayoutParams(
                         0,
                         dp(58),
@@ -2807,134 +2987,267 @@ public class MainActivity extends Activity {
                 )
         );
 
-        space(card,12);
+        Space right =
+                new Space(this);
 
-        TextView amountTitle =
-                tv(
-                        "পরিমাণ লিখুন",
-                        15,
-                        DARK
-                );
-
-        amountTitle.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        card.addView(
-                amountTitle,
+        header.addView(
+                right,
                 new LinearLayout.LayoutParams(
-                        -1,
-                        dp(30)
-                )
-        );
-
-        EditText amount =
-                new EditText(this);
-
-        amount.setHint(
-                "টাকার পরিমাণ লিখুন"
-        );
-
-        amount.setTextSize(17);
-        amount.setSingleLine(true);
-        amount.setTextColor(DARK);
-        amount.setHintTextColor(Color.GRAY);
-
-        amount.setInputType(
-                InputType.TYPE_CLASS_NUMBER
-                        | InputType.TYPE_NUMBER_FLAG_DECIMAL
-        );
-
-        amount.setPadding(
-                dp(18),
-                0,
-                dp(18),
-                0
-        );
-
-        amount.setBackground(
-                outline(
-                        Color.WHITE,
-                        Color.rgb(220,225,232),
-                        12
-                )
-        );
-
-        card.addView(
-                amount,
-                new LinearLayout.LayoutParams(
-                        -1,
+                        dp(58),
                         dp(58)
                 )
         );
 
-        space(card,10);
+        root.addView(
+                header,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(78)
+                )
+        );
 
-        TextView quickTitle =
-                tv(
-                        "দ্রুত পরিমাণ নির্বাচন করুন",
-                        14,
-                        Color.DKGRAY
+        back.setOnClickListener(
+                backClick
+        );
+    }
+
+    // =========================================================
+    // REGISTER
+    // =========================================================
+
+    private void showRegister() {
+
+        LinearLayout root =
+                vertical();
+
+        root.setBackgroundColor(BG);
+
+        addBlueHeader(
+                root,
+                "রেজিস্টার",
+                v -> showLogin()
+        );
+
+        LinearLayout content =
+                vertical();
+
+        content.setPadding(
+                dp(20),
+                dp(20),
+                dp(20),
+                dp(20)
+        );
+
+        EditText name =
+                input(
+                        "আপনার নাম",
+                        false
                 );
 
-        card.addView(
-                quickTitle,
+        content.addView(
+                name,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(28)
+                        dp(60)
                 )
         );
 
-        LinearLayout quickRow =
-                new LinearLayout(this);
+        content.addView(space(12));
 
-        quickRow.setGravity(
-                Gravity.CENTER
-        );
+        EditText phone =
+                input(
+                        "মোবাইল নম্বর",
+                        true
+                );
 
-        card.addView(
-                quickRow,
+        content.addView(
+                phone,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(48)
+                        dp(60)
                 )
         );
 
-        addQuickAmount(
-                quickRow,
-                amount,
-                "৳ 1,000"
+        content.addView(space(12));
+
+        EditText password =
+                input(
+                        "পাসওয়ার্ড",
+                        false
+                );
+
+        password.setInputType(
+                InputType.TYPE_CLASS_TEXT |
+                        InputType.TYPE_TEXT_VARIATION_PASSWORD
         );
 
-        addQuickAmount(
-                quickRow,
-                amount,
-                "৳ 10,000"
+        content.addView(
+                password,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(60)
+                )
         );
 
-        addQuickAmount(
-                quickRow,
-                amount,
-                "৳ 20,000"
+        content.addView(space(20));
+
+        TextView register =
+                button(
+                        "একাউন্ট তৈরি করুন",
+                        BLUE
+                );
+
+        content.addView(
+                register,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(60)
+                )
         );
 
-        addQuickAmount(
-                quickRow,
-                amount,
-                "৳ 50,000"
+        register.setOnClickListener(v -> {
+
+            if (name.getText()
+                    .toString()
+                    .trim()
+                    .isEmpty()) {
+
+                Toast.makeText(
+                        this,
+                        "নাম লিখুন",
+                        Toast.LENGTH_SHORT
+                ).show();
+
+                return;
+            }
+
+            if (phone.getText()
+                    .toString()
+                    .trim()
+                    .isEmpty()) {
+
+                Toast.makeText(
+                        this,
+                        "মোবাইল নম্বর দিন",
+                        Toast.LENGTH_SHORT
+                ).show();
+
+                return;
+            }
+
+            if (password.getText()
+                    .toString()
+                    .trim()
+                    .isEmpty()) {
+
+                Toast.makeText(
+                        this,
+                        "পাসওয়ার্ড দিন",
+                        Toast.LENGTH_SHORT
+                ).show();
+
+                return;
+            }
+
+            pref.edit()
+                    .putBoolean(
+                            "logged_in",
+                            true
+                    )
+                    .putString(
+                            "user_name",
+                            name.getText()
+                                    .toString()
+                    )
+                    .apply();
+
+            Toast.makeText(
+                    this,
+                    "একাউন্ট তৈরি হয়েছে",
+                    Toast.LENGTH_SHORT
+            ).show();
+
+            showPinSetup();
+        });
+
+        root.addView(
+                content,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        0,
+                        1
+                )
         );
 
-        space(card,16);
+        setContentView(root);
+    }
+
+    // =========================================================
+    // FORGOT PASSWORD
+    // =========================================================
+
+    private void showForgotPassword() {
+
+        LinearLayout root =
+                vertical();
+
+        root.setBackgroundColor(BG);
+
+        addBlueHeader(
+                root,
+                "পাসওয়ার্ড ভুলে গেছেন",
+                v -> showLogin()
+        );
+
+        LinearLayout content =
+                vertical();
+
+        content.setPadding(
+                dp(20),
+                dp(20),
+                dp(20),
+                dp(20)
+        );
+
+        TextView info =
+                tv(
+                        "আপনার মোবাইল নম্বর দিন।",
+                        18,
+                        DARK,
+                        true
+                );
+
+        content.addView(
+                info,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(60)
+                )
+        );
+
+        EditText phone =
+                input(
+                        "মোবাইল নম্বর",
+                        true
+                );
+
+        content.addView(
+                phone,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(60)
+                )
+        );
+
+        content.addView(space(18));
 
         TextView send =
                 button(
-                        "টাকা পাঠান  →",
-                        BLUE,
-                        Color.WHITE
+                        "রিকভারি রিকোয়েস্ট",
+                        BLUE
                 );
 
-        card.addView(
+        content.addView(
                 send,
                 new LinearLayout.LayoutParams(
                         -1,
@@ -2944,1030 +3257,51 @@ public class MainActivity extends Activity {
 
         send.setOnClickListener(v -> {
 
-            String num =
-                    number.getText()
-                            .toString()
-                            .trim()
-                            .replace(" ", "")
-                            .replace("-", "");
-
-            String money =
-                    amount.getText()
-                            .toString()
-                            .trim();
-
-            if (num.isEmpty()) {
-
-                number.setError(
-                        "মোবাইল নম্বর দিন"
-                );
-
-                return;
-            }
-
-            if (num.startsWith("+88")) {
-                num = num.substring(3);
-            }
-
-            if (!num.matches("01[0-9]{9}")) {
-
-                number.setError(
-                        "সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন"
-                );
-
-                return;
-            }
-
-            if (money.isEmpty()) {
-
-                amount.setError(
-                        "টাকার পরিমাণ দিন"
-                );
-
-                return;
-            }
-
-            try {
-
-                double value =
-                        Double.parseDouble(money);
-
-                if (value < 500) {
-
-                    amount.setError(
-                            "সর্বনিম্ন ৫০০ টাকা"
-                    );
-
-                    return;
-                }
-
-                new AlertDialog.Builder(this)
-
-                        .setTitle(
-                                "টাকা পাঠানো নিশ্চিত করুন"
-                        )
-
-                        .setMessage(
-                                "মাধ্যম: "
-                                        + selectedMobileProvider
-                                        + "\n"
-                                        + "একাউন্ট: "
-                                        + selectedAccountType
-                                        + "\n"
-                                        + "নম্বর: +88 "
-                                        + num
-                                        + "\n"
-                                        + "পরিমাণ: ৳ "
-                                        + money
-                                        + "\n\n"
-                                        + "রিকোয়েস্টটি গ্রহণ করা হবে। আসল টাকা পাঠানোর জন্য Provider API সংযুক্ত করতে হবে।"
-                        )
-
-                        .setNegativeButton(
-                                "বাতিল",
-                                null
-                        )
-
-                        .setPositiveButton(
-                                "নিশ্চিত",
-                                (dialog, which) -> {
-
-                                    Toast.makeText(
-                                            this,
-                                            selectedMobileProvider
-                                                    + " টাকা পাঠানোর রিকোয়েস্ট গ্রহণ করা হয়েছে।",
-                                            Toast.LENGTH_LONG
-                                    ).show();
-
-                                    number.setText("");
-                                    amount.setText("");
-                                }
-                        )
-
-                        .show();
-
-            } catch (Exception e) {
-
-                amount.setError(
-                        "সঠিক টাকার পরিমাণ দিন"
-                );
-            }
-        });
-    }
-
-    /* =========================================================
-       MOBILE PROVIDER TAB
-       ========================================================= */
-
-    private void addMobileProviderTab(
-            LinearLayout parent,
-            String name,
-            String icon,
-            String provider) {
-
-        boolean selected =
-                selectedMobileProvider.equals(provider);
-
-        LinearLayout box =
-                new LinearLayout(this);
-
-        box.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        box.setGravity(
-                Gravity.CENTER
-        );
-
-        if (selected) {
-
-            box.setBackground(
-                    outline(
-                            Color.rgb(238,246,255),
-                            BLUE,
-                            13
-                    )
-            );
-
-        } else {
-
-            box.setBackground(
-                    outline(
-                            Color.WHITE,
-                            Color.rgb(220,225,232),
-                            13
-                    )
-            );
-        }
-
-        TextView i =
-                tv(
-                        icon,
-                        22,
-                        DARK
-                );
-
-        i.setGravity(
-                Gravity.CENTER
-        );
-
-        box.addView(
-                i,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(30)
-                )
-        );
-
-        TextView n =
-                tv(
-                        name,
-                        13,
-                        selected ? BLUE : DARK
-                );
-
-        n.setGravity(
-                Gravity.CENTER
-        );
-
-        n.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        box.addView(
-                n,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(27)
-                )
-        );
-
-        LinearLayout.LayoutParams p =
-                new LinearLayout.LayoutParams(
-                        0,
-                        dp(72),
-                        1
-                );
-
-        p.setMargins(
-                dp(3),
-                0,
-                dp(3),
-                0
-        );
-
-        parent.addView(
-                box,
-                p
-        );
-
-        box.setOnClickListener(v -> {
-
-            selectedMobileProvider = provider;
-
-            showMobileBanking(
-                    provider
-            );
-        });
-    }
-
-    /* =========================================================
-       ACCOUNT TYPE BUTTON
-       ========================================================= */
-
-    private TextView mobileChoiceButton(
-            String text,
-            boolean selected) {
-
-        TextView b =
-                tv(
-                        text,
-                        15,
-                        selected ? BLUE : Color.DKGRAY
-                );
-
-        b.setGravity(
-                Gravity.CENTER
-        );
-
-        b.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        if (selected) {
-
-            b.setBackground(
-                    outline(
-                            Color.rgb(238,246,255),
-                            BLUE,
-                            12
-                    )
-            );
-
-        } else {
-
-            b.setBackground(
-                    outline(
-                            Color.WHITE,
-                            Color.rgb(215,220,228),
-                            12
-                    )
-            );
-        }
-
-        return b;
-    }
-
-    /* =========================================================
-       QUICK AMOUNT
-       ========================================================= */
-
-    private void addQuickAmount(
-            LinearLayout parent,
-            EditText amount,
-            String value) {
-
-        TextView b =
-                tv(
-                        value,
-                        12,
-                        BLUE
-                );
-
-        b.setGravity(
-                Gravity.CENTER
-        );
-
-        b.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        b.setBackground(
-                outline(
-                        Color.WHITE,
-                        BLUE,
-                        9
-                )
-        );
-
-        LinearLayout.LayoutParams p =
-                new LinearLayout.LayoutParams(
-                        0,
-                        dp(42),
-                        1
-                );
-
-        p.setMargins(
-                dp(2),
-                0,
-                dp(2),
-                0
-        );
-
-        parent.addView(
-                b,
-                p
-        );
-
-        b.setOnClickListener(v -> {
-
-            String clean =
-                    value
-                            .replace("৳", "")
-                            .replace(",", "")
-                            .trim();
-
-            amount.setText(clean);
-
-            amount.setSelection(
-                    amount.length()
-            );
-        });
-    }
-
-    /* =========================================================
-       OLD MONEY FORM
-       ========================================================= */
-
-    private void showMoneyForm(
-            String type) {
-
-        getWindow().setStatusBarColor(BLUE);
-        getWindow().setNavigationBarColor(Color.WHITE);
-
-        LinearLayout root =
-                new LinearLayout(this);
-
-        root.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        root.setBackgroundColor(
-                Color.rgb(248,249,251)
-        );
-
-        setContentView(root);
-
-        LinearLayout header =
-                new LinearLayout(this);
-
-        header.setGravity(
-                Gravity.CENTER_VERTICAL
-        );
-
-        header.setPadding(
-                dp(8),
-                0,
-                dp(8),
-                0
-        );
-
-        header.setBackgroundColor(
-                BLUE
-        );
-
-        root.addView(
-                header,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(62)
-                )
-        );
-
-        TextView back =
-                tv(
-                        "‹",
-                        38,
-                        Color.WHITE
-                );
-
-        back.setGravity(Gravity.CENTER);
-
-        header.addView(
-                back,
-                new LinearLayout.LayoutParams(
-                        dp(52),
-                        dp(62)
-                )
-        );
-
-        back.setOnClickListener(
-                v -> showMobileBanking()
-        );
-
-        TextView title =
-                tv(
-                        type,
-                        21,
-                        Color.WHITE
-                );
-
-        title.setGravity(
-                Gravity.CENTER_VERTICAL
-        );
-
-        title.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        header.addView(
-                title,
-                new LinearLayout.LayoutParams(
-                        0,
-                        dp(62),
-                        1
-                )
-        );
-
-        LinearLayout card =
-                new LinearLayout(this);
-
-        card.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        card.setPadding(
-                dp(18),
-                dp(20),
-                dp(18),
-                dp(20)
-        );
-
-        card.setBackground(
-                bg(Color.WHITE,18)
-        );
-
-        LinearLayout.LayoutParams cardp =
-                new LinearLayout.LayoutParams(
-                        -1,
-                        -2
-                );
-
-        cardp.setMargins(
-                dp(12),
-                dp(18),
-                dp(12),
-                0
-        );
-
-        root.addView(
-                card,
-                cardp
-        );
-
-        TextView info =
-                tv(
-                        "বিকাশ / নগদ / রকেট / উপায়",
-                        16,
-                        BLUE
-                );
-
-        info.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        card.addView(
-                info,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(34)
-                )
-        );
-
-        TextView min =
-                tv(
-                        "সর্বনিম্ন লেনদেন: ৳ ৫০০",
-                        15,
-                        Color.DKGRAY
-                );
-
-        card.addView(
-                min,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(30)
-                )
-        );
-
-        space(card,10);
-
-        EditText number =
-                input(
-                        type.equals("ক্যাশ আউট")
-                                ? "আপনার মোবাইল নম্বর"
-                                : "যে নম্বরে পাঠাবেন",
-                        false
-                );
-
-        card.addView(
-                number,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(58)
-                )
-        );
-
-        space(card,12);
-
-        EditText amount =
-                input(
-                        "টাকার পরিমাণ (সর্বনিম্ন ৳৫০০)",
-                        false
-                );
-
-        amount.setInputType(
-                InputType.TYPE_CLASS_NUMBER
-                        | InputType.TYPE_NUMBER_FLAG_DECIMAL
-        );
-
-        card.addView(
-                amount,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(58)
-                )
-        );
-
-        space(card,12);
-
-        EditText reference =
-                input(
-                        "রেফারেন্স (ঐচ্ছিক)",
-                        false
-                );
-
-        card.addView(
-                reference,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(58)
-                )
-        );
-
-        space(card,16);
-
-        TextView confirm =
-                button(
-                        type + "  →",
-                        BLUE,
-                        Color.WHITE
-                );
-
-        card.addView(
-                confirm,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(58)
-                )
-        );
-
-        confirm.setOnClickListener(v -> {
-
-            String num =
-                    number.getText()
-                            .toString()
-                            .trim();
-
-            String raw =
-                    amount.getText()
-                            .toString()
-                            .trim();
-
-            if (num.isEmpty()) {
-
-                number.setError(
-                        "মোবাইল নম্বর দিন"
-                );
-
-                return;
-            }
-
-            if (raw.isEmpty()) {
-
-                amount.setError(
-                        "টাকার পরিমাণ দিন"
-                );
-
-                return;
-            }
-
-            try {
-
-                double value =
-                        Double.parseDouble(raw);
-
-                if (value < 500) {
-
-                    amount.setError(
-                            "সর্বনিম্ন ৫০০ টাকা"
-                    );
-
-                    return;
-                }
-
-                new AlertDialog.Builder(this)
-
-                        .setTitle(
-                                type + " নিশ্চিত করুন"
-                        )
-
-                        .setMessage(
-                                "নম্বর: "
-                                        + num
-                                        + "\nপরিমাণ: ৳ "
-                                        + raw
-                                        + "\n\nলেনদেনটি নিশ্চিত করতে OK চাপুন।"
-                        )
-
-                        .setNegativeButton(
-                                "বাতিল",
-                                null
-                        )
-
-                        .setPositiveButton(
-                                "OK",
-                                (d,w) -> {
-
-                                    Toast.makeText(
-                                            this,
-                                            "রিকোয়েস্ট গ্রহণ করা হয়েছে। Provider API সংযুক্ত হলে আসল লেনদেন সম্পন্ন হবে।",
-                                            Toast.LENGTH_LONG
-                                    ).show();
-                                }
-                        )
-
-                        .show();
-
-            } catch(Exception e) {
-
-                amount.setError(
-                        "সঠিক টাকার পরিমাণ দিন"
-                );
-            }
-        });
-    }
-
-    /* =========================================================
-       REGISTRATION
-       ========================================================= */
-
-    private void showRegister() {
-
-        getWindow().setStatusBarColor(BLUE);
-        getWindow().setNavigationBarColor(BLUE);
-
-        LinearLayout root =
-                new LinearLayout(this);
-
-        root.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        root.setPadding(
-                dp(22),
-                dp(18),
-                dp(22),
-                dp(20)
-        );
-
-        root.setGravity(
-                Gravity.CENTER_HORIZONTAL
-        );
-
-        root.setBackgroundColor(BLUE);
-
-        ScrollView sc =
-                new ScrollView(this);
-
-        sc.setFillViewport(true);
-        sc.addView(root);
-        setContentView(sc);
-
-        TextView logo =
-                tv(
-                        "Quick Pay",
-                        29,
-                        BLUE
-                );
-
-        logo.setGravity(Gravity.CENTER);
-
-        logo.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        logo.setBackground(
-                bg(Color.WHITE,18)
-        );
-
-        root.addView(
-                logo,
-                new LinearLayout.LayoutParams(
-                        dp(260),
-                        dp(75)
-                )
-        );
-
-        space(root,12);
-
-        TextView country =
-                tv(
-                        "বাংলাদেশ  🇧🇩",
-                        18,
-                        Color.GRAY
-                );
-
-        country.setGravity(
-                Gravity.CENTER_VERTICAL
-        );
-
-        country.setPadding(
-                dp(18),
-                0,
-                dp(18),
-                0
-        );
-
-        country.setBackground(
-                bg(Color.WHITE,12)
-        );
-
-        country.setFocusable(false);
-        country.setClickable(false);
-
-        root.addView(
-                country,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(55)
-                )
-        );
-
-        space(root,9);
-
-        EditText agent =
-                input(
-                        "রিসেলার এজেন্ট কোড",
-                        false
-                );
-
-        root.addView(
-                agent,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(55)
-                )
-        );
-
-        space(root,9);
-
-        EditText name =
-                input(
-                        "পূর্ণ নাম",
-                        false
-                );
-
-        root.addView(
-                name,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(55)
-                )
-        );
-
-        space(root,9);
-
-        EditText phone =
-                input(
-                        "+880 ফোন নম্বর",
-                        false
-                );
-
-        root.addView(
-                phone,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(55)
-                )
-        );
-
-        space(root,9);
-
-        EditText pw =
-                input(
-                        "৬ ডিজিট পাসওয়ার্ড",
-                        true
-                );
-
-        root.addView(
-                pw,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(55)
-                )
-        );
-
-        space(root,9);
-
-        EditText cpw =
-                input(
-                        "৬ ডিজিট পাসওয়ার্ড নিশ্চিত করুন",
-                        true
-                );
-
-        root.addView(
-                cpw,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(55)
-                )
-        );
-
-        space(root,16);
-
-        TextView next =
-                button(
-                        "পরবর্তী",
-                        Color.WHITE,
-                        BLUE
-                );
-
-        root.addView(
-                next,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(58)
-                )
-        );
-
-        next.setOnClickListener(v -> {
-
-            String p =
-                    phone.getText()
-                            .toString()
-                            .trim();
-
-            String a =
-                    pw.getText()
-                            .toString()
-                            .trim();
-
-            String c =
-                    cpw.getText()
-                            .toString()
-                            .trim();
-
-            if (name.getText()
+            if (phone.getText()
                     .toString()
                     .trim()
                     .isEmpty()) {
 
-                name.setError(
-                        "পূর্ণ নাম দিন"
-                );
+                Toast.makeText(
+                        this,
+                        "মোবাইল নম্বর দিন",
+                        Toast.LENGTH_SHORT
+                ).show();
 
                 return;
             }
 
-            if (p.isEmpty()) {
-
-                phone.setError(
-                        "ফোন নম্বর দিন"
-                );
-
-                return;
-            }
-
-            if (a.length() != 6) {
-
-                pw.setError(
-                        "৬ ডিজিটের পাসওয়ার্ড দিন"
-                );
-
-                return;
-            }
-
-            if (!a.equals(c)) {
-
-                cpw.setError(
-                        "পাসওয়ার্ড একই নয়"
-                );
-
-                return;
-            }
-
-            pref.edit()
-                    .putString(
-                            "name",
-                            name.getText()
-                                    .toString()
-                                    .trim()
-                    )
-                    .putString(
-                            "phone",
-                            p
-                    )
-                    .putString(
-                            "password",
-                            a
-                    )
-                    .putBoolean(
-                            "logged_in",
-                            true
-                    )
-                    .apply();
-
-            showPinSetup();
+            Toast.makeText(
+                    this,
+                    "রিকভারি রিকোয়েস্ট গ্রহণ করা হয়েছে",
+                    Toast.LENGTH_LONG
+            ).show();
         });
 
-        TextView back =
-                tv(
-                        "অ্যাকাউন্ট আছে?  লগইন",
-                        16,
-                        Color.WHITE
-                );
-
-        back.setGravity(Gravity.CENTER);
-
         root.addView(
-                back,
+                content,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(52)
+                        0,
+                        1
                 )
         );
 
-        back.setOnClickListener(
-                v -> showLogin()
-        );
+        setContentView(root);
     }
 
-    /* =========================================================
-       FORGOT PASSWORD
-       ========================================================= */
-
-    private void showForgotPassword() {
-
-        final EditText p =
-                new EditText(this);
-
-        p.setHint(
-                "ফোন নম্বর"
-        );
-
-        p.setInputType(
-                InputType.TYPE_CLASS_PHONE
-        );
-
-        new AlertDialog.Builder(this)
-
-                .setTitle(
-                        "পাসওয়ার্ড পুনরুদ্ধার"
-                )
-
-                .setMessage(
-                        "আপনার রেজিস্টার করা ফোন নম্বর দিন।"
-                )
-
-                .setView(p)
-
-                .setPositiveButton(
-                        "পরবর্তী",
-                        (d,w) ->
-                                Toast.makeText(
-                                        this,
-                                        "পাসওয়ার্ড রিসেট ফিচার পরে যুক্ত হবে",
-                                        Toast.LENGTH_SHORT
-                                ).show()
-                )
-
-                .setNegativeButton(
-                        "বাতিল",
-                        null
-                )
-
-                .show();
-    }
-
-    /* =========================================================
-       BACK BUTTON
-       ========================================================= */
+    // =========================================================
+    // BACK BUTTON
+    // =========================================================
 
     @Override
     public void onBackPressed() {
 
-        if (
+        if (pref != null &&
                 pref.getBoolean(
                         "logged_in",
                         false
-                )
-        ) {
+                )) {
 
             showHome();
 
