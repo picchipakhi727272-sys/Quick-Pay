@@ -1953,7 +1953,7 @@ public class MainActivity extends Activity {
 
         root.setOrientation(
                 LinearLayout.VERTICAL
-        );
+        ); }
 
         root.setGravity(
                 Gravity.CENTER_HORIZONTAL
@@ -2418,7 +2418,7 @@ private void showMobileBanking() {
     main.setOrientation(LinearLayout.VERTICAL);
     main.setBackgroundColor(Color.rgb(248, 249, 251));
 
-    setContentView(main);
+    setContentView(main); }
 
     // HEADER
     LinearLayout header = new LinearLayout(this);
@@ -2621,7 +2621,7 @@ private void addBankMethod(
 
     card.setOrientation(
             LinearLayout.VERTICAL
-    );
+    ); }
 
     card.setPadding(
             dp(15),
