@@ -1,10 +1,12 @@
 package com.quickpay.app;
 
 import android.app.Activity;
-import android.os.Bundle;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Bundle;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
@@ -13,240 +15,299 @@ import android.widget.*;
 
 public class MainActivity extends Activity {
 
-    int blue = Color.rgb(8, 96, 190);
-    int green = Color.rgb(0, 91, 55);
-    int yellow = Color.rgb(255, 190, 0);
+    private final int BLUE = Color.rgb(8, 96, 190);
+    private final int DARK_GREEN = Color.rgb(0, 92, 68);
+    private final int WHITE = Color.WHITE;
+    private final int DARK = Color.rgb(35, 35, 35);
 
-    LinearLayout root;
+    private SharedPreferences pref;
 
-    EditText phone;
-    EditText password;
+    private LinearLayout root;
 
-    TextView language;
-    TextView subtitle;
-    TextView forgot;
-    TextView register;
+    private EditText phoneInput;
+    private EditText passwordInput;
 
-    boolean bangla = true;
+    private TextView languageText;
+    private TextView subtitleText;
+    private TextView forgotText;
+    private TextView registerText;
+
+    private boolean bangla = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        getWindow().setStatusBarColor(blue);
-        getWindow().setNavigationBarColor(blue);
+        pref = getSharedPreferences("quick_pay", Context.MODE_PRIVATE);
 
-        showLogin();
+        getWindow().setStatusBarColor(BLUE);
+        getWindow().setNavigationBarColor(BLUE);
+
+        /*
+         * প্রথমবার Login না করলে Login Screen
+         *
+         * আগে Login করা থাকলে Password Unlock Screen
+         */
+        if (pref.getBoolean("logged_in", false)
+                && !pref.getString("password_hash", "").isEmpty()) {
+
+            showUnlockScreen();
+
+        } else {
+
+            showLogin();
+        }
     }
 
-    int dp(float value) {
+    // ----------------------------------------------------
+    // BASIC HELPERS
+    // ----------------------------------------------------
+
+    private int dp(float value) {
         return (int) (value *
                 getResources().getDisplayMetrics().density + 0.5f);
     }
 
-    GradientDrawable bg(int color, float radius) {
-        GradientDrawable g = new GradientDrawable();
-        g.setColor(color);
-        g.setCornerRadius(dp(radius));
-        return g;
-    }
+    private TextView text(String value, float size, int color) {
 
-    GradientDrawable borderBg(
-            int color,
-            float radius,
-            int strokeColor
-    ) {
-        GradientDrawable g = new GradientDrawable();
-        g.setColor(color);
-        g.setCornerRadius(dp(radius));
-        g.setStroke(dp(1), strokeColor);
-        return g;
-    }
-
-    TextView tv(
-            String value,
-            float size,
-            int color
-    ) {
         TextView t = new TextView(this);
+
         t.setText(value);
         t.setTextSize(size);
         t.setTextColor(color);
+
         return t;
     }
 
-    void space(
-            LinearLayout parent,
-            int height
-    ) {
-        Space s = new Space(this);
-        parent.addView(
-                s,
-                new LinearLayout.LayoutParams(
-                        1,
-                        dp(height)
-                )
-        );
+    private GradientDrawable bg(int color, float radius) {
+
+        GradientDrawable d = new GradientDrawable();
+
+        d.setColor(color);
+        d.setCornerRadius(dp(radius));
+
+        return d;
     }
 
-    // =========================================================
-    // LOGIN
-    // =========================================================
+    private GradientDrawable strokeBg(
+            int color,
+            int strokeColor,
+            float radius) {
 
-    void showLogin() {
+        GradientDrawable d = new GradientDrawable();
 
-        ScrollView scroll = new ScrollView(this);
-        scroll.setFillViewport(true);
-        scroll.setBackgroundColor(blue);
+        d.setColor(color);
+        d.setCornerRadius(dp(radius));
+        d.setStroke(dp(1), strokeColor);
+
+        return d;
+    }
+
+    private void clearScreen() {
 
         root = new LinearLayout(this);
+
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setGravity(Gravity.CENTER_HORIZONTAL);
         root.setPadding(
-                dp(34),
+                dp(24),
                 dp(20),
-                dp(34),
+                dp(24),
                 dp(20)
         );
 
-        scroll.addView(root);
+        setContentView(root);
+    }
+
+    // ====================================================
+    // LOGIN SCREEN
+    // ====================================================
+
+    private void showLogin() {
+
+        getWindow().setStatusBarColor(BLUE);
+        getWindow().setNavigationBarColor(BLUE);
+
+        LinearLayout loginRoot = new LinearLayout(this);
+
+        loginRoot.setOrientation(LinearLayout.VERTICAL);
+        loginRoot.setGravity(Gravity.CENTER_HORIZONTAL);
+
+        loginRoot.setPadding(
+                dp(30),
+                dp(20),
+                dp(30),
+                dp(20)
+        );
+
+        loginRoot.setBackgroundColor(BLUE);
+
+        ScrollView scroll = new ScrollView(this);
+
+        scroll.setFillViewport(true);
+        scroll.setBackgroundColor(BLUE);
+        scroll.addView(loginRoot);
+
         setContentView(scroll);
 
-        // Language
-        LinearLayout langBox = new LinearLayout(this);
-        langBox.setGravity(Gravity.CENTER);
-        langBox.setPadding(
-                dp(5),
-                dp(4),
-                dp(5),
-                dp(4)
-        );
-        langBox.setBackground(
-                bg(Color.rgb(65, 135, 210), 40)
+        // ---------------- LANGUAGE ----------------
+
+        LinearLayout languageBox = new LinearLayout(this);
+
+        languageBox.setGravity(Gravity.CENTER);
+
+        languageBox.setBackground(
+                bg(Color.rgb(55, 130, 205), 40)
         );
 
-        language = tv(
+        languageText = text(
                 "বাংলা     EN",
                 16,
-                Color.WHITE
+                WHITE
         );
 
-        language.setGravity(Gravity.CENTER);
-        language.setTypeface(
+        languageText.setGravity(Gravity.CENTER);
+        languageText.setTypeface(
                 Typeface.DEFAULT,
                 Typeface.BOLD
         );
 
-        langBox.addView(
-                language,
+        languageBox.addView(
+                languageText,
                 new LinearLayout.LayoutParams(
                         dp(170),
                         dp(48)
                 )
         );
 
-        LinearLayout.LayoutParams lp =
+        LinearLayout.LayoutParams languageParams =
                 new LinearLayout.LayoutParams(
                         dp(175),
                         dp(56)
                 );
 
-        lp.gravity = Gravity.RIGHT;
+        languageParams.gravity = Gravity.RIGHT;
 
-        root.addView(langBox, lp);
+        loginRoot.addView(
+                languageBox,
+                languageParams
+        );
 
-        language.setOnClickListener(v -> {
+        languageText.setOnClickListener(v -> {
 
             bangla = !bangla;
-            updateLanguage();
+
+            if (bangla) {
+                languageText.setText("বাংলা     EN");
+                subtitleText.setText(
+                        "বাংলাদেশের সেরা রিচার্জ ব্যবসা প্ল্যাটফর্ম"
+                );
+                phoneInput.setHint("ফোন");
+                passwordInput.setHint("৬ ডিজিট পাসওয়ার্ড");
+                forgotText.setText("পাসওয়ার্ড ভুলে গেছেন?");
+                registerText.setText(
+                        "অ্যাকাউন্ট নেই?  রেজিস্টার করুন"
+                );
+            } else {
+                languageText.setText("BN     EN");
+                subtitleText.setText(
+                        "Bangladesh's best recharge business platform"
+                );
+                phoneInput.setHint("Phone");
+                passwordInput.setHint("6 Digit Password");
+                forgotText.setText("Forgot Password?");
+                registerText.setText(
+                        "Don't have an account?  Register"
+                );
+            }
         });
 
-        space(root, 80);
+        addSpace(loginRoot, 90);
 
-        // Logo
-        TextView logo = tv(
+        // ---------------- LOGO ----------------
+
+        TextView logo = text(
                 "Quick Pay",
                 32,
-                blue
+                BLUE
         );
 
         logo.setGravity(Gravity.CENTER);
+
         logo.setTypeface(
                 Typeface.DEFAULT,
                 Typeface.BOLD
         );
 
         logo.setBackground(
-                bg(Color.WHITE, 18)
+                bg(WHITE, 18)
         );
 
-        root.addView(
+        loginRoot.addView(
                 logo,
                 new LinearLayout.LayoutParams(
                         dp(320),
-                        dp(125)
+                        dp(120)
                 )
         );
 
-        space(root, 8);
+        addSpace(loginRoot, 12);
 
-        subtitle = tv(
+        subtitleText = text(
                 "বাংলাদেশের সেরা রিচার্জ ব্যবসা প্ল্যাটফর্ম",
                 18,
-                Color.WHITE
+                WHITE
         );
 
-        subtitle.setGravity(Gravity.CENTER);
+        subtitleText.setGravity(Gravity.CENTER);
 
-        root.addView(
-                subtitle,
+        loginRoot.addView(
+                subtitleText,
                 new LinearLayout.LayoutParams(
-                        -1,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
                         dp(45)
                 )
         );
 
-        space(root, 20);
+        addSpace(loginRoot, 25);
 
-        // Phone
-        phone = new EditText(this);
+        // ---------------- PHONE ----------------
 
-        phone.setHint("ফোন");
-        phone.setTextSize(20);
-        phone.setSingleLine(true);
-        phone.setPadding(
-                dp(25),
+        phoneInput = new EditText(this);
+
+        phoneInput.setHint("ফোন");
+        phoneInput.setTextSize(19);
+        phoneInput.setSingleLine(true);
+
+        phoneInput.setTextColor(DARK);
+        phoneInput.setHintTextColor(Color.GRAY);
+
+        phoneInput.setPadding(
+                dp(22),
                 0,
                 dp(20),
                 0
         );
 
-        phone.setTextColor(Color.DKGRAY);
-        phone.setHintTextColor(Color.GRAY);
-
-        phone.setInputType(
+        phoneInput.setInputType(
                 InputType.TYPE_CLASS_PHONE
         );
 
-        phone.setBackground(
-                borderBg(
-                        Color.WHITE,
-                        12,
-                        Color.LTGRAY
-                )
+        phoneInput.setBackground(
+                bg(WHITE, 12)
         );
 
-        root.addView(
-                phone,
+        loginRoot.addView(
+                phoneInput,
                 new LinearLayout.LayoutParams(
-                        -1,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
                         dp(62)
                 )
         );
 
-        space(root, 25);
+        addSpace(loginRoot, 22);
 
-        // Password
+        // ---------------- PASSWORD ----------------
+
         LinearLayout passwordBox =
                 new LinearLayout(this);
 
@@ -255,54 +316,52 @@ public class MainActivity extends Activity {
         );
 
         passwordBox.setPadding(
-                dp(20),
+                dp(15),
                 0,
                 dp(5),
                 0
         );
 
         passwordBox.setBackground(
-                borderBg(
-                        Color.WHITE,
-                        12,
-                        Color.LTGRAY
-                )
+                bg(WHITE, 12)
         );
 
-        password = new EditText(this);
+        passwordInput = new EditText(this);
 
-        password.setHint(
-                "৬ ডিজিট পাসওয়ার্ড"
-        );
+        passwordInput.setHint("৬ ডিজিট পাসওয়ার্ড");
+        passwordInput.setTextSize(19);
 
-        password.setTextSize(20);
+        passwordInput.setSingleLine(true);
 
-        password.setSingleLine(true);
+        passwordInput.setTextColor(DARK);
+        passwordInput.setHintTextColor(Color.GRAY);
 
-        password.setTextColor(Color.DKGRAY);
-
-        password.setHintTextColor(Color.GRAY);
-
-        password.setInputType(
+        passwordInput.setInputType(
                 InputType.TYPE_CLASS_NUMBER |
-                InputType.TYPE_NUMBER_VARIATION_PASSWORD
+                        InputType.TYPE_NUMBER_VARIATION_PASSWORD
         );
 
-        password.setBackgroundColor(
+        passwordInput.setBackgroundColor(
                 Color.TRANSPARENT
         );
 
-        passwordBox.addView(
-                password,
+        LinearLayout.LayoutParams passParams =
                 new LinearLayout.LayoutParams(
                         0,
                         dp(62),
                         1
-                )
+                );
+
+        passwordBox.addView(
+                passwordInput,
+                passParams
         );
 
-        TextView eye =
-                tv("◉", 27, blue);
+        TextView eye = text(
+                "◉",
+                26,
+                BLUE
+        );
 
         eye.setGravity(Gravity.CENTER);
 
@@ -314,190 +373,465 @@ public class MainActivity extends Activity {
                 )
         );
 
-        root.addView(
+        loginRoot.addView(
                 passwordBox,
                 new LinearLayout.LayoutParams(
-                        -1,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
                         dp(62)
                 )
         );
 
         eye.setOnClickListener(v -> {
 
-            int type =
-                    password.getInputType();
+            int type = passwordInput.getInputType();
 
             if ((type &
                     InputType.TYPE_NUMBER_VARIATION_PASSWORD)
                     != 0) {
 
-                password.setInputType(
+                passwordInput.setInputType(
                         InputType.TYPE_CLASS_NUMBER
                 );
 
             } else {
 
-                password.setInputType(
+                passwordInput.setInputType(
                         InputType.TYPE_CLASS_NUMBER |
-                        InputType.TYPE_NUMBER_VARIATION_PASSWORD
+                                InputType.TYPE_NUMBER_VARIATION_PASSWORD
                 );
             }
 
-            password.setSelection(
-                    password.length()
+            passwordInput.setSelection(
+                    passwordInput.length()
             );
         });
 
-        space(root, 30);
+        addSpace(loginRoot, 28);
 
-        // Login
-        TextView login =
-                button("লগইন");
+        // ---------------- LOGIN BUTTON ----------------
 
-        root.addView(
-                login,
+        TextView loginButton = text(
+                "লগইন",
+                21,
+                BLUE
+        );
+
+        loginButton.setGravity(Gravity.CENTER);
+
+        loginButton.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
+
+        loginButton.setBackground(
+                bg(WHITE, 12)
+        );
+
+        loginRoot.addView(
+                loginButton,
                 new LinearLayout.LayoutParams(
-                        -1,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
                         dp(62)
                 )
         );
 
-        login.setOnClickListener(v -> {
+        loginButton.setOnClickListener(v -> {
 
-            String p =
-                    phone.getText()
+            String phone =
+                    phoneInput.getText()
                             .toString()
                             .trim();
 
-            String pass =
-                    password.getText()
+            String password =
+                    passwordInput.getText()
                             .toString()
                             .trim();
 
-            if (p.isEmpty()) {
+            if (phone.isEmpty()) {
 
-                phone.setError(
+                phoneInput.setError(
                         "ফোন নম্বর দিন"
                 );
 
-                phone.requestFocus();
+                phoneInput.requestFocus();
 
                 return;
             }
 
-            if (pass.isEmpty()) {
+            if (password.isEmpty()) {
 
-                password.setError(
+                passwordInput.setError(
                         "পাসওয়ার্ড দিন"
                 );
 
-                password.requestFocus();
+                passwordInput.requestFocus();
 
                 return;
             }
 
-            if (pass.length() < 6) {
+            /*
+             * যদি আগে Registration করা থাকে,
+             * তাহলে সেই password check হবে।
+             *
+             * প্রথমবার account না থাকলে
+             * এই login-কে demo account হিসেবে save করা হবে।
+             */
 
-                password.setError(
-                        "৬ ডিজিট পাসওয়ার্ড দিন"
-                );
+            String savedPhone =
+                    pref.getString("phone", "");
 
-                password.requestFocus();
+            String savedPassword =
+                    pref.getString("password", "");
 
-                return;
+            if (!savedPhone.isEmpty()) {
+
+                if (!savedPhone.equals(phone)) {
+
+                    Toast.makeText(
+                            this,
+                            "ফোন নম্বর সঠিক নয়",
+                            Toast.LENGTH_SHORT
+                    ).show();
+
+                    return;
+                }
+
+                if (!savedPassword.equals(password)) {
+
+                    Toast.makeText(
+                            this,
+                            "পাসওয়ার্ড সঠিক নয়",
+                            Toast.LENGTH_SHORT
+                    ).show();
+
+                    return;
+                }
             }
 
-            // LOGIN SUCCESS
+            pref.edit()
+                    .putString("phone", phone)
+                    .putString("password", password)
+                    .putBoolean("logged_in", true)
+                    .apply();
+
+            Toast.makeText(
+                    this,
+                    "লগইন সফল",
+                    Toast.LENGTH_SHORT
+            ).show();
+
             showHome();
         });
 
-        space(root, 20);
+        addSpace(loginRoot, 22);
 
-        forgot = tv(
+        // ---------------- FORGOT ----------------
+
+        forgotText = text(
                 "পাসওয়ার্ড ভুলে গেছেন?",
                 17,
-                Color.WHITE
+                WHITE
         );
 
-        forgot.setGravity(Gravity.CENTER);
+        forgotText.setGravity(Gravity.CENTER);
 
-        root.addView(
-                forgot,
+        loginRoot.addView(
+                forgotText,
                 new LinearLayout.LayoutParams(
-                        -1,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
                         dp(40)
                 )
         );
 
-        forgot.setOnClickListener(
-                v -> showForgot()
+        forgotText.setOnClickListener(
+                v -> showForgotPassword()
         );
 
-        register = tv(
+        // ---------------- REGISTER ----------------
+
+        registerText = text(
                 "অ্যাকাউন্ট নেই?  রেজিস্টার করুন",
                 18,
-                Color.WHITE
+                WHITE
         );
 
-        register.setGravity(Gravity.CENTER);
+        registerText.setGravity(Gravity.CENTER);
 
-        register.setTypeface(
+        registerText.setTypeface(
                 Typeface.DEFAULT,
                 Typeface.BOLD
         );
 
-        root.addView(
-                register,
+        loginRoot.addView(
+                registerText,
                 new LinearLayout.LayoutParams(
-                        -1,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
                         dp(55)
                 )
         );
 
-        register.setOnClickListener(
+        registerText.setOnClickListener(
                 v -> showRegister()
         );
     }
 
-    TextView button(String value) {
+    // ====================================================
+    // PASSWORD UNLOCK SCREEN
+    // ====================================================
 
-        TextView b =
-                tv(value, 22, blue);
+    private void showUnlockScreen() {
 
-        b.setGravity(Gravity.CENTER);
+        getWindow().setStatusBarColor(BLUE);
+        getWindow().setNavigationBarColor(BLUE);
 
-        b.setTypeface(
+        LinearLayout unlock =
+                new LinearLayout(this);
+
+        unlock.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        unlock.setGravity(
+                Gravity.CENTER_HORIZONTAL
+        );
+
+        unlock.setPadding(
+                dp(30),
+                dp(80),
+                dp(30),
+                dp(30)
+        );
+
+        unlock.setBackgroundColor(BLUE);
+
+        setContentView(unlock);
+
+        TextView logo = text(
+                "Quick Pay",
+                34,
+                BLUE
+        );
+
+        logo.setGravity(Gravity.CENTER);
+
+        logo.setTypeface(
                 Typeface.DEFAULT,
                 Typeface.BOLD
         );
 
-        b.setBackground(
-                bg(Color.WHITE, 12)
+        logo.setBackground(
+                bg(WHITE, 18)
         );
 
-        return b;
+        unlock.addView(
+                logo,
+                new LinearLayout.LayoutParams(
+                        dp(300),
+                        dp(115)
+                )
+        );
+
+        addSpace(unlock, 35);
+
+        TextView welcome = text(
+                "স্বাগতম আবার",
+                25,
+                WHITE
+        );
+
+        welcome.setGravity(Gravity.CENTER);
+
+        welcome.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
+
+        unlock.addView(
+                welcome,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        dp(45)
+                )
+        );
+
+        addSpace(unlock, 10);
+
+        String phone =
+                pref.getString("phone", "");
+
+        TextView phoneText = text(
+                maskPhone(phone),
+                17,
+                Color.WHITE
+        );
+
+        phoneText.setGravity(Gravity.CENTER);
+
+        unlock.addView(
+                phoneText,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        dp(35)
+                )
+        );
+
+        addSpace(unlock, 25);
+
+        EditText unlockPassword =
+                new EditText(this);
+
+        unlockPassword.setHint(
+                "পাসওয়ার্ড লিখুন"
+        );
+
+        unlockPassword.setTextSize(19);
+
+        unlockPassword.setSingleLine(true);
+
+        unlockPassword.setGravity(
+                Gravity.CENTER
+        );
+
+        unlockPassword.setTextColor(DARK);
+        unlockPassword.setHintTextColor(
+                Color.GRAY
+        );
+
+        unlockPassword.setInputType(
+                InputType.TYPE_CLASS_NUMBER |
+                        InputType.TYPE_NUMBER_VARIATION_PASSWORD
+        );
+
+        unlockPassword.setBackground(
+                bg(WHITE, 12)
+        );
+
+        unlock.addView(
+                unlockPassword,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        dp(62)
+                )
+        );
+
+        addSpace(unlock, 20);
+
+        TextView enter = text(
+                "প্রবেশ করুন",
+                20,
+                BLUE
+        );
+
+        enter.setGravity(Gravity.CENTER);
+
+        enter.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
+
+        enter.setBackground(
+                bg(WHITE, 12)
+        );
+
+        unlock.addView(
+                enter,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        dp(62)
+                )
+        );
+
+        enter.setOnClickListener(v -> {
+
+            String entered =
+                    unlockPassword.getText()
+                            .toString()
+                            .trim();
+
+            String saved =
+                    pref.getString("password", "");
+
+            if (entered.isEmpty()) {
+
+                unlockPassword.setError(
+                        "পাসওয়ার্ড দিন"
+                );
+
+                return;
+            }
+
+            if (entered.equals(saved)) {
+
+                pref.edit()
+                        .putBoolean("logged_in", true)
+                        .apply();
+
+                showHome();
+
+            } else {
+
+                unlockPassword.setError(
+                        "ভুল পাসওয়ার্ড"
+                );
+
+                Toast.makeText(
+                        this,
+                        "পাসওয়ার্ড সঠিক নয়",
+                        Toast.LENGTH_SHORT
+                ).show();
+            }
+        });
+
+        addSpace(unlock, 22);
+
+        TextView different =
+                text(
+                        "অন্য অ্যাকাউন্ট দিয়ে লগইন",
+                        17,
+                        WHITE
+                );
+
+        different.setGravity(Gravity.CENTER);
+
+        unlock.addView(
+                different,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        dp(45)
+                )
+        );
+
+        different.setOnClickListener(v -> {
+
+            pref.edit()
+                    .putBoolean("logged_in", false)
+                    .apply();
+
+            showLogin();
+        });
     }
 
-    // =========================================================
+    // ====================================================
     // HOME SCREEN
-    // =========================================================
+    // ====================================================
 
-    void showHome() {
+    private void showHome() {
 
-        getWindow().setStatusBarColor(green);
+        getWindow().setStatusBarColor(DARK_GREEN);
         getWindow().setNavigationBarColor(Color.WHITE);
 
-        root = new LinearLayout(this);
+        LinearLayout main =
+                new LinearLayout(this);
 
-        root.setOrientation(
+        main.setOrientation(
                 LinearLayout.VERTICAL
         );
 
-        root.setBackgroundColor(
-                Color.rgb(248, 248, 248)
+        main.setBackgroundColor(
+                Color.rgb(245, 247, 249)
         );
 
-        setContentView(root);
+        setContentView(main);
 
         // ---------------- HEADER ----------------
 
@@ -509,26 +843,24 @@ public class MainActivity extends Activity {
         );
 
         header.setPadding(
-                dp(20),
-                dp(15),
-                dp(20),
-                dp(12)
+                dp(16),
+                dp(10),
+                dp(16),
+                dp(10)
         );
 
-        header.setBackground(
-                bg(green, 28)
+        header.setBackgroundColor(
+                DARK_GREEN
         );
 
-        root.addView(
+        main.addView(
                 header,
                 new LinearLayout.LayoutParams(
-                        -1,
-                        0,
-                        3.4f
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        dp(210)
                 )
         );
 
-        // Top row
         LinearLayout top =
                 new LinearLayout(this);
 
@@ -539,60 +871,52 @@ public class MainActivity extends Activity {
         header.addView(
                 top,
                 new LinearLayout.LayoutParams(
-                        -1,
-                        0,
-                        1
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        dp(48)
                 )
         );
 
-        TextView logo =
-                tv("Quick Pay", 24, blue);
+        TextView brand = text(
+                "Quick Pay",
+                22,
+                WHITE
+        );
 
-        logo.setGravity(Gravity.CENTER);
-
-        logo.setTypeface(
+        brand.setTypeface(
                 Typeface.DEFAULT,
                 Typeface.BOLD
         );
 
-        logo.setBackground(
-                bg(Color.WHITE, 15)
-        );
-
         top.addView(
-                logo,
-                new LinearLayout.LayoutParams(
-                        dp(145),
-                        dp(55)
-                )
-        );
-
-        Space topSpace = new Space(this);
-
-        top.addView(
-                topSpace,
+                brand,
                 new LinearLayout.LayoutParams(
                         0,
-                        1,
+                        dp(48),
                         1
                 )
         );
 
-        TextView en =
-                tv("EN", 16, Color.WHITE);
+        TextView en = text(
+                "EN",
+                15,
+                WHITE
+        );
 
         en.setGravity(Gravity.CENTER);
 
         top.addView(
                 en,
                 new LinearLayout.LayoutParams(
-                        dp(40),
-                        dp(50)
+                        dp(45),
+                        dp(48)
                 )
         );
 
-        TextView bell =
-                tv("♧", 30, Color.WHITE);
+        TextView bell = text(
+                "🔔",
+                20,
+                WHITE
+        );
 
         bell.setGravity(Gravity.CENTER);
 
@@ -600,12 +924,15 @@ public class MainActivity extends Activity {
                 bell,
                 new LinearLayout.LayoutParams(
                         dp(45),
-                        dp(50)
+                        dp(48)
                 )
         );
 
-        TextView logout =
-                tv("➜", 30, Color.WHITE);
+        TextView logout = text(
+                "⇥",
+                26,
+                WHITE
+        );
 
         logout.setGravity(Gravity.CENTER);
 
@@ -613,114 +940,92 @@ public class MainActivity extends Activity {
                 logout,
                 new LinearLayout.LayoutParams(
                         dp(45),
-                        dp(50)
+                        dp(48)
                 )
         );
 
-        logout.setOnClickListener(
-                v -> showLogin()
-        );
+        logout.setOnClickListener(v -> {
 
-        // Name + balance
-        LinearLayout info =
+            pref.edit()
+                    .putBoolean("logged_in", false)
+                    .apply();
+
+            showLogin();
+        });
+
+        // ---------------- USER ----------------
+
+        LinearLayout user =
                 new LinearLayout(this);
 
-        info.setGravity(
+        user.setGravity(
                 Gravity.CENTER_VERTICAL
         );
 
         header.addView(
-                info,
+                user,
                 new LinearLayout.LayoutParams(
-                        -1,
-                        0,
-                        1.1f
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        dp(55)
                 )
         );
 
-        TextView name =
-                tv("Rosy", 25, Color.WHITE);
+        TextView userName = text(
+                "Rosy",
+                23,
+                WHITE
+        );
 
-        name.setTypeface(
+        userName.setTypeface(
                 Typeface.DEFAULT,
                 Typeface.BOLD
         );
 
-        info.addView(
-                name,
+        user.addView(
+                userName,
                 new LinearLayout.LayoutParams(
                         0,
-                        -1,
+                        dp(55),
                         1
                 )
         );
 
-        LinearLayout balance =
-                new LinearLayout(this);
+        TextView balance =
+                text(
+                        "মেইন ব্যালেন্স: ৳ ১২,৫০০\n" +
+                        "ড্রাইভ ব্যালেন্স: ৳ ১৮০",
+                        14,
+                        Color.rgb(40, 40, 40)
+                );
 
-        balance.setGravity(Gravity.CENTER);
+        balance.setGravity(
+                Gravity.CENTER
+        );
 
-        balance.setPadding(
-                dp(12),
-                0,
-                dp(8),
-                0
+        balance.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
         );
 
         balance.setBackground(
-                bg(yellow, 40)
+                bg(Color.rgb(255, 213, 70), 16)
         );
 
-        TextView balText =
-                tv(
-                        "মেইন ব্যালেন্স: • • • •\n" +
-                        "ড্রাইভ ব্যালেন্স: • • • •",
-                        13,
-                        Color.DKGRAY
-                );
-
-        balText.setGravity(
-                Gravity.CENTER_VERTICAL
-        );
-
-        balance.addView(
-                balText,
-                new LinearLayout.LayoutParams(
-                        0,
-                        -1,
-                        1
-                )
-        );
-
-        TextView eye =
-                tv("◉", 22, Color.DKGRAY);
-
-        eye.setGravity(Gravity.CENTER);
-
-        balance.addView(
-                eye,
-                new LinearLayout.LayoutParams(
-                        dp(35),
-                        -1
-                )
-        );
-
-        info.addView(
+        user.addView(
                 balance,
                 new LinearLayout.LayoutParams(
-                        dp(245),
-                        dp(65)
+                        dp(215),
+                        dp(55)
                 )
         );
 
-        // Notice
-        TextView notice =
-                tv(
-                        "●   রাকিব রহমান (016*******) ৭৯৯ টাকা " +
-                        "এয়ারটেল রিচার্জ করলেন",
-                        13,
-                        Color.DKGRAY
-                );
+        // ---------------- NOTICE ----------------
+
+        TextView notice = text(
+                "📢 সর্বশেষ আপডেট: Quick Pay-এ স্বাগতম",
+                13,
+                Color.DKGRAY
+        );
 
         notice.setGravity(
                 Gravity.CENTER_VERTICAL
@@ -729,21 +1034,27 @@ public class MainActivity extends Activity {
         notice.setPadding(
                 dp(12),
                 0,
-                dp(8),
+                dp(12),
                 0
         );
 
+        notice.setSingleLine(true);
+
         notice.setBackground(
-                bg(Color.WHITE, 14)
+                bg(WHITE, 12)
         );
+
+        LinearLayout.LayoutParams noticeParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        dp(38)
+                );
+
+        noticeParams.topMargin = dp(8);
 
         header.addView(
                 notice,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        0,
-                        0.8f
-                )
+                noticeParams
         );
 
         // ---------------- SERVICES ----------------
@@ -756,242 +1067,161 @@ public class MainActivity extends Activity {
         );
 
         services.setPadding(
-                dp(12),
-                dp(5),
-                dp(12),
-                dp(2)
+                dp(10),
+                dp(8),
+                dp(10),
+                dp(5)
         );
 
-        root.addView(
+        main.addView(
                 services,
                 new LinearLayout.LayoutParams(
-                        -1,
-                        0,
-                        5.3f
-                )
-        );
-
-        String[] icons = {
-                "👛", "💵", "🏦", "📱",
-                "💬", "🎁", "🧾", "🏷",
-                "🎧", "⭐", "▶", "👥"
-        };
-
-        String[] names = {
-                "ওয়ালেট\nডিপোজিট",
-                "মোবাইল\nব্যাংকিং",
-                "ব্যাংক\nট্রান্সফার",
-                "মোবাইল\nরিচার্জ",
-                "গ্রুপ\nচ্যাট",
-                "ইনভাইট\nবোনাস",
-                "বিল\nপে",
-                "বিশেষ\nঅফার",
-                "কাস্টমার\nকেয়ার",
-                "কাস্টমার\nরিভিউ",
-                "ভিডিও\nটিউটোরিয়াল",
-                "আমাদের\nসম্পর্কে"
-        };
-
-        for (int r = 0; r < 3; r++) {
-
-            LinearLayout row =
-                    new LinearLayout(this);
-
-            row.setGravity(Gravity.CENTER);
-
-            services.addView(
-                    row,
-                    new LinearLayout.LayoutParams(
-                            -1,
-                            0,
-                            1
-                    )
-            );
-
-            for (int c = 0; c < 4; c++) {
-
-                int index =
-                        r * 4 + c;
-
-                LinearLayout item =
-                        new LinearLayout(this);
-
-                item.setOrientation(
-                        LinearLayout.VERTICAL
-                );
-
-                item.setGravity(
-                        Gravity.CENTER
-                );
-
-                TextView icon =
-                        tv(
-                                icons[index],
-                                25,
-                                Color.DKGRAY
-                        );
-
-                icon.setGravity(
-                        Gravity.CENTER
-                );
-
-                item.addView(
-                        icon,
-                        new LinearLayout.LayoutParams(
-                                -1,
-                                0,
-                                1
-                        )
-                );
-
-                TextView label =
-                        tv(
-                                names[index],
-                                12,
-                                Color.DKGRAY
-                        );
-
-                label.setGravity(
-                        Gravity.CENTER
-                );
-
-                item.addView(
-                        label,
-                        new LinearLayout.LayoutParams(
-                                -1,
-                                0,
-                                1
-                        )
-                );
-
-                row.addView(
-                        item,
-                        new LinearLayout.LayoutParams(
-                                0,
-                                -1,
-                                1
-                        )
-                );
-            }
-        }
-
-        // ---------------- OFFER ----------------
-
-        LinearLayout offer =
-                new LinearLayout(this);
-
-        offer.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        offer.setPadding(
-                dp(15),
-                dp(8),
-                dp(15),
-                dp(8)
-        );
-
-        offer.setBackground(
-                bg(green, 18)
-        );
-
-        root.addView(
-                offer,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        0,
-                        1.35f
-                )
-        );
-
-        TextView offerTitle =
-                tv(
-                        "🎁  ডিপোজিট বোনাস অফার",
-                        17,
-                        Color.WHITE
-                );
-
-        offerTitle.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        offer.addView(
-                offerTitle,
-                new LinearLayout.LayoutParams(
-                        -1,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
                         0,
                         1
                 )
         );
 
-        TextView offerText =
-                tv(
-                        "এখনই করুন, বোনাস নিয়ে নিন!",
-                        11,
-                        Color.WHITE
-                );
+        String[][] serviceNames = {
 
-        offer.addView(
-                offerText,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        0,
-                        0.8f
-                )
-        );
+                {
+                        "💰\nWallet Deposit",
+                        "📱\nMobile Banking",
+                        "🏦\nBank Transfer",
+                        "📲\nMobile Recharge"
+                },
 
-        LinearLayout amounts =
-                new LinearLayout(this);
+                {
+                        "💬\nGroup Chat",
+                        "🎁\nInvite Bonus",
+                        "🧾\nBill Pay",
+                        "⭐\nSpecial Offer"
+                },
 
-        amounts.setGravity(
-                Gravity.CENTER
-        );
-
-        offer.addView(
-                amounts,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        0,
-                        1.4f
-                )
-        );
-
-        String[] amount = {
-                "৳ ১২৯৯\nবোনাস ৬৯৯",
-                "৳ ২৫৯৯\nবোনাস ৮৯৯",
-                "৳ ৪৫৯৯\nবোনাস ১৪৯৯"
+                {
+                        "🎧\nCustomer Care",
+                        "⭐\nCustomer Review",
+                        "▶\nVideo Tutorial",
+                        "☎\nContact Us"
+                }
         };
 
-        for (String a : amount) {
+        for (int row = 0; row < 3; row++) {
 
-            TextView x =
-                    tv(a, 11, Color.DKGRAY);
+            LinearLayout serviceRow =
+                    new LinearLayout(this);
 
-            x.setGravity(
+            serviceRow.setGravity(
                     Gravity.CENTER
             );
 
-            x.setBackground(
-                    bg(Color.WHITE, 10)
-            );
-
-            LinearLayout.LayoutParams xlp =
+            services.addView(
+                    serviceRow,
                     new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
                             0,
-                            -1,
                             1
-                    );
-
-            xlp.setMargins(
-                    dp(3),
-                    0,
-                    dp(3),
-                    0
+                    )
             );
 
-            amounts.addView(x, xlp);
+            for (int col = 0; col < 4; col++) {
+
+                TextView card =
+                        text(
+                                serviceNames[row][col],
+                                12,
+                                DARK
+                        );
+
+                card.setGravity(
+                        Gravity.CENTER
+                );
+
+                card.setTypeface(
+                        Typeface.DEFAULT,
+                        Typeface.BOLD
+                );
+
+                card.setBackground(
+                        strokeBg(
+                                WHITE,
+                                Color.rgb(225, 225, 225),
+                                14
+                        )
+                );
+
+                LinearLayout.LayoutParams cardParams =
+                        new LinearLayout.LayoutParams(
+                                0,
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                1
+                        );
+
+                cardParams.setMargins(
+                        dp(4),
+                        dp(4),
+                        dp(4),
+                        dp(4)
+                );
+
+                serviceRow.addView(
+                        card,
+                        cardParams
+                );
+
+                final String service =
+                        serviceNames[row][col];
+
+                card.setOnClickListener(v -> {
+
+                    Toast.makeText(
+                            this,
+                            service.replace("\n", " "),
+                            Toast.LENGTH_SHORT
+                    ).show();
+                });
+            }
         }
+
+        // ---------------- BANNER ----------------
+
+        TextView banner = text(
+                "🎁  রিচার্জ করলেই পাবেন\n" +
+                        "বিশেষ বোনাস",
+                19,
+                WHITE
+        );
+
+        banner.setGravity(
+                Gravity.CENTER
+        );
+
+        banner.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
+
+        banner.setBackground(
+                bg(BLUE, 16)
+        );
+
+        LinearLayout.LayoutParams bannerParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        dp(75)
+                );
+
+        bannerParams.setMargins(
+                dp(12),
+                dp(4),
+                dp(12),
+                dp(4)
+        );
+
+        main.addView(
+                banner,
+                bannerParams
+        );
 
         // ---------------- BOTTOM NAV ----------------
 
@@ -1003,515 +1233,339 @@ public class MainActivity extends Activity {
         );
 
         bottom.setBackgroundColor(
-                Color.WHITE
+                WHITE
         );
 
-        root.addView(
+        main.addView(
                 bottom,
                 new LinearLayout.LayoutParams(
-                        -1,
-                        0,
-                        1.15f
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        dp(62)
                 )
         );
 
-        addNav(
+        addBottomButton(
                 bottom,
-                "⌂",
-                "হোম",
+                "⌂\nহোম",
                 true
         );
 
-        addNav(
+        addBottomButton(
                 bottom,
-                "◷",
-                "লেনদেন",
+                "↔\nলেনদেন",
                 false
         );
 
-        addNav(
+        addBottomButton(
                 bottom,
-                "♙",
-                "প্রোফাইল",
+                "●\nপ্রোফাইল",
                 false
         );
     }
 
-    void addNav(
-            LinearLayout parent,
-            String icon,
-            String title,
-            boolean active
-    ) {
+    // ====================================================
+    // REGISTER
+    // ====================================================
 
-        LinearLayout item =
+    private void showRegister() {
+
+        LinearLayout box =
                 new LinearLayout(this);
 
-        item.setOrientation(
+        box.setOrientation(
                 LinearLayout.VERTICAL
         );
 
-        item.setGravity(
+        box.setPadding(
+                dp(20),
+                dp(10),
+                dp(20),
+                dp(5)
+        );
+
+        EditText phone =
+                new EditText(this);
+
+        phone.setHint("ফোন নম্বর");
+        phone.setInputType(
+                InputType.TYPE_CLASS_PHONE
+        );
+
+        box.addView(phone);
+
+        EditText password =
+                new EditText(this);
+
+        password.setHint(
+                "৬ ডিজিট পাসওয়ার্ড"
+        );
+
+        password.setInputType(
+                InputType.TYPE_CLASS_NUMBER |
+                        InputType.TYPE_NUMBER_VARIATION_PASSWORD
+        );
+
+        box.addView(password);
+
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Quick Pay Registration")
+                .setView(box)
+                .setNegativeButton(
+                        "বাতিল",
+                        null
+                )
+                .setPositiveButton(
+                        "রেজিস্টার",
+                        (dialog, which) -> {
+
+                            String p =
+                                    phone.getText()
+                                            .toString()
+                                            .trim();
+
+                            String pass =
+                                    password.getText()
+                                            .toString()
+                                            .trim();
+
+                            if (p.isEmpty()
+                                    || pass.isEmpty()) {
+
+                                Toast.makeText(
+                                        this,
+                                        "সব তথ্য দিন",
+                                        Toast.LENGTH_SHORT
+                                ).show();
+
+                                return;
+                            }
+
+                            pref.edit()
+                                    .putString(
+                                            "phone",
+                                            p
+                                    )
+                                    .putString(
+                                            "password",
+                                            pass
+                                    )
+                                    .putBoolean(
+                                            "logged_in",
+                                            false
+                                    )
+                                    .apply();
+
+                            Toast.makeText(
+                                    this,
+                                    "Registration সফল। এখন Login করুন।",
+                                    Toast.LENGTH_LONG
+                            ).show();
+                        })
+                .show();
+    }
+
+    // ====================================================
+    // FORGOT PASSWORD
+    // ====================================================
+
+    private void showForgotPassword() {
+
+        LinearLayout box =
+                new LinearLayout(this);
+
+        box.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        box.setPadding(
+                dp(20),
+                dp(10),
+                dp(20),
+                dp(5)
+        );
+
+        EditText phone =
+                new EditText(this);
+
+        phone.setHint("রেজিস্টার করা ফোন");
+        phone.setInputType(
+                InputType.TYPE_CLASS_PHONE
+        );
+
+        box.addView(phone);
+
+        EditText newPassword =
+                new EditText(this);
+
+        newPassword.setHint(
+                "নতুন পাসওয়ার্ড"
+        );
+
+        newPassword.setInputType(
+                InputType.TYPE_CLASS_NUMBER |
+                        InputType.TYPE_NUMBER_VARIATION_PASSWORD
+        );
+
+        box.addView(newPassword);
+
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("পাসওয়ার্ড পরিবর্তন")
+                .setView(box)
+                .setNegativeButton(
+                        "বাতিল",
+                        null
+                )
+                .setPositiveButton(
+                        "পরিবর্তন",
+                        (dialog, which) -> {
+
+                            String savedPhone =
+                                    pref.getString(
+                                            "phone",
+                                            ""
+                                    );
+
+                            String enteredPhone =
+                                    phone.getText()
+                                            .toString()
+                                            .trim();
+
+                            String newPass =
+                                    newPassword.getText()
+                                            .toString()
+                                            .trim();
+
+                            if (savedPhone.equals(
+                                    enteredPhone)
+                                    && !newPass.isEmpty()) {
+
+                                pref.edit()
+                                        .putString(
+                                                "password",
+                                                newPass
+                                        )
+                                        .putBoolean(
+                                                "logged_in",
+                                                false
+                                        )
+                                        .apply();
+
+                                Toast.makeText(
+                                        this,
+                                        "পাসওয়ার্ড পরিবর্তন হয়েছে",
+                                        Toast.LENGTH_LONG
+                                ).show();
+
+                            } else {
+
+                                Toast.makeText(
+                                        this,
+                                        "ফোন নম্বর সঠিক নয়",
+                                        Toast.LENGTH_SHORT
+                                ).show();
+                            }
+                        })
+                .show();
+    }
+
+    // ====================================================
+    // BOTTOM BUTTON
+    // ====================================================
+
+    private void addBottomButton(
+            LinearLayout parent,
+            String title,
+            boolean active) {
+
+        TextView b = text(
+                title,
+                13,
+                active ? BLUE : Color.GRAY
+        );
+
+        b.setGravity(
                 Gravity.CENTER
         );
 
-        TextView i =
-                tv(
-                        icon,
-                        27,
-                        active ? Color.rgb(210, 60, 60)
-                               : Color.GRAY
-                );
-
-        i.setGravity(Gravity.CENTER);
-
-        item.addView(
-                i,
+        parent.addView(
+                b,
                 new LinearLayout.LayoutParams(
-                        -1,
                         0,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
                         1
                 )
         );
 
-        TextView t =
-                tv(
-                        title,
-                        11,
-                        active ? Color.rgb(210, 60, 60)
-                               : Color.GRAY
+        b.setOnClickListener(v -> {
+
+            Toast.makeText(
+                    this,
+                    title.replace("\n", " "),
+                    Toast.LENGTH_SHORT
+            ).show();
+        });
+    }
+
+    // ====================================================
+    // PHONE MASK
+    // ====================================================
+
+    private String maskPhone(String phone) {
+
+        if (phone == null || phone.length() < 5) {
+            return phone;
+        }
+
+        int visible = Math.min(
+                4,
+                phone.length()
+        );
+
+        String last =
+                phone.substring(
+                        phone.length() - visible
                 );
 
-        t.setGravity(Gravity.CENTER);
+        return "******" + last;
+    }
 
-        item.addView(
-                t,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        0,
-                        0.8f
-                )
-        );
+    // ====================================================
+    // SPACE
+    // ====================================================
+
+    private void addSpace(
+            LinearLayout parent,
+            int height) {
+
+        Space s = new Space(this);
 
         parent.addView(
-                item,
+                s,
                 new LinearLayout.LayoutParams(
-                        0,
-                        -1,
-                        1
+                        1,
+                        dp(height)
                 )
         );
     }
 
-    // =========================================================
-    // FORGOT PASSWORD
-    // =========================================================
-
-    void showForgot() {
-
-        getWindow().setStatusBarColor(blue);
-        getWindow().setNavigationBarColor(blue);
-
-        LinearLayout page =
-                new LinearLayout(this);
-
-        page.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        page.setGravity(
-                Gravity.CENTER_HORIZONTAL
-        );
-
-        page.setPadding(
-                dp(30),
-                dp(40),
-                dp(30),
-                dp(20)
-        );
-
-        page.setBackgroundColor(blue);
-
-        setContentView(page);
-
-        TextView title =
-                tv(
-                        "পাসওয়ার্ড পরিবর্তন",
-                        28,
-                        Color.WHITE
-                );
-
-        title.setGravity(Gravity.CENTER);
-
-        title.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        page.addView(
-                title,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(70)
-                )
-        );
-
-        space(page, 30);
-
-        EditText p =
-                new EditText(this);
-
-        p.setHint(
-                "ফোন নম্বর"
-        );
-
-        p.setTextSize(19);
-
-        p.setSingleLine(true);
-
-        p.setInputType(
-                InputType.TYPE_CLASS_PHONE
-        );
-
-        p.setPadding(
-                dp(20),
-                0,
-                dp(20),
-                0
-        );
-
-        p.setBackground(
-                bg(Color.WHITE, 12)
-        );
-
-        page.addView(
-                p,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(62)
-                )
-        );
-
-        space(page, 25);
-
-        TextView reset =
-                button("OTP পাঠান");
-
-        page.addView(
-                reset,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(62)
-                )
-        );
-
-        reset.setOnClickListener(
-                v -> Toast.makeText(
-                        this,
-                        "OTP পাঠানোর ব্যবস্থা এখানে যুক্ত হবে",
-                        Toast.LENGTH_SHORT
-                ).show()
-        );
-
-        space(page, 20);
-
-        TextView back =
-                tv(
-                        "← লগইনে ফিরে যান",
-                        18,
-                        Color.WHITE
-                );
-
-        back.setGravity(Gravity.CENTER);
-
-        page.addView(
-                back,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(55)
-                )
-        );
-
-        back.setOnClickListener(
-                v -> showLogin()
-        );
-    }
-
-    // =========================================================
-    // REGISTER
-    // =========================================================
-
-    void showRegister() {
-
-        getWindow().setStatusBarColor(blue);
-        getWindow().setNavigationBarColor(blue);
-
-        ScrollView scroll =
-                new ScrollView(this);
-
-        scroll.setBackgroundColor(blue);
-
-        LinearLayout page =
-                new LinearLayout(this);
-
-        page.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        page.setPadding(
-                dp(30),
-                dp(25),
-                dp(30),
-                dp(25)
-        );
-
-        scroll.addView(page);
-
-        setContentView(scroll);
-
-        TextView title =
-                tv(
-                        "নতুন অ্যাকাউন্ট",
-                        28,
-                        Color.WHITE
-                );
-
-        title.setGravity(Gravity.CENTER);
-
-        title.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        page.addView(
-                title,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(70)
-                )
-        );
-
-        EditText name =
-                field("পূর্ণ নাম");
-
-        page.addView(
-                name,
-                fieldParams()
-        );
-
-        space(page, 18);
-
-        EditText regPhone =
-                field("ফোন নম্বর");
-
-        regPhone.setInputType(
-                InputType.TYPE_CLASS_PHONE
-        );
-
-        page.addView(
-                regPhone,
-                fieldParams()
-        );
-
-        space(page, 18);
-
-        EditText pass =
-                field("৬ ডিজিট পাসওয়ার্ড");
-
-        pass.setInputType(
-                InputType.TYPE_CLASS_NUMBER |
-                InputType.TYPE_NUMBER_VARIATION_PASSWORD
-        );
-
-        page.addView(
-                pass,
-                fieldParams()
-        );
-
-        space(page, 25);
-
-        TextView create =
-                button("রেজিস্টার");
-
-        page.addView(
-                create,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(62)
-                )
-        );
-
-        create.setOnClickListener(
-                v -> {
-
-                    if (name.getText()
-                            .toString()
-                            .trim()
-                            .isEmpty()) {
-
-                        name.setError(
-                                "নাম দিন"
-                        );
-
-                        return;
-                    }
-
-                    if (regPhone.getText()
-                            .toString()
-                            .trim()
-                            .isEmpty()) {
-
-                        regPhone.setError(
-                                "ফোন নম্বর দিন"
-                        );
-
-                        return;
-                    }
-
-                    if (pass.getText()
-                            .toString()
-                            .trim()
-                            .length() < 6) {
-
-                        pass.setError(
-                                "৬ ডিজিট পাসওয়ার্ড দিন"
-                        );
-
-                        return;
-                    }
-
-                    Toast.makeText(
-                            this,
-                            "রেজিস্ট্রেশন সম্পন্ন",
-                            Toast.LENGTH_SHORT
-                    ).show();
-
-                    showLogin();
-                }
-        );
-
-        space(page, 20);
-
-        TextView back =
-                tv(
-                        "← লগইনে ফিরে যান",
-                        18,
-                        Color.WHITE
-                );
-
-        back.setGravity(Gravity.CENTER);
-
-        page.addView(
-                back,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(55)
-                )
-        );
-
-        back.setOnClickListener(
-                v -> showLogin()
-        );
-    }
-
-    EditText field(String hint) {
-
-        EditText e =
-                new EditText(this);
-
-        e.setHint(hint);
-        e.setTextSize(19);
-        e.setSingleLine(true);
-
-        e.setTextColor(Color.DKGRAY);
-        e.setHintTextColor(Color.GRAY);
-
-        e.setPadding(
-                dp(20),
-                0,
-                dp(20),
-                0
-        );
-
-        e.setBackground(
-                bg(Color.WHITE, 12)
-        );
-
-        return e;
-    }
-
-    LinearLayout.LayoutParams fieldParams() {
-
-        return new LinearLayout.LayoutParams(
-                -1,
-                dp(62)
-        );
-    }
-
-    // =========================================================
-    // LANGUAGE
-    // =========================================================
-
-    void updateLanguage() {
-
-        if (bangla) {
-
-            language.setText(
-                    "বাংলা     EN"
-            );
-
-            subtitle.setText(
-                    "বাংলাদেশের সেরা রিচার্জ ব্যবসা প্ল্যাটফর্ম"
-            );
-
-            phone.setHint("ফোন");
-
-            password.setHint(
-                    "৬ ডিজিট পাসওয়ার্ড"
-            );
-
-            forgot.setText(
-                    "পাসওয়ার্ড ভুলে গেছেন?"
-            );
-
-            register.setText(
-                    "অ্যাকাউন্ট নেই?  রেজিস্টার করুন"
-            );
-
-        } else {
-
-            language.setText(
-                    "BN     EN"
-            );
-
-            subtitle.setText(
-                    "Bangladesh's best recharge business platform"
-            );
-
-            phone.setHint("Phone");
-
-            password.setHint(
-                    "6 Digit Password"
-            );
-
-            forgot.setText(
-                    "Forgot Password?"
-            );
-
-            register.setText(
-                    "Don't have an account?  Register"
-            );
-        }
-    }
-
-    // =========================================================
+    // ====================================================
     // BACK BUTTON
-    // =========================================================
+    // ====================================================
 
     @Override
     public void onBackPressed() {
 
-        // Back করলে Login-এ ফিরে যাবে
-        showLogin();
+        if (pref != null &&
+                pref.getBoolean(
+                        "logged_in",
+                        false
+                )) {
+
+            showHome();
+
+        } else {
+
+            super.onBackPressed();
+        }
     }
 }
