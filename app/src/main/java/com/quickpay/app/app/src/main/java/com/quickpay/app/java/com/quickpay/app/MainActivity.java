@@ -2699,30 +2699,3 @@ public class MainActivity extends Activity {
                     showLogin();
                 }
         );
-
-        root.addView(
-                content,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        0,
-                        1
-                )
-        );
-
-        setContentView(root);
-    }
-
-    private static final String COMPANY_BKASH = "01799999000";
-private static final String COMPANY_NAGAD = "01XXXXXXXXX";
-private static final String COMPANY_ROCKET = "01XXXXXXXXX";
-private static final String COMPANY_UPAY = "01XXXXXXXXX";
-    @Override
-    public void onBackPressed() {
-
-        private static final String COMPANY_BKASH = "017XXXXXXXX";
-private static final String COMPANY_NAGAD = "018XXXXXXXX";
-private static final String COMPANY_ROCKET = "019XXXXXXXX";
-private static final String COMPANY_UPAY = "016XXXXXXXX";
-        showHome();
-    }
-}
