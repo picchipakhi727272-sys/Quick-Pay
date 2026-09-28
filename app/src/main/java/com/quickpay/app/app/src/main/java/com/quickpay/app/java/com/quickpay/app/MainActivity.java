@@ -4,433 +4,320 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.graphics.Color;
 import android.graphics.Typeface;
-import android.graphics.drawable.GradientDrawable;
+import android.text.InputType;
 import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.*;
 
 public class MainActivity extends Activity {
 
-    int green = Color.rgb(6, 103, 68);
-    int yellow = Color.rgb(255, 199, 0);
-    int bg = Color.rgb(247, 247, 247);
-    int dark = Color.rgb(35, 35, 35);
+    int blue = Color.rgb(8, 96, 190);
 
-    int dp(float n) {
-        return (int)(n * getResources().getDisplayMetrics().density + 0.5f);
-    }
+    LinearLayout root;
+    boolean bangla = true;
 
-    GradientDrawable box(int color, float radius) {
-        GradientDrawable g = new GradientDrawable();
-        g.setColor(color);
-        g.setCornerRadius(dp(radius));
-        return g;
-    }
+    TextView title;
+    TextView subtitle;
+    TextView forgot;
+    TextView register;
+    TextView language;
 
-    TextView text(String s, float size, int color, boolean bold) {
-        TextView t = new TextView(this);
-        t.setText(s);
-        t.setTextSize(size);
-        t.setTextColor(color);
-        t.setGravity(Gravity.CENTER);
-        t.setTypeface(Typeface.create(
-                "sans",
-                bold ? Typeface.BOLD : Typeface.NORMAL
-        ));
-        return t;
-    }
+    EditText phone;
+    EditText password;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        getWindow().setStatusBarColor(green);
-        getWindow().setNavigationBarColor(Color.WHITE);
+        getWindow().setStatusBarColor(blue);
+        getWindow().setNavigationBarColor(blue);
 
-        home();
+        showLogin();
     }
 
-    void home() {
+    int dp(float value) {
+        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
+    }
 
-        LinearLayout root = new LinearLayout(this);
+    TextView text(String value, float size, int color) {
+        TextView t = new TextView(this);
+        t.setText(value);
+        t.setTextSize(size);
+        t.setTextColor(color);
+        return t;
+    }
+
+    GradientDrawableBox box(int color, float radius) {
+        GradientDrawableBox bg = new GradientDrawableBox();
+        bg.setColor(color);
+        bg.setCornerRadius(dp(radius));
+        bg.setStroke(dp(1), Color.rgb(210, 210, 210));
+        return bg;
+    }
+
+    void addSpace(int height) {
+        Space s = new Space(this);
+        root.addView(s, new LinearLayout.LayoutParams(
+                1, dp(height)
+        ));
+    }
+
+    TextView makeButton(String value) {
+        TextView b = text(value, 22, blue);
+        b.setGravity(Gravity.CENTER);
+        b.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        b.setBackground(box(Color.WHITE, 12));
+
+        root.addView(b, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(62)
+        ));
+
+        return b;
+    }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+    }
+
+    void showLogin() {
+
+        root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(bg);
+        root.setGravity(Gravity.CENTER_HORIZONTAL);
+        root.setPadding(dp(34), dp(20), dp(34), dp(20));
+        root.setBackgroundColor(blue);
 
-        // ================= HEADER =================
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.setBackgroundColor(blue);
+        scroll.addView(root);
 
-        LinearLayout header = new LinearLayout(this);
-        header.setOrientation(LinearLayout.VERTICAL);
-        header.setPadding(dp(18), dp(8), dp(18), dp(10));
-        header.setBackground(box(green, 25));
+        setContentView(scroll);
 
-        // TOP
-        LinearLayout top = new LinearLayout(this);
-        top.setGravity(Gravity.CENTER_VERTICAL);
+        // Language switch
+        LinearLayout languageBox = new LinearLayout(this);
+        languageBox.setGravity(Gravity.CENTER);
+        languageBox.setPadding(dp(5), dp(4), dp(5), dp(4));
+        languageBox.setBackground(box(Color.rgb(65, 135, 210), 40));
 
-        TextView logo = text(
-                "Quick Pay",
-                21,
-                Color.rgb(20, 65, 125),
-                true
-        );
+        language = text("বাংলা     EN", 16, Color.WHITE);
+        language.setGravity(Gravity.CENTER);
+        language.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
 
-        logo.setBackground(box(Color.WHITE, 15));
+        languageBox.addView(language,
+                new LinearLayout.LayoutParams(dp(170), dp(48)));
 
-        top.addView(
-                logo,
-                new LinearLayout.LayoutParams(dp(175), dp(55))
-        );
-
-        Space sp = new Space(this);
-
-        top.addView(
-                sp,
-                new LinearLayout.LayoutParams(0, 1, 1)
-        );
-
-        top.addView(
-                text("EN", 15, Color.WHITE, true),
-                new LinearLayout.LayoutParams(dp(40), dp(50))
-        );
-
-        top.addView(
-                text("♧", 30, Color.WHITE, false),
-                new LinearLayout.LayoutParams(dp(45), dp(50))
-        );
-
-        top.addView(
-                text("⇥", 31, Color.WHITE, false),
-                new LinearLayout.LayoutParams(dp(45), dp(50))
-        );
-
-        header.addView(top);
-
-        // USER + BALANCE
-        LinearLayout userRow = new LinearLayout(this);
-        userRow.setGravity(Gravity.CENTER_VERTICAL);
-
-        TextView user = text(
-                "Rosy",
-                26,
-                Color.WHITE,
-                true
-        );
-
-        user.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
-
-        userRow.addView(
-                user,
-                new LinearLayout.LayoutParams(dp(155), dp(65))
-        );
-
-        LinearLayout balance = new LinearLayout(this);
-        balance.setGravity(Gravity.CENTER_VERTICAL);
-        balance.setPadding(dp(12), 0, dp(5), 0);
-        balance.setBackground(box(yellow, 35));
-
-        TextView balanceText = text(
-                "মেইন ব্যালেন্স: • • • •\nড্রাইভ ব্যালেন্স: • • • •",
-                12,
-                Color.DKGRAY,
-                true
-        );
-
-        balance.addView(
-                balanceText,
-                new LinearLayout.LayoutParams(0, dp(58), 1)
-        );
-
-        balance.addView(
-                text("◉", 21, Color.DKGRAY, true),
-                new LinearLayout.LayoutParams(dp(35), dp(58))
-        );
-
-        userRow.addView(
-                balance,
-                new LinearLayout.LayoutParams(0, dp(58), 1)
-        );
-
-        header.addView(userRow);
-
-        // NOTICE
-        TextView notice = text(
-                "●   রাকিব রহমান (016********) ৭৯৯ টাকা এয়ারটেল রিচার্জ করলেন",
-                12,
-                Color.DKGRAY,
-                false
-        );
-
-        notice.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
-        notice.setPadding(dp(10), 0, dp(8), 0);
-        notice.setBackground(box(Color.WHITE, 15));
-
-        header.addView(
-                notice,
-                new LinearLayout.LayoutParams(-1, dp(48))
-        );
-
-        root.addView(
-                header,
-                new LinearLayout.LayoutParams(-1, dp(215))
-        );
-
-        // ================= SERVICES =================
-
-        LinearLayout services = new LinearLayout(this);
-        services.setOrientation(LinearLayout.VERTICAL);
-        services.setPadding(dp(12), dp(6), dp(12), dp(2));
-
-        serviceRow(
-                services,
-                "👛", "ওয়ালেট\nডিপোজিট",
-                "💵", "মোবাইল\nব্যাংকিং",
-                "🏦", "ব্যাংক\nট্রান্সফার",
-                "📱", "মোবাইল\nরিচার্জ"
-        );
-
-        serviceRow(
-                services,
-                "💬", "গ্রুপ\nচ্যাট",
-                "🎁", "ইনভাইট\nবোনাস",
-                "🧾", "বিল\nপে",
-                "🏷", "বিশেষ\nঅফার"
-        );
-
-        serviceRow(
-                services,
-                "🎧", "কাস্টমার\nকেয়ার",
-                "⭐", "কাস্টমার\nরিভিউ",
-                "▶", "ভিডিও\nটিউটোরিয়াল",
-                "👥", "আমাদের\nসম্পর্কে"
-        );
-
-        root.addView(
-                services,
+        LinearLayout.LayoutParams langParams =
                 new LinearLayout.LayoutParams(
-                        -1,
-                        0,
-                        1
-                )
+                        dp(175), dp(56));
+
+        langParams.gravity = Gravity.RIGHT;
+
+        root.addView(languageBox, langParams);
+
+        language.setOnClickListener(v -> {
+            bangla = !bangla;
+            updateLanguage();
+        });
+
+        addSpace(110);
+
+        // Logo box
+        TextView logo = text("Quick Pay", 32, blue);
+        logo.setGravity(Gravity.CENTER);
+        logo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        logo.setBackground(box(Color.WHITE, 18));
+
+        root.addView(logo, new LinearLayout.LayoutParams(
+                dp(320), dp(125)
+        ));
+
+        addSpace(10);
+
+        subtitle = text(
+                "বাংলাদেশের সেরা রিচার্জ ব্যবসা প্ল্যাটফর্ম",
+                18,
+                Color.WHITE
         );
+        subtitle.setGravity(Gravity.CENTER);
 
-        // ================= OFFER =================
+        root.addView(subtitle, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(45)
+        ));
 
-        LinearLayout offer = new LinearLayout(this);
-        offer.setOrientation(LinearLayout.VERTICAL);
-        offer.setPadding(dp(10), dp(4), dp(10), dp(4));
-        offer.setBackground(box(green, 16));
+        addSpace(25);
 
-        TextView offerTitle = text(
-                "🎁  ডিপোজিট বোনাস অফার",
-                17,
-                Color.WHITE,
-                true
+        // Phone
+        phone = new EditText(this);
+        phone.setHint("ফোন");
+        phone.setTextSize(20);
+        phone.setSingleLine(true);
+        phone.setPadding(dp(25), 0, dp(20), 0);
+        phone.setTextColor(Color.DKGRAY);
+        phone.setHintTextColor(Color.GRAY);
+        phone.setInputType(InputType.TYPE_CLASS_PHONE);
+        phone.setBackground(box(Color.WHITE, 12));
+
+        root.addView(phone, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(62)
+        ));
+
+        addSpace(28);
+
+        // Password row
+        LinearLayout passwordBox = new LinearLayout(this);
+        passwordBox.setGravity(Gravity.CENTER_VERTICAL);
+        passwordBox.setPadding(dp(20), 0, dp(10), 0);
+        passwordBox.setBackground(box(Color.WHITE, 12));
+
+        password = new EditText(this);
+        password.setHint("৬ ডিজিট পাসওয়ার্ড");
+        password.setTextSize(20);
+        password.setSingleLine(true);
+        password.setTextColor(Color.DKGRAY);
+        password.setHintTextColor(Color.GRAY);
+        password.setInputType(
+                InputType.TYPE_CLASS_NUMBER |
+                InputType.TYPE_NUMBER_VARIATION_PASSWORD
         );
+        password.setBackgroundColor(Color.TRANSPARENT);
 
-        offerTitle.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams passParams =
+                new LinearLayout.LayoutParams(0, dp(62), 1);
 
-        offer.addView(
-                offerTitle,
-                new LinearLayout.LayoutParams(-1, dp(28))
-        );
+        passwordBox.addView(password, passParams);
 
-        TextView offerSub = text(
-                "এখনই করুন, বোনাস নিয়ে নিন!",
-                11,
-                Color.WHITE,
-                false
-        );
+        TextView eye = text("◉", 27, blue);
+        eye.setGravity(Gravity.CENTER);
+        passwordBox.addView(eye, new LinearLayout.LayoutParams(
+                dp(55), dp(62)
+        ));
 
-        offerSub.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
+        root.addView(passwordBox, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(62)
+        ));
 
-        offer.addView(
-                offerSub,
-                new LinearLayout.LayoutParams(-1, dp(22))
-        );
+        eye.setOnClickListener(v -> {
+            if ((password.getInputType() &
+                    InputType.TYPE_TEXT_VARIATION_PASSWORD) != 0) {
 
-        LinearLayout offerBoxes = new LinearLayout(this);
-        offerBoxes.setGravity(Gravity.CENTER);
-        offerBoxes.setWeightSum(3);
-
-        smallOffer(offerBoxes, "৳১২৯৯", "৳৩৯৯");
-        smallOffer(offerBoxes, "৳২৫৯৯", "৳৭৯৯");
-        smallOffer(offerBoxes, "৳৪৯৯৯", "৳১৪৯৯");
-
-        offer.addView(
-                offerBoxes,
-                new LinearLayout.LayoutParams(-1, dp(50))
-        );
-
-        root.addView(
-                offer,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(105)
-                )
-        );
-
-        // ================= BOTTOM =================
-
-        LinearLayout bottom = new LinearLayout(this);
-        bottom.setGravity(Gravity.CENTER);
-        bottom.setBackgroundColor(Color.WHITE);
-
-        bottomItem(bottom, "⌂", "হোম", true);
-        bottomItem(bottom, "◷", "লেনদেন", false);
-        bottomItem(bottom, "♙", "প্রোফাইল", false);
-
-        root.addView(
-                bottom,
-                new LinearLayout.LayoutParams(-1, dp(65))
-        );
-
-        setContentView(root);
-    }
-
-    void serviceRow(
-            LinearLayout parent,
-            String i1, String n1,
-            String i2, String n2,
-            String i3, String n3,
-            String i4, String n4) {
-
-        LinearLayout row = new LinearLayout(this);
-        row.setGravity(Gravity.CENTER);
-
-        addService(row, i1, n1);
-        addService(row, i2, n2);
-        addService(row, i3, n3);
-        addService(row, i4, n4);
-
-        parent.addView(
-                row,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        0,
-                        1
-                )
-        );
-    }
-
-    void addService(
-            LinearLayout row,
-            String icon,
-            String name) {
-
-        LinearLayout item = new LinearLayout(this);
-        item.setOrientation(LinearLayout.VERTICAL);
-        item.setGravity(Gravity.CENTER);
-
-        TextView ic = text(
-                icon,
-                29,
-                dark,
-                false
-        );
-
-        TextView nm = text(
-                name,
-                12,
-                dark,
-                false
-        );
-
-        item.addView(
-                ic,
-                new LinearLayout.LayoutParams(-1, dp(40))
-        );
-
-        item.addView(
-                nm,
-                new LinearLayout.LayoutParams(-1, dp(38))
-        );
-
-        row.addView(
-                item,
-                new LinearLayout.LayoutParams(
-                        0,
-                        -1,
-                        1
-                )
-        );
-    }
-
-    void smallOffer(
-            LinearLayout parent,
-            String deposit,
-            String bonus) {
-
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setGravity(Gravity.CENTER);
-        box.setBackground(box(Color.WHITE, 10));
-
-        TextView d = text(
-                deposit,
-                12,
-                green,
-                true
-        );
-
-        TextView b = text(
-                "বোনাস " + bonus,
-                10,
-                Color.RED,
-                true
-        );
-
-        box.addView(
-                d,
-                new LinearLayout.LayoutParams(-1, dp(24))
-        );
-
-        box.addView(
-                b,
-                new LinearLayout.LayoutParams(-1, dp(20))
-        );
-
-        LinearLayout.LayoutParams p =
-                new LinearLayout.LayoutParams(
-                        0,
-                        dp(45),
-                        1
+                password.setInputType(
+                        InputType.TYPE_CLASS_NUMBER
                 );
 
-        p.setMargins(dp(3), 0, dp(3), 0);
+            } else {
 
-        parent.addView(box, p);
+                password.setInputType(
+                        InputType.TYPE_CLASS_NUMBER |
+                        InputType.TYPE_NUMBER_VARIATION_PASSWORD
+                );
+            }
+
+            password.setSelection(password.length());
+        });
+
+        addSpace(32);
+
+        // Login button
+        TextView login = makeButton("লগইন");
+
+        login.setOnClickListener(v -> {
+
+            if (phone.getText().toString().trim().isEmpty()) {
+                phone.setError("ফোন নম্বর দিন");
+                phone.requestFocus();
+                return;
+            }
+
+            if (password.getText().toString().trim().isEmpty()) {
+                password.setError("পাসওয়ার্ড দিন");
+                password.requestFocus();
+                return;
+            }
+
+            Toast.makeText(
+                    MainActivity.this,
+                    "লগইন সফল",
+                    Toast.LENGTH_SHORT
+            ).show();
+
+            // পরে এখানে Home Screen খুলবে
+        });
+
+        addSpace(25);
+
+        forgot = text(
+                "পাসওয়ার্ড ভুলে গেছেন?",
+                17,
+                Color.WHITE
+        );
+        forgot.setGravity(Gravity.CENTER);
+
+        root.addView(forgot, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(40)
+        ));
+
+        forgot.setOnClickListener(v ->
+                Toast.makeText(
+                        MainActivity.this,
+                        "পাসওয়ার্ড রিসেট",
+                        Toast.LENGTH_SHORT
+                ).show()
+        );
+
+        register = text(
+                "অ্যাকাউন্ট নেই?  রেজিস্টার করুন",
+                18,
+                Color.WHITE
+        );
+        register.setGravity(Gravity.CENTER);
+        register.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+
+        root.addView(register, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(55)
+        ));
+
+        register.setOnClickListener(v ->
+                Toast.makeText(
+                        MainActivity.this,
+                        "রেজিস্ট্রেশন পেজ",
+                        Toast.LENGTH_SHORT
+                ).show()
+        );
     }
 
-    void bottomItem(
-            LinearLayout parent,
-            String icon,
-            String name,
-            boolean active) {
+    void updateLanguage() {
 
-        int color = active
-                ? Color.rgb(210, 55, 55)
-                : Color.GRAY;
+        if (bangla) {
+            language.setText("বাংলা     EN");
+            subtitle.setText(
+                    "বাংলাদেশের সেরা রিচার্জ ব্যবসা প্ল্যাটফর্ম"
+            );
+            phone.setHint("ফোন");
+            password.setHint("৬ ডিজিট পাসওয়ার্ড");
+            forgot.setText("পাসওয়ার্ড ভুলে গেছেন?");
+            register.setText("অ্যাকাউন্ট নেই?  রেজিস্টার করুন");
+        } else {
+            language.setText("BN     EN");
+            subtitle.setText(
+                    "Bangladesh's best recharge business platform"
+            );
+            phone.setHint("Phone");
+            password.setHint("6 Digit Password");
+            forgot.setText("Forgot Password?");
+            register.setText("Don't have an account?  Register");
+        }
+    }
 
-        LinearLayout item = new LinearLayout(this);
-        item.setOrientation(LinearLayout.VERTICAL);
-        item.setGravity(Gravity.CENTER);
-
-        item.addView(
-                text(icon, 27, color, false),
-                new LinearLayout.LayoutParams(-1, dp(32))
-        );
-
-        item.addView(
-                text(name, 12, color, active),
-                new LinearLayout.LayoutParams(-1, dp(22))
-        );
-
-        parent.addView(
-                item,
-                new LinearLayout.LayoutParams(
-                        0,
-                        -1,
-                        1
-                )
-        );
+    static class GradientDrawableBox
+            extends android.graphics.drawable.GradientDrawable {
     }
 }
