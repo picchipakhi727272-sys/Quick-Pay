@@ -24,6 +24,10 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
+
 public class MainActivity extends Activity {
 
     private static final int BLUE = Color.rgb(8,96,190);
@@ -32,6 +36,10 @@ public class MainActivity extends Activity {
     private static final int DARK = Color.rgb(35,35,35);
 
     private SharedPreferences pref;
+
+    // Firebase backend
+    private FirebaseAuth firebaseAuth;
+    private FirebaseFirestore firestore;
 
     private String selectedMobileProvider = "বিকাশ";
     private String selectedAccountType = "পার্সোনাল";
@@ -98,6 +106,16 @@ public class MainActivity extends Activity {
                 "quick_pay",
                 Context.MODE_PRIVATE
         );
+
+        // Firebase is initialized from google-services.json.
+        try {
+            FirebaseApp.initializeApp(this);
+            firebaseAuth = FirebaseAuth.getInstance();
+            firestore = FirebaseFirestore.getInstance();
+        } catch (Exception ignored) {
+            firebaseAuth = null;
+            firestore = null;
+        }
 
         if (pref.getBoolean("logged_in", false)) {
 
@@ -6179,6 +6197,36 @@ public class MainActivity extends Activity {
 
     private void showForgotPassword() {
         showChangePassword();
+    }
+
+    /* =========================================================
+       FIREBASE BACKEND SYNC
+       ========================================================= */
+
+    private void syncCurrentUserToFirebase() {
+        if (firestore == null || firebaseAuth == null) return;
+        if (firebaseAuth.getCurrentUser() == null) return;
+
+        String uid = firebaseAuth.getCurrentUser().getUid();
+        String phone = pref.getString("phone", "");
+        String name = pref.getString("name", "");
+
+        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        data.put("uid", uid);
+        data.put("name", name);
+        data.put("phone", phone);
+        data.put("mainBalance", 0.0);
+        data.put("driveBalance", 0.0);
+        data.put("accountLocked", false);
+        data.put("financialLocked", false);
+        data.put("updatedAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
+
+        firestore.collection("users")
+                .document(uid)
+                .set(data, com.google.firebase.firestore.SetOptions.merge())
+                .addOnFailureListener(e -> {
+                    // Backend sync failure must not break the existing app UI.
+                });
     }
 
     /* =========================================================
