@@ -202,11 +202,11 @@ public class MainActivity extends Activity {
     private JSONArray panelArray(String key){try{return new JSONArray(pref.getString(key,"[]"));}catch(Exception e){return new JSONArray();}}
     private void openExternal(String url){try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));}catch(Exception e){Toast.makeText(this,tx("লিংকটি খোলা যাচ্ছে না","Unable to open link"),Toast.LENGTH_SHORT).show();}}
     private void addLiveActivityTicker(LinearLayout header){
-        LinearLayout live=new LinearLayout(this);live.setGravity(Gravity.CENTER_VERTICAL);live.setBackground(bg(Color.WHITE,14));live.setPadding(dp(8),0,dp(8),0);TextView badge=tv("● LIVE",12,Color.rgb(30,170,85));badge.setTypeface(Typeface.DEFAULT,Typeface.BOLD);live.addView(badge,new LinearLayout.LayoutParams(dp(62),dp(38)));TextView a=tv("",12,Color.DKGRAY);a.setSingleLine(true);a.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE);a.setMarqueeRepeatLimit(-1);a.setSelected(true);live.addView(a,new LinearLayout.LayoutParams(0,dp(38),1));header.addView(live,new LinearLayout.LayoutParams(-1,dp(38)));JSONArray data=panelArray("live_activity_messages");if(data.length()==0){data=new JSONArray();try{data.put("রাকিব রহমান (016********) ৭৯৯ টাকা Airtel রিচার্জ করলেন");data.put("সুমাইয়া আক্তার (017********) ৫০০ টাকা অ্যাড মানি করলেন");data.put("মোঃ হাসান (018********) ৩০০ টাকা ক্যাশ আউট করলেন");}catch(Exception ignored){}}final JSONArray d=data;final int[] ix={0};try{a.setText(d.getString(0));}catch(Exception ignored){}a.postDelayed(new Runnable(){public void run(){if(d.length()>0){try{a.setText(d.getString(ix[0]%d.length()));}catch(Exception ignored){}ix[0]++;}a.postDelayed(this,3500);}},3500);
+        LinearLayout live=new LinearLayout(this);live.setGravity(Gravity.CENTER_VERTICAL);live.setBackground(bg(Color.WHITE,14));live.setPadding(dp(8),0,dp(8),0);TextView badge=tv("● LIVE",12,Color.RED);badge.setTypeface(Typeface.DEFAULT,Typeface.BOLD);live.addView(badge,new LinearLayout.LayoutParams(dp(62),dp(38)));TextView a=tv("",12,Color.DKGRAY);a.setSingleLine(true);a.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE);a.setMarqueeRepeatLimit(-1);a.setSelected(true);live.addView(a,new LinearLayout.LayoutParams(0,dp(38),1));header.addView(live,new LinearLayout.LayoutParams(-1,dp(38)));JSONArray data=panelArray("live_activity_messages");if(data.length()==0){data=new JSONArray();try{data.put("রাকিব রহমান (016********) ৭৯৯ টাকা Airtel রিচার্জ করলেন");data.put("সুমাইয়া আক্তার (017********) ৫০০ টাকা অ্যাড মানি করলেন");data.put("মোঃ হাসান (018********) ৩০০ টাকা ক্যাশ আউট করলেন");}catch(Exception ignored){}}final JSONArray d=data;final int[] ix={0};try{a.setText(d.getString(0));}catch(Exception ignored){}a.postDelayed(new Runnable(){public void run(){if(d.length()>0){try{a.setText(d.getString(ix[0]%d.length()));}catch(Exception ignored){}ix[0]++;}a.postDelayed(this,3500);}},3500);
     }
     private void addProfileItem(LinearLayout parent,String icon,String text,View.OnClickListener click){LinearLayout r=new LinearLayout(this);r.setGravity(Gravity.CENTER_VERTICAL);r.setPadding(dp(14),0,dp(10),0);r.setBackground(bg(Color.WHITE,14));TextView i=tv(icon,22,DARK);i.setGravity(Gravity.CENTER);r.addView(i,new LinearLayout.LayoutParams(dp(55),dp(62)));TextView t=tv(text,18,DARK);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);r.addView(t,new LinearLayout.LayoutParams(0,dp(62),1));TextView a=tv("›",30,Color.GRAY);a.setGravity(Gravity.CENTER);r.addView(a,new LinearLayout.LayoutParams(dp(35),dp(62)));parent.addView(r,new LinearLayout.LayoutParams(-1,dp(62)));space(parent,1);r.setOnClickListener(click);}
     private void showTransactionHistory(){getWindow().setStatusBarColor(BLUE);getWindow().setNavigationBarColor(Color.WHITE);LinearLayout main=new LinearLayout(this);main.setOrientation(LinearLayout.VERTICAL);main.setBackgroundColor(Color.rgb(247,248,250));setContentView(main);LinearLayout h=new LinearLayout(this);h.setGravity(Gravity.CENTER_VERTICAL);h.setBackgroundColor(BLUE);main.addView(h,new LinearLayout.LayoutParams(-1,dp(62)));TextView b=tv("‹",38,Color.WHITE);b.setGravity(Gravity.CENTER);h.addView(b,new LinearLayout.LayoutParams(dp(52),dp(62)));b.setOnClickListener(v->showHome());TextView t=tv(tx("লেনদেন","Transactions"),21,Color.WHITE);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);h.addView(t,new LinearLayout.LayoutParams(0,dp(62),1));ScrollView sc=new ScrollView(this);LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);list.setPadding(dp(12),dp(12),dp(12),dp(20));sc.addView(list);main.addView(sc,new LinearLayout.LayoutParams(-1,0,1));JSONArray a=panelArray("transaction_history");if(a.length()==0){TextView e=tv(tx("এখনও কোনো লেনদেন নেই","No transactions yet"),17,Color.GRAY);e.setGravity(Gravity.CENTER);list.addView(e,new LinearLayout.LayoutParams(-1,dp(100)));return;}for(int i=0;i<a.length();i++)try{JSONObject o=a.getJSONObject(i);String type=o.optString("type","Transaction"),detail=o.optString("detail",""),time=o.optString("time","");double amount=o.optDouble("amount",0);boolean credit=o.optBoolean("credit",false);LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(16),dp(12),dp(16),dp(12));c.setBackground(bg(Color.WHITE,16));LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.setMargins(0,0,0,dp(10));list.addView(c,cp);LinearLayout r=new LinearLayout(this);r.setGravity(Gravity.CENTER_VERTICAL);TextView tt=tv(type,16,DARK);tt.setTypeface(Typeface.DEFAULT,Typeface.BOLD);r.addView(tt,new LinearLayout.LayoutParams(0,dp(28),1));TextView am=tv((credit?"+ ":"- ")+String.format(Locale.getDefault(),"৳ %.2f",amount),16,credit?Color.rgb(30,150,80):Color.rgb(190,45,45));am.setTypeface(Typeface.DEFAULT,Typeface.BOLD);r.addView(am,new LinearLayout.LayoutParams(-2,dp(28)));c.addView(r);c.addView(tv(detail,13,Color.DKGRAY),new LinearLayout.LayoutParams(-1,dp(26)));c.addView(tv(time+"   •   SUCCESS",11,Color.GRAY),new LinearLayout.LayoutParams(-1,dp(22)));}catch(Exception ignored){}}
-    private void showProfile(){getWindow().setStatusBarColor(BLUE);getWindow().setNavigationBarColor(Color.WHITE);LinearLayout main=new LinearLayout(this);main.setOrientation(LinearLayout.VERTICAL);main.setBackgroundColor(Color.rgb(247,248,250));setContentView(main);LinearLayout h=new LinearLayout(this);h.setGravity(Gravity.CENTER_VERTICAL);h.setBackgroundColor(BLUE);main.addView(h,new LinearLayout.LayoutParams(-1,dp(62)));TextView title=tv(tx("প্রোফাইল","Profile"),24,Color.WHITE);title.setGravity(Gravity.CENTER);title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);h.addView(title,new LinearLayout.LayoutParams(0,dp(62),1));TextView out=tv("⇥",28,Color.WHITE);out.setGravity(Gravity.CENTER);h.addView(out,new LinearLayout.LayoutParams(dp(60),dp(62)));out.setOnClickListener(v->{pref.edit().putBoolean("logged_in",false).apply();showLogin();});ScrollView sc=new ScrollView(this);LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(16),dp(16),dp(16),dp(20));sc.addView(c);main.addView(sc,new LinearLayout.LayoutParams(-1,0,1));LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(20),dp(18),dp(20),dp(18));card.setBackground(bg(Color.WHITE,18));c.addView(card,new LinearLayout.LayoutParams(-1,-2));TextView n=tv(pref.getString("name","Rosy"),25,DARK);n.setTypeface(Typeface.DEFAULT,Typeface.BOLD);card.addView(n,new LinearLayout.LayoutParams(-1,dp(40)));card.addView(tv(pref.getString("phone",""),16,Color.GRAY),new LinearLayout.LayoutParams(-1,dp(30)));card.addView(tv("রেফার কোড: "+getInviteCode(),15,Color.DKGRAY),new LinearLayout.LayoutParams(-1,dp(30)));space(c,12);addProfileItem(c,"🛡",tx("পাসওয়ার্ড পরিবর্তন","Change Password"),v->showForgotPassword());addProfileItem(c,"🛡",tx("পিন পরিবর্তন","Change PIN"),v->showPinSetup());addProfileItem(c,"🎧",tx("কাস্টমার কেয়ার","Customer Care"),v->showCustomerCare());addProfileItem(c,"🌐",tx("আমাদের সম্পর্কে","About Us"),v->showAboutUs());TextView ver=tv("ভার্সন 1.0.0",15,Color.GRAY);ver.setGravity(Gravity.CENTER);c.addView(ver,new LinearLayout.LayoutParams(-1,dp(60)));}
+    private void showProfile(){getWindow().setStatusBarColor(BLUE);getWindow().setNavigationBarColor(Color.WHITE);LinearLayout main=new LinearLayout(this);main.setOrientation(LinearLayout.VERTICAL);main.setBackgroundColor(Color.rgb(247,248,250));setContentView(main);LinearLayout h=new LinearLayout(this);h.setGravity(Gravity.CENTER_VERTICAL);h.setBackgroundColor(BLUE);main.addView(h,new LinearLayout.LayoutParams(-1,dp(62)));TextView title=tv(tx("প্রোফাইল","Profile"),24,Color.WHITE);title.setGravity(Gravity.CENTER);title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);h.addView(title,new LinearLayout.LayoutParams(0,dp(62),1));TextView out=tv("⇥",28,Color.WHITE);out.setGravity(Gravity.CENTER);h.addView(out,new LinearLayout.LayoutParams(dp(60),dp(62)));out.setOnClickListener(v->{pref.edit().putBoolean("logged_in",false).apply();showLogin();});ScrollView sc=new ScrollView(this);LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(16),dp(16),dp(16),dp(20));sc.addView(c);main.addView(sc,new LinearLayout.LayoutParams(-1,0,1));LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(20),dp(18),dp(20),dp(18));card.setBackground(bg(Color.WHITE,18));c.addView(card,new LinearLayout.LayoutParams(-1,-2));TextView n=tv(pref.getString("name","Rosy"),25,DARK);n.setTypeface(Typeface.DEFAULT,Typeface.BOLD);card.addView(n,new LinearLayout.LayoutParams(-1,dp(40)));card.addView(tv(pref.getString("phone",""),16,Color.GRAY),new LinearLayout.LayoutParams(-1,dp(30)));card.addView(tv("রেফার কোড: "+getInviteCode(),15,Color.DKGRAY),new LinearLayout.LayoutParams(-1,dp(30)));space(c,12);addProfileItem(c,"🛡",tx("পাসওয়ার্ড পরিবর্তন","Change Password"),v->showChangePassword());addProfileItem(c,"🛡",tx("পিন পরিবর্তন","Change PIN"),v->showChangePin());addProfileItem(c,"🎧",tx("কাস্টমার কেয়ার","Customer Care"),v->showCustomerCare());addProfileItem(c,"🌐",tx("আমাদের সম্পর্কে","About Us"),v->showAboutUs());TextView ver=tv("ভার্সন 1.0.0",15,Color.GRAY);ver.setGravity(Gravity.CENTER);c.addView(ver,new LinearLayout.LayoutParams(-1,dp(60)));}
     private void showAboutUs(){getWindow().setStatusBarColor(BLUE);getWindow().setNavigationBarColor(Color.WHITE);LinearLayout main=new LinearLayout(this);main.setOrientation(LinearLayout.VERTICAL);main.setBackgroundColor(Color.rgb(247,248,250));setContentView(main);LinearLayout h=new LinearLayout(this);h.setGravity(Gravity.CENTER_VERTICAL);h.setBackgroundColor(BLUE);main.addView(h,new LinearLayout.LayoutParams(-1,dp(62)));TextView b=tv("‹",38,Color.WHITE);b.setGravity(Gravity.CENTER);h.addView(b,new LinearLayout.LayoutParams(dp(52),dp(62)));b.setOnClickListener(v->showProfile());TextView t=tv(tx("আমাদের সম্পর্কে","About Us"),21,Color.WHITE);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);h.addView(t,new LinearLayout.LayoutParams(0,dp(62),1));ScrollView sc=new ScrollView(this);LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(16),dp(16),dp(16),dp(30));sc.addView(c);main.addView(sc,new LinearLayout.LayoutParams(-1,0,1));String[] keys={"about_company_name","about_intro","about_status","about_license","about_registration","about_validity","about_address","about_phone","about_extra"};String[] labels={"প্রতিষ্ঠানের নাম","পরিচিতি","প্রতিষ্ঠানের ধরন/স্ট্যাটাস","লাইসেন্স তথ্য","রেজিস্ট্রেশন তথ্য","লাইসেন্স/রেজিস্ট্রেশনের মেয়াদ","ঠিকানা","যোগাযোগ","অতিরিক্ত তথ্য"};int added=0;for(int i=0;i<keys.length;i++){String v=pref.getString(keys[i],"");if(v.trim().isEmpty())continue;added++;TextView l=tv(labels[i],13,BLUE);l.setTypeface(Typeface.DEFAULT,Typeface.BOLD);c.addView(l,new LinearLayout.LayoutParams(-1,dp(26)));TextView val=tv(v,16,DARK);val.setPadding(dp(14),dp(12),dp(14),dp(12));val.setBackground(bg(Color.WHITE,14));c.addView(val,new LinearLayout.LayoutParams(-1,-2));space(c,10);}if(added==0){TextView v=tv(tx("আমাদের সম্পর্কে তথ্য Panel থেকে যোগ করা হবে।","About information will be provided from the panel."),16,Color.GRAY);c.addView(v,new LinearLayout.LayoutParams(-1,dp(100)));}}
 
     /* =========================================================
@@ -927,9 +927,9 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(0,dp(62),1)
         );
 
-        TextView bal =
+        final TextView bal =
                 tv(
-                        "Main Balance  ৳ ১২,৫০০\nDrive Balance  ৳ ১৮০",
+                        "",
                         12,
                         DARK
                 );
@@ -937,6 +937,28 @@ public class MainActivity extends Activity {
         bal.setGravity(Gravity.CENTER);
         bal.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
         bal.setBackground(bg(YELLOW,30));
+
+        final boolean[] balanceVisible = {pref.getBoolean("balance_visible", false)};
+
+        Runnable refreshBalance = () -> {
+            if (balanceVisible[0]) {
+                bal.setText(
+                        "Main Balance  ৳ " + formatMoney(getMainBalance())
+                                + "\nDrive Balance  ৳ " + formatMoney(getDriveBalance())
+                                + "  👁"
+                );
+            } else {
+                bal.setText("Main Balance  • • • •  /  Drive Balance  • • • •  👁");
+            }
+        };
+
+        refreshBalance.run();
+
+        bal.setOnClickListener(v -> {
+            balanceVisible[0] = !balanceVisible[0];
+            pref.edit().putBoolean("balance_visible", balanceVisible[0]).apply();
+            refreshBalance.run();
+        });
 
         user.addView(
                 bal,
@@ -1935,6 +1957,15 @@ public class MainActivity extends Activity {
        BILL BALANCE
        ========================================================= */
 
+    private double getDriveBalance() {
+        String saved = pref.getString("drive_balance", "0");
+        try {
+            return Double.parseDouble(saved);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
     private double getMainBalance() {
 
         String saved =
@@ -2717,7 +2748,7 @@ public class MainActivity extends Activity {
         header.addView(back,new LinearLayout.LayoutParams(dp(52),dp(62)));
         back.setOnClickListener(v -> showHome());
 
-        TextView title = tv("বিশেষ অফার",21,Color.WHITE);
+        TextView title = tv(tx("বিশেষ অফার","Special Offers"),21,Color.WHITE);
         title.setGravity(Gravity.CENTER);
         title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
         header.addView(title,new LinearLayout.LayoutParams(0,dp(62),1));
@@ -2730,72 +2761,224 @@ public class MainActivity extends Activity {
         scroll.addView(content);
         main.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
 
-        TextView intro = tv("📱  সিমের বিশেষ অফার",18,DARK);
+        TextView intro = tv(tx("অফার নির্বাচন করুন","Select Offer"),18,DARK);
         intro.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
-        intro.setPadding(dp(4),dp(2),dp(4),dp(10));
-        content.addView(intro,new LinearLayout.LayoutParams(-1,dp(45)));
+        intro.setPadding(dp(4),0,dp(4),dp(10));
+        content.addView(intro,new LinearLayout.LayoutParams(-1,dp(42)));
 
-        JSONArray offers = getSpecialOfferData();
-        String[] operators = {"গ্রামীণফোন","বাংলালিংক","Airtel","Robi","Teletalk"};
+        final String[] operators = {"গ্রামীণফোন","বাংলালিংক","Robi","Airtel","Teletalk"};
+        final JSONArray offers = getSpecialOfferData();
 
-        for (String operator : operators) {
-            boolean hasOffer = false;
+        HorizontalScrollView opScroll = new HorizontalScrollView(this);
+        opScroll.setHorizontalScrollBarEnabled(false);
+        LinearLayout opRow = new LinearLayout(this);
+        opRow.setPadding(dp(2),0,dp(2),dp(8));
+        opScroll.addView(opRow);
+        content.addView(opScroll,new LinearLayout.LayoutParams(-1,dp(66)));
+
+        LinearLayout offerList = new LinearLayout(this);
+        offerList.setOrientation(LinearLayout.VERTICAL);
+        content.addView(offerList,new LinearLayout.LayoutParams(-1,-2));
+
+        final TextView[] tabs = new TextView[operators.length];
+
+        Runnable[] render = new Runnable[1];
+        final String[] selected = {operators[0]};
+
+        render[0] = () -> {
+            offerList.removeAllViews();
+
+            TextView selectedLabel = tv(
+                    tx("অফার নির্বাচন করুন","Choose an offer"),
+                    16,
+                    DARK
+            );
+            selectedLabel.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+            selectedLabel.setPadding(dp(4),dp(2),dp(4),dp(10));
+            offerList.addView(selectedLabel,new LinearLayout.LayoutParams(-1,dp(38)));
+
+            int count = 0;
+
             for (int i=0;i<offers.length();i++) {
-                JSONObject o=offers.optJSONObject(i);
-                if (o!=null && offerVisible(o) && operator.equalsIgnoreCase(offerText(o,"operator"))) { hasOffer=true; break; }
-            }
-            if (!hasOffer) continue;
+                JSONObject o = offers.optJSONObject(i);
+                if (o == null || !offerVisible(o)) continue;
 
-            TextView opTitle = tv(operator,18,BLUE);
-            opTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
-            opTitle.setPadding(dp(4),dp(8),dp(4),dp(8));
-            content.addView(opTitle,new LinearLayout.LayoutParams(-1,dp(42)));
+                String operator = offerText(o,"operator");
+                if (!selected[0].equalsIgnoreCase(operator)) continue;
 
-            for (int i=0;i<offers.length();i++) {
-                JSONObject o=offers.optJSONObject(i);
-                if (o==null || !offerVisible(o) || !operator.equalsIgnoreCase(offerText(o,"operator"))) continue;
+                count++;
 
                 LinearLayout card = new LinearLayout(this);
                 card.setOrientation(LinearLayout.VERTICAL);
-                card.setPadding(dp(15),dp(13),dp(15),dp(13));
-                card.setBackground(bg(Color.WHITE,16));
-                LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);
+                card.setPadding(dp(16),dp(14),dp(16),dp(14));
+                card.setBackground(outline(Color.WHITE,Color.rgb(225,228,232),16));
+
+                LinearLayout.LayoutParams cp =
+                        new LinearLayout.LayoutParams(-1,-2);
                 cp.setMargins(0,0,0,dp(10));
-                content.addView(card,cp);
+                offerList.addView(card,cp);
 
-                String logo=offerText(o,"logo");
-                TextView name=tv((logo.isEmpty()?"📱  ":logo+"  ")+operator,16,DARK);
+                String logo = offerText(o,"logo");
+                String offerName = offerText(o,"offer_name");
+                TextView name = tv(
+                        (logo.isEmpty() ? "📱 " : logo+"  ")
+                                + (offerName.isEmpty() ? selected[0] : offerName),
+                        17,
+                        DARK
+                );
                 name.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
-                card.addView(name);
+                card.addView(name,new LinearLayout.LayoutParams(-1,dp(32)));
 
-                String data=offerText(o,"data"), minutes=offerText(o,"minutes"), sms=offerText(o,"sms");
-                if(!data.isEmpty()) { TextView x=tv("📶  "+data,15,DARK); x.setPadding(0,dp(9),0,0); card.addView(x); }
-                if(!minutes.isEmpty()) { TextView x=tv("📞  "+minutes,15,DARK); x.setPadding(0,dp(5),0,0); card.addView(x); }
-                if(!sms.isEmpty()) { TextView x=tv("✉  "+sms,15,DARK); x.setPadding(0,dp(5),0,0); card.addView(x); }
+                String data = offerText(o,"data");
+                String minutes = offerText(o,"minutes");
+                String sms = offerText(o,"sms");
+                String price = offerText(o,"price");
+                String bonus = offerText(o,"bonus");
+                String validity = offerText(o,"validity");
+                String description = offerText(o,"description");
 
-                String price=offerText(o,"price"), bonus=offerText(o,"bonus"), validity=offerText(o,"validity"), description=offerText(o,"description");
-                if(!price.isEmpty()) { TextView x=tv("মূল্য: ৳ "+price,16,BLUE); x.setTypeface(Typeface.DEFAULT,Typeface.BOLD); x.setPadding(0,dp(9),0,0); card.addView(x); }
-                if(!bonus.isEmpty() && !bonus.equals("0")) { TextView x=tv("🎁 বোনাস: ৳ "+bonus,15,GREEN); x.setTypeface(Typeface.DEFAULT,Typeface.BOLD); x.setPadding(0,dp(5),0,0); card.addView(x); }
-                if(!validity.isEmpty()) { TextView x=tv("মেয়াদ: "+validity,14,Color.DKGRAY); x.setPadding(0,dp(5),0,0); card.addView(x); }
-                if(!description.isEmpty()) { TextView x=tv(description,13,Color.GRAY); x.setPadding(0,dp(7),0,dp(7)); card.addView(x); }
+                StringBuilder mainLine = new StringBuilder();
+                if (!data.isEmpty()) mainLine.append(data);
+                if (!minutes.isEmpty()) {
+                    if (mainLine.length() > 0) mainLine.append("  ");
+                    mainLine.append(minutes);
+                }
+                if (!sms.isEmpty()) {
+                    if (mainLine.length() > 0) mainLine.append("  ");
+                    mainLine.append(sms);
+                }
 
-                TextView take=button("অফার নিন",GREEN,Color.WHITE);
-                card.addView(take,new LinearLayout.LayoutParams(-1,dp(50)));
+                if (mainLine.length() > 0) {
+                    TextView x = tv(mainLine.toString(),16,DARK);
+                    x.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+                    card.addView(x,new LinearLayout.LayoutParams(-1,dp(34)));
+                }
+
+                if (!validity.isEmpty()) {
+                    TextView x = tv(
+                            tx("মেয়াদ: ","Validity: ") + validity,
+                            14,
+                            Color.DKGRAY
+                    );
+                    card.addView(x,new LinearLayout.LayoutParams(-1,dp(26)));
+                }
+
+                LinearLayout priceRow = new LinearLayout(this);
+                priceRow.setGravity(Gravity.CENTER_VERTICAL);
+
+                if (!price.isEmpty()) {
+                    TextView x = tv("৳ "+price,19,BLUE);
+                    x.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+                    priceRow.addView(x,new LinearLayout.LayoutParams(0,dp(34),1));
+                } else {
+                    priceRow.addView(new Space(this),new LinearLayout.LayoutParams(0,dp(34),1));
+                }
+
+                if (!bonus.isEmpty() && !bonus.equals("0")) {
+                    TextView x = tv(
+                            tx("বোনাস ৳ "+bonus,"Bonus ৳ "+bonus),
+                            14,
+                            GREEN
+                    );
+                    x.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+                    priceRow.addView(x,new LinearLayout.LayoutParams(-2,dp(34)));
+                }
+
+                card.addView(priceRow);
+
+                if (!description.isEmpty()) {
+                    TextView x = tv(description,13,Color.GRAY);
+                    x.setPadding(0,dp(4),0,dp(7));
+                    card.addView(x,new LinearLayout.LayoutParams(-1,-2));
+                }
+
+                TextView take = button(
+                        tx("অফার নিন","Get Offer"),
+                        GREEN,
+                        Color.WHITE
+                );
+                card.addView(take,new LinearLayout.LayoutParams(-1,dp(48)));
+
+                final String fOperator = selected[0];
+                final String fData = data;
+                final String fMinutes = minutes;
+                final String fPrice = price;
+                final String fBonus = bonus;
+                final String fValidity = validity;
+
                 take.setOnClickListener(v -> {
-                    String msg="অপারেটর: "+operator
-                            +(data.isEmpty()?"":"\n"+data)
-                            +(minutes.isEmpty()?"":"\n"+minutes)
-                            +(sms.isEmpty()?"":"\n"+sms)
-                            +(price.isEmpty()?"":"\nমূল্য: ৳ "+price)
-                            +(bonus.isEmpty()||bonus.equals("0")?"":"\nবোনাস: ৳ "+bonus)
-                            +(validity.isEmpty()?"":"\nমেয়াদ: "+validity);
-                    double offerAmount=0; try{offerAmount=Double.parseDouble(price);}catch(Exception ignored){}
-                    recordTransaction("বিশেষ অফার",operator+" / "+data+" / "+minutes,offerAmount,false);
-                    new AlertDialog.Builder(this).setTitle("অফার").setMessage(msg)
-                            .setNegativeButton("বন্ধ",null).setPositiveButton("ঠিক আছে",null).show();
+                    double amount = 0;
+                    try { amount = Double.parseDouble(fPrice); }
+                    catch (Exception ignored) {}
+
+                    recordTransaction(
+                            "বিশেষ অফার",
+                            fOperator+" / "+fData+" / "+fMinutes,
+                            amount,
+                            false
+                    );
+
+                    String msg = fOperator
+                            + (fData.isEmpty() ? "" : "\n"+fData)
+                            + (fMinutes.isEmpty() ? "" : "\n"+fMinutes)
+                            + (fPrice.isEmpty() ? "" : "\nমূল্য: ৳ "+fPrice)
+                            + (fBonus.isEmpty() || fBonus.equals("0") ? "" : "\nবোনাস: ৳ "+fBonus)
+                            + (fValidity.isEmpty() ? "" : "\nমেয়াদ: "+fValidity);
+
+                    new AlertDialog.Builder(this)
+                            .setTitle(tx("অফার","Offer"))
+                            .setMessage(msg)
+                            .setNegativeButton(tx("বন্ধ","Close"),null)
+                            .setPositiveButton(tx("ঠিক আছে","OK"),null)
+                            .show();
                 });
             }
+
+            if (count == 0) {
+                TextView empty = tv(
+                        tx("এই অপারেটরের কোনো অফার নেই","No offers available for this operator"),
+                        15,
+                        Color.GRAY
+                );
+                empty.setGravity(Gravity.CENTER);
+                offerList.addView(empty,new LinearLayout.LayoutParams(-1,dp(90)));
+            }
+        };
+
+        for (int i=0;i<operators.length;i++) {
+            final int index = i;
+            TextView tab = tv(operators[i],14,DARK);
+            tab.setGravity(Gravity.CENTER);
+            tab.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+            tab.setPadding(dp(14),0,dp(14),0);
+            opRow.addView(
+                    tab,
+                    new LinearLayout.LayoutParams(dp(118),dp(48))
+            );
+            tabs[i] = tab;
+
+            tab.setOnClickListener(v -> {
+                selected[0] = operators[index];
+                for (int j=0;j<tabs.length;j++) {
+                    if (j == index) {
+                        tabs[j].setTextColor(BLUE);
+                        tabs[j].setBackground(outline(Color.WHITE,BLUE,22));
+                    } else {
+                        tabs[j].setTextColor(DARK);
+                        tabs[j].setBackground(bg(Color.WHITE,22));
+                    }
+                }
+                render[0].run();
+            });
         }
+
+        tabs[0].setTextColor(BLUE);
+        tabs[0].setBackground(outline(Color.WHITE,BLUE,22));
+        for (int i=1;i<tabs.length;i++) {
+            tabs[i].setBackground(bg(Color.WHITE,22));
+        }
+
+        render[0].run();
     }
 
     /* =========================================================
@@ -5892,36 +6075,110 @@ public class MainActivity extends Activity {
        FORGOT PASSWORD
        ========================================================= */
 
+    private void showChangePassword() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(8),dp(4),dp(8),0);
+
+        EditText current = input(tx("বর্তমান পাসওয়ার্ড","Current Password"),true);
+        EditText next = input(tx("নতুন পাসওয়ার্ড","New Password"),true);
+        EditText confirm = input(tx("নতুন পাসওয়ার্ড আবার দিন","Confirm New Password"),true);
+
+        box.addView(current,new LinearLayout.LayoutParams(-1,dp(58)));
+        space(box,10);
+        box.addView(next,new LinearLayout.LayoutParams(-1,dp(58)));
+        space(box,10);
+        box.addView(confirm,new LinearLayout.LayoutParams(-1,dp(58)));
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(tx("পাসওয়ার্ড পরিবর্তন","Change Password"))
+                .setView(box)
+                .setNegativeButton(tx("বাতিল","Cancel"),null)
+                .setPositiveButton(tx("সাবমিট","Submit"),null)
+                .create();
+
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String oldPass = current.getText().toString();
+            String newPass = next.getText().toString();
+            String confirmPass = confirm.getText().toString();
+            String saved = pref.getString("password","");
+
+            if (oldPass.isEmpty()) {
+                current.setError(tx("বর্তমান পাসওয়ার্ড দিন","Enter current password"));
+                return;
+            }
+            if (!saved.isEmpty() && !saved.equals(oldPass)) {
+                current.setError(tx("বর্তমান পাসওয়ার্ড সঠিক নয়","Current password is incorrect"));
+                return;
+            }
+            if (newPass.length() < 4) {
+                next.setError(tx("কমপক্ষে ৪ অক্ষর দিন","Use at least 4 characters"));
+                return;
+            }
+            if (!newPass.equals(confirmPass)) {
+                confirm.setError(tx("পাসওয়ার্ড মিলছে না","Passwords do not match"));
+                return;
+            }
+
+            pref.edit().putString("password",newPass).apply();
+            dialog.dismiss();
+            Toast.makeText(this,tx("পাসওয়ার্ড পরিবর্তন হয়েছে","Password changed successfully"),Toast.LENGTH_SHORT).show();
+        }));
+
+        dialog.show();
+    }
+
+    private void showChangePin() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(8),dp(4),dp(8),0);
+
+        EditText current = pinInput(tx("বর্তমান ৮ ডিজিট PIN","Current 8-digit PIN"));
+        EditText next = pinInput(tx("নতুন ৮ ডিজিট PIN","New 8-digit PIN"));
+        EditText confirm = pinInput(tx("নতুন PIN আবার দিন","Confirm New PIN"));
+
+        box.addView(current,new LinearLayout.LayoutParams(-1,dp(58)));
+        space(box,10);
+        box.addView(next,new LinearLayout.LayoutParams(-1,dp(58)));
+        space(box,10);
+        box.addView(confirm,new LinearLayout.LayoutParams(-1,dp(58)));
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(tx("PIN পরিবর্তন","Change PIN"))
+                .setView(box)
+                .setNegativeButton(tx("বাতিল","Cancel"),null)
+                .setPositiveButton(tx("সাবমিট","Submit"),null)
+                .create();
+
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String oldPin = current.getText().toString().trim();
+            String newPin = next.getText().toString().trim();
+            String confirmPin = confirm.getText().toString().trim();
+            String saved = pref.getString("pin","");
+
+            if (!saved.isEmpty() && !saved.equals(oldPin)) {
+                current.setError(tx("বর্তমান PIN সঠিক নয়","Current PIN is incorrect"));
+                return;
+            }
+            if (newPin.length() != 8) {
+                next.setError(tx("৮ ডিজিটের PIN দিন","Enter an 8-digit PIN"));
+                return;
+            }
+            if (!newPin.equals(confirmPin)) {
+                confirm.setError(tx("PIN মিলছে না","PINs do not match"));
+                return;
+            }
+
+            pref.edit().putString("pin",newPin).apply();
+            dialog.dismiss();
+            Toast.makeText(this,tx("PIN পরিবর্তন হয়েছে","PIN changed successfully"),Toast.LENGTH_SHORT).show();
+        }));
+
+        dialog.show();
+    }
+
     private void showForgotPassword() {
-
-        final EditText p = new EditText(this);
-
-        p.setHint("ফোন নম্বর");
-
-        p.setInputType(
-                InputType.TYPE_CLASS_PHONE
-        );
-
-        new AlertDialog.Builder(this)
-                .setTitle("পাসওয়ার্ড পুনরুদ্ধার")
-                .setMessage(
-                        "আপনার রেজিস্টার করা ফোন নম্বর দিন।"
-                )
-                .setView(p)
-                .setPositiveButton(
-                        "পরবর্তী",
-                        (d,w) ->
-                                Toast.makeText(
-                                        this,
-                                        "পাসওয়ার্ড রিসেট ফিচার পরে যুক্ত হবে",
-                                        Toast.LENGTH_SHORT
-                                ).show()
-                )
-                .setNegativeButton(
-                        "বাতিল",
-                        null
-                )
-                .show();
+        showChangePassword();
     }
 
     /* =========================================================
