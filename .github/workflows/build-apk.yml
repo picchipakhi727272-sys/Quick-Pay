@@ -38,6 +38,7 @@ jobs:
       - name: Create Android Debug Keystore
         run: |
           mkdir -p "$HOME/.config/.android"
+          mkdir -p "$HOME/.android"
 
           keytool -genkeypair \
             -v \
@@ -50,10 +51,11 @@ jobs:
             -validity 10000 \
             -dname "CN=Android Debug,O=Android,C=US"
 
+          cp "$HOME/.config/.android/debug.keystore" \
+             "$HOME/.android/debug.keystore"
+
       - name: Get SHA-1
         run: |
-          ./gradlew :app:signingReport
-
           echo "=============================="
           echo "QUICK PAY SHA-1"
           echo "=============================="
@@ -66,7 +68,7 @@ jobs:
 
       - name: Build Quick Pay APK
         run: |
-          ./gradlew :app:assembleDebug --no-daemon
+          gradle :app:assembleDebug --no-daemon
 
       - name: Upload Quick Pay APK
         uses: actions/upload-artifact@v4
