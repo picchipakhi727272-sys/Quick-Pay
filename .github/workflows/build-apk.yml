@@ -21,21 +21,26 @@ jobs:
           java-version: '17'
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@v3
 
       - name: Install Android SDK packages
         run: |
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
-          yes | sdkmanager --licenses
+          yes | sdkmanager --licenses || true
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
+      - name: Get SHA-1
+        run: |
+          chmod +x ./gradlew
+          ./gradlew signingReport
+
       - name: Build Quick Pay APK
         run: |
-          gradle :app:assembleDebug --no-daemon
+          ./gradlew :app:assembleDebug --no-daemon
 
       - name: Upload Quick Pay APK
         uses: actions/upload-artifact@v4
