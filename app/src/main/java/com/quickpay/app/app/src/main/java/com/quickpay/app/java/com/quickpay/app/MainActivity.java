@@ -3,10 +3,13 @@ package com.quickpay.app;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
+import android.view.View;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.InputType;
@@ -188,6 +191,25 @@ public class MainActivity extends Activity {
     }
 
     /* =========================================================
+       USER REQUESTED FEATURES
+       ========================================================= */
+    private boolean isEnglish(){return pref.getBoolean("language_english",false);}
+    private String tx(String bn,String en){return isEnglish()?en:bn;}
+    private void toggleLanguage(){pref.edit().putBoolean("language_english",!isEnglish()).apply();if(pref.getBoolean("logged_in",false))showHome();else showLogin();}
+    private String now(){return new SimpleDateFormat("dd/MM/yyyy hh:mm a",Locale.getDefault()).format(new Date());}
+    private void recordTransaction(String type,String detail,double amount,boolean credit){try{JSONArray a=new JSONArray(pref.getString("transaction_history","[]"));JSONObject o=new JSONObject();o.put("type",type);o.put("detail",detail);o.put("amount",amount);o.put("credit",credit);o.put("status","SUCCESS");o.put("time",now());a.put(0,o);pref.edit().putString("transaction_history",a.toString()).apply();}catch(Exception ignored){}}
+    private String panelText(String key,String fallback){String v=pref.getString(key,"");return v.trim().isEmpty()?fallback:v;}
+    private JSONArray panelArray(String key){try{return new JSONArray(pref.getString(key,"[]"));}catch(Exception e){return new JSONArray();}}
+    private void openExternal(String url){try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));}catch(Exception e){Toast.makeText(this,tx("লিংকটি খোলা যাচ্ছে না","Unable to open link"),Toast.LENGTH_SHORT).show();}}
+    private void addLiveActivityTicker(LinearLayout header){
+        LinearLayout live=new LinearLayout(this);live.setGravity(Gravity.CENTER_VERTICAL);live.setBackground(bg(Color.WHITE,14));live.setPadding(dp(8),0,dp(8),0);TextView badge=tv("● LIVE",12,Color.rgb(30,170,85));badge.setTypeface(Typeface.DEFAULT,Typeface.BOLD);live.addView(badge,new LinearLayout.LayoutParams(dp(62),dp(38)));TextView a=tv("",12,Color.DKGRAY);a.setSingleLine(true);a.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE);a.setMarqueeRepeatLimit(-1);a.setSelected(true);live.addView(a,new LinearLayout.LayoutParams(0,dp(38),1));header.addView(live,new LinearLayout.LayoutParams(-1,dp(38)));JSONArray data=panelArray("live_activity_messages");if(data.length()==0){data=new JSONArray();try{data.put("রাকিব রহমান (016********) ৭৯৯ টাকা Airtel রিচার্জ করলেন");data.put("সুমাইয়া আক্তার (017********) ৫০০ টাকা অ্যাড মানি করলেন");data.put("মোঃ হাসান (018********) ৩০০ টাকা ক্যাশ আউট করলেন");}catch(Exception ignored){}}final JSONArray d=data;final int[] ix={0};try{a.setText(d.getString(0));}catch(Exception ignored){}a.postDelayed(new Runnable(){public void run(){if(d.length()>0){try{a.setText(d.getString(ix[0]%d.length()));}catch(Exception ignored){}ix[0]++;}a.postDelayed(this,3500);}},3500);
+    }
+    private void addProfileItem(LinearLayout parent,String icon,String text,View.OnClickListener click){LinearLayout r=new LinearLayout(this);r.setGravity(Gravity.CENTER_VERTICAL);r.setPadding(dp(14),0,dp(10),0);r.setBackground(bg(Color.WHITE,14));TextView i=tv(icon,22,DARK);i.setGravity(Gravity.CENTER);r.addView(i,new LinearLayout.LayoutParams(dp(55),dp(62)));TextView t=tv(text,18,DARK);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);r.addView(t,new LinearLayout.LayoutParams(0,dp(62),1));TextView a=tv("›",30,Color.GRAY);a.setGravity(Gravity.CENTER);r.addView(a,new LinearLayout.LayoutParams(dp(35),dp(62)));parent.addView(r,new LinearLayout.LayoutParams(-1,dp(62)));space(parent,1);r.setOnClickListener(click);}
+    private void showTransactionHistory(){getWindow().setStatusBarColor(BLUE);getWindow().setNavigationBarColor(Color.WHITE);LinearLayout main=new LinearLayout(this);main.setOrientation(LinearLayout.VERTICAL);main.setBackgroundColor(Color.rgb(247,248,250));setContentView(main);LinearLayout h=new LinearLayout(this);h.setGravity(Gravity.CENTER_VERTICAL);h.setBackgroundColor(BLUE);main.addView(h,new LinearLayout.LayoutParams(-1,dp(62)));TextView b=tv("‹",38,Color.WHITE);b.setGravity(Gravity.CENTER);h.addView(b,new LinearLayout.LayoutParams(dp(52),dp(62)));b.setOnClickListener(v->showHome());TextView t=tv(tx("লেনদেন","Transactions"),21,Color.WHITE);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);h.addView(t,new LinearLayout.LayoutParams(0,dp(62),1));ScrollView sc=new ScrollView(this);LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);list.setPadding(dp(12),dp(12),dp(12),dp(20));sc.addView(list);main.addView(sc,new LinearLayout.LayoutParams(-1,0,1));JSONArray a=panelArray("transaction_history");if(a.length()==0){TextView e=tv(tx("এখনও কোনো লেনদেন নেই","No transactions yet"),17,Color.GRAY);e.setGravity(Gravity.CENTER);list.addView(e,new LinearLayout.LayoutParams(-1,dp(100)));return;}for(int i=0;i<a.length();i++)try{JSONObject o=a.getJSONObject(i);String type=o.optString("type","Transaction"),detail=o.optString("detail",""),time=o.optString("time","");double amount=o.optDouble("amount",0);boolean credit=o.optBoolean("credit",false);LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(16),dp(12),dp(16),dp(12));c.setBackground(bg(Color.WHITE,16));LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.setMargins(0,0,0,dp(10));list.addView(c,cp);LinearLayout r=new LinearLayout(this);r.setGravity(Gravity.CENTER_VERTICAL);TextView tt=tv(type,16,DARK);tt.setTypeface(Typeface.DEFAULT,Typeface.BOLD);r.addView(tt,new LinearLayout.LayoutParams(0,dp(28),1));TextView am=tv((credit?"+ ":"- ")+String.format(Locale.getDefault(),"৳ %.2f",amount),16,credit?Color.rgb(30,150,80):Color.rgb(190,45,45));am.setTypeface(Typeface.DEFAULT,Typeface.BOLD);r.addView(am,new LinearLayout.LayoutParams(-2,dp(28)));c.addView(r);c.addView(tv(detail,13,Color.DKGRAY),new LinearLayout.LayoutParams(-1,dp(26)));c.addView(tv(time+"   •   SUCCESS",11,Color.GRAY),new LinearLayout.LayoutParams(-1,dp(22)));}catch(Exception ignored){}}
+    private void showProfile(){getWindow().setStatusBarColor(BLUE);getWindow().setNavigationBarColor(Color.WHITE);LinearLayout main=new LinearLayout(this);main.setOrientation(LinearLayout.VERTICAL);main.setBackgroundColor(Color.rgb(247,248,250));setContentView(main);LinearLayout h=new LinearLayout(this);h.setGravity(Gravity.CENTER_VERTICAL);h.setBackgroundColor(BLUE);main.addView(h,new LinearLayout.LayoutParams(-1,dp(62)));TextView title=tv(tx("প্রোফাইল","Profile"),24,Color.WHITE);title.setGravity(Gravity.CENTER);title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);h.addView(title,new LinearLayout.LayoutParams(0,dp(62),1));TextView out=tv("⇥",28,Color.WHITE);out.setGravity(Gravity.CENTER);h.addView(out,new LinearLayout.LayoutParams(dp(60),dp(62)));out.setOnClickListener(v->{pref.edit().putBoolean("logged_in",false).apply();showLogin();});ScrollView sc=new ScrollView(this);LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(16),dp(16),dp(16),dp(20));sc.addView(c);main.addView(sc,new LinearLayout.LayoutParams(-1,0,1));LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(20),dp(18),dp(20),dp(18));card.setBackground(bg(Color.WHITE,18));c.addView(card,new LinearLayout.LayoutParams(-1,-2));TextView n=tv(pref.getString("name","Rosy"),25,DARK);n.setTypeface(Typeface.DEFAULT,Typeface.BOLD);card.addView(n,new LinearLayout.LayoutParams(-1,dp(40)));card.addView(tv(pref.getString("phone",""),16,Color.GRAY),new LinearLayout.LayoutParams(-1,dp(30)));card.addView(tv("রেফার কোড: "+getInviteCode(),15,Color.DKGRAY),new LinearLayout.LayoutParams(-1,dp(30)));space(c,12);addProfileItem(c,"🛡",tx("পাসওয়ার্ড পরিবর্তন","Change Password"),v->showForgotPassword());addProfileItem(c,"🛡",tx("পিন পরিবর্তন","Change PIN"),v->showPinSetup());addProfileItem(c,"🎧",tx("কাস্টমার কেয়ার","Customer Care"),v->showCustomerCare());addProfileItem(c,"🌐",tx("আমাদের সম্পর্কে","About Us"),v->showAboutUs());TextView ver=tv("ভার্সন 1.0.0",15,Color.GRAY);ver.setGravity(Gravity.CENTER);c.addView(ver,new LinearLayout.LayoutParams(-1,dp(60)));}
+    private void showAboutUs(){getWindow().setStatusBarColor(BLUE);getWindow().setNavigationBarColor(Color.WHITE);LinearLayout main=new LinearLayout(this);main.setOrientation(LinearLayout.VERTICAL);main.setBackgroundColor(Color.rgb(247,248,250));setContentView(main);LinearLayout h=new LinearLayout(this);h.setGravity(Gravity.CENTER_VERTICAL);h.setBackgroundColor(BLUE);main.addView(h,new LinearLayout.LayoutParams(-1,dp(62)));TextView b=tv("‹",38,Color.WHITE);b.setGravity(Gravity.CENTER);h.addView(b,new LinearLayout.LayoutParams(dp(52),dp(62)));b.setOnClickListener(v->showProfile());TextView t=tv(tx("আমাদের সম্পর্কে","About Us"),21,Color.WHITE);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);h.addView(t,new LinearLayout.LayoutParams(0,dp(62),1));ScrollView sc=new ScrollView(this);LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(16),dp(16),dp(16),dp(30));sc.addView(c);main.addView(sc,new LinearLayout.LayoutParams(-1,0,1));String[] keys={"about_company_name","about_intro","about_status","about_license","about_registration","about_validity","about_address","about_phone","about_extra"};String[] labels={"প্রতিষ্ঠানের নাম","পরিচিতি","প্রতিষ্ঠানের ধরন/স্ট্যাটাস","লাইসেন্স তথ্য","রেজিস্ট্রেশন তথ্য","লাইসেন্স/রেজিস্ট্রেশনের মেয়াদ","ঠিকানা","যোগাযোগ","অতিরিক্ত তথ্য"};int added=0;for(int i=0;i<keys.length;i++){String v=pref.getString(keys[i],"");if(v.trim().isEmpty())continue;added++;TextView l=tv(labels[i],13,BLUE);l.setTypeface(Typeface.DEFAULT,Typeface.BOLD);c.addView(l,new LinearLayout.LayoutParams(-1,dp(26)));TextView val=tv(v,16,DARK);val.setPadding(dp(14),dp(12),dp(14),dp(12));val.setBackground(bg(Color.WHITE,14));c.addView(val,new LinearLayout.LayoutParams(-1,-2));space(c,10);}if(added==0){TextView v=tv(tx("আমাদের সম্পর্কে তথ্য Panel থেকে যোগ করা হবে।","About information will be provided from the panel."),16,Color.GRAY);c.addView(v,new LinearLayout.LayoutParams(-1,dp(100)));}}
+
+    /* =========================================================
        LOGIN
        ========================================================= */
 
@@ -217,11 +239,12 @@ public class MainActivity extends Activity {
 
         setContentView(scroll);
 
-        TextView lang = tv("বাংলা     EN",16,Color.WHITE);
+        TextView lang = tv(isEnglish()?"BN     English":"বাংলা     EN",16,Color.WHITE);
 
         lang.setGravity(Gravity.CENTER);
         lang.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
         lang.setBackground(bg(Color.rgb(55,130,205),40));
+        lang.setOnClickListener(v -> toggleLanguage());
 
         LinearLayout.LayoutParams lp =
                 new LinearLayout.LayoutParams(
@@ -810,17 +833,7 @@ public class MainActivity extends Activity {
         parent.addView(b,p);
     }
 
-    private void nav(LinearLayout parent,String s) {
-
-        TextView n = tv(s,14,DARK);
-
-        n.setGravity(Gravity.CENTER);
-
-        parent.addView(
-                n,
-                new LinearLayout.LayoutParams(0,dp(58),1)
-        );
-    }
+    private void nav(LinearLayout parent,String s,View.OnClickListener click){TextView n=tv(s,14,DARK);n.setGravity(Gravity.CENTER);parent.addView(n,new LinearLayout.LayoutParams(0,dp(58),1));n.setOnClickListener(click);}
 
     /* =========================================================
        HOME
@@ -873,13 +886,14 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(0,1,1)
         );
 
-        TextView en = tv("EN",15,Color.WHITE);
+        TextView en = tv(isEnglish()?"BN":"EN",15,Color.WHITE);
         en.setGravity(Gravity.CENTER);
 
         top.addView(
                 en,
                 new LinearLayout.LayoutParams(dp(38),dp(45))
         );
+        en.setOnClickListener(v -> toggleLanguage());
 
         TextView bell = tv("🔔",19,Color.WHITE);
         bell.setGravity(Gravity.CENTER);
@@ -889,22 +903,6 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(dp(42),dp(45))
         );
 
-        TextView out = tv("⇥",25,Color.WHITE);
-        out.setGravity(Gravity.CENTER);
-
-        top.addView(
-                out,
-                new LinearLayout.LayoutParams(dp(42),dp(45))
-        );
-
-        out.setOnClickListener(v -> {
-
-            pref.edit()
-                    .putBoolean("logged_in",false)
-                    .apply();
-
-            showLogin();
-        });
 
         LinearLayout user = new LinearLayout(this);
         user.setGravity(Gravity.CENTER_VERTICAL);
@@ -945,22 +943,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(dp(190),dp(56))
         );
 
-        TextView notice =
-                tv(
-                        "●  সর্বশেষ আপডেট: Quick Pay-এ স্বাগতম",
-                        12,
-                        Color.DKGRAY
-                );
-
-        notice.setGravity(Gravity.CENTER_VERTICAL);
-        notice.setPadding(dp(10),0,dp(5),0);
-        notice.setSingleLine(true);
-        notice.setBackground(bg(Color.WHITE,12));
-
-        header.addView(
-                notice,
-                new LinearLayout.LayoutParams(-1,dp(38))
-        );
+        addLiveActivityTicker(header);
 
         LinearLayout services = new LinearLayout(this);
 
@@ -993,55 +976,12 @@ public class MainActivity extends Activity {
         service(r,"▶","ভিডিও\nটিউটোরিয়াল");
         service(r,"👥","কন্টাক্ট\nআস");
 
-        LinearLayout bonus = new LinearLayout(this);
-
-        bonus.setOrientation(LinearLayout.VERTICAL);
-        bonus.setPadding(dp(10),dp(2),dp(10),dp(3));
-        bonus.setBackground(bg(GREEN,16));
-
-        main.addView(
-                bonus,
-                new LinearLayout.LayoutParams(-1,dp(98))
-        );
-
-        TextView bt =
-                tv(
-                        "🎁  ডিপোজিট বোনাস অফার",
-                        18,
-                        Color.WHITE
-                );
-
-        bt.setGravity(Gravity.CENTER_VERTICAL);
-        bt.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
-
-        bonus.addView(
-                bt,
-                new LinearLayout.LayoutParams(-1,dp(32))
-        );
-
-        TextView bs =
-                tv(
-                        "এখনই করুন, বোনাস নিয়ে নিন!",
-                        11,
-                        Color.WHITE
-                );
-
-        bonus.addView(
-                bs,
-                new LinearLayout.LayoutParams(-1,dp(20))
-        );
-
-        LinearLayout bb = new LinearLayout(this);
-        bb.setGravity(Gravity.CENTER);
-
-        bonus.addView(
-                bb,
-                new LinearLayout.LayoutParams(-1,dp(42))
-        );
-
-        bonusBox(bb,"৳ ৫০০","বোনাস ৳ ৫০");
-        bonusBox(bb,"৳ ১০০০","বোনাস ৳ ১০০");
-        bonusBox(bb,"৳ ২০০০","বোনাস ৳ ২০০");
+        String bannerUri=pref.getString("deposit_banner_uri","");
+        if(!bannerUri.isEmpty()){
+            ImageView iv=new ImageView(this);iv.setScaleType(ImageView.ScaleType.CENTER_CROP);try{iv.setImageURI(Uri.parse(bannerUri));}catch(Exception ignored){}main.addView(iv,new LinearLayout.LayoutParams(-1,dp(118)));iv.setOnClickListener(v->{String action=pref.getString("deposit_banner_action","");if(!action.isEmpty())openExternal(action);});
+        }else{
+            LinearLayout bonus=new LinearLayout(this);bonus.setOrientation(LinearLayout.VERTICAL);bonus.setPadding(dp(10),dp(2),dp(10),dp(3));bonus.setBackground(bg(GREEN,16));main.addView(bonus,new LinearLayout.LayoutParams(-1,dp(98)));TextView bt=tv(tx("🎁  ডিপোজিট বোনাস অফার","🎁  Deposit Bonus Offer"),18,Color.WHITE);bt.setGravity(Gravity.CENTER_VERTICAL);bt.setTypeface(Typeface.DEFAULT,Typeface.BOLD);bonus.addView(bt,new LinearLayout.LayoutParams(-1,dp(32)));TextView bs=tv(tx("এখনই করুন, বোনাস নিয়ে নিন!","Deposit now and get bonus!"),11,Color.WHITE);bonus.addView(bs,new LinearLayout.LayoutParams(-1,dp(20)));LinearLayout bb=new LinearLayout(this);bb.setGravity(Gravity.CENTER);bonus.addView(bb,new LinearLayout.LayoutParams(-1,dp(42)));bonusBox(bb,panelText("deposit_bonus_1_amount","৳ ৫০০"),panelText("deposit_bonus_1_bonus","বোনাস ৳ ৫০"));bonusBox(bb,panelText("deposit_bonus_2_amount","৳ ১০০০"),panelText("deposit_bonus_2_bonus","বোনাস ৳ ১০০"));bonusBox(bb,panelText("deposit_bonus_3_amount","৳ ২০০০"),panelText("deposit_bonus_3_bonus","বোনাস ৳ ২০০"));
+        }
 
         LinearLayout bottom = new LinearLayout(this);
 
@@ -1053,9 +993,9 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(58))
         );
 
-        nav(bottom,"⌂\nহোম");
-        nav(bottom,"◷\nলেনদেন");
-        nav(bottom,"♙\nপ্রোফাইল");
+        nav(bottom,"⌂\n"+tx("হোম","Home"),v->showHome());
+        nav(bottom,"◷\n"+tx("লেনদেন","Transactions"),v->showTransactionHistory());
+        nav(bottom,"♙\n"+tx("প্রোফাইল","Profile"),v->showProfile());
     }
 
     /* =========================================================
@@ -1898,6 +1838,7 @@ public class MainActivity extends Activity {
                             "নিশ্চিত করুন",
                             (dialog,which) -> {
 
+                                recordTransaction("বিল পে",selectedBillType+" / "+number,Double.parseDouble(money),false);
                                 Toast.makeText(
                                         this,
                                         selectedBillType
@@ -2142,6 +2083,7 @@ public class MainActivity extends Activity {
     }
 
     private void showInviteBonus() {
+        syncInviteBonusTransaction();
 
         getWindow().setStatusBarColor(BLUE);
         getWindow().setNavigationBarColor(Color.WHITE);
@@ -2486,6 +2428,8 @@ public class MainActivity extends Activity {
                 v -> showInviteHistory()
         );
     }
+
+    private void syncInviteBonusTransaction(){try{double earned=getInviteEarned();double recorded=Double.parseDouble(pref.getString("invite_earned_recorded","0"));if(earned>recorded){recordTransaction("ইনভাইট বোনাস","Invite Bonus",earned-recorded,true);pref.edit().putString("invite_earned_recorded",String.valueOf(earned)).apply();}}catch(Exception ignored){}}
 
     private void showInviteHistory() {
 
@@ -2842,6 +2786,8 @@ public class MainActivity extends Activity {
                             +(price.isEmpty()?"":"\nমূল্য: ৳ "+price)
                             +(bonus.isEmpty()||bonus.equals("0")?"":"\nবোনাস: ৳ "+bonus)
                             +(validity.isEmpty()?"":"\nমেয়াদ: "+validity);
+                    double offerAmount=0; try{offerAmount=Double.parseDouble(price);}catch(Exception ignored){}
+                    recordTransaction("বিশেষ অফার",operator+" / "+data+" / "+minutes,offerAmount,false);
                     new AlertDialog.Builder(this).setTitle("অফার").setMessage(msg)
                             .setNegativeButton("বন্ধ",null).setPositiveButton("ঠিক আছে",null).show();
                 });
@@ -3869,6 +3815,7 @@ public class MainActivity extends Activity {
                             "সাবমিট",
                             (dialog,which) -> {
 
+                                recordTransaction("অ্যাড মানি","ডিপোজিট / "+transaction,Double.parseDouble(money),true);
                                 Toast.makeText(
                                         this,
                                         "ডিপোজিট রিকোয়েস্ট সাবমিট হয়েছে। অ্যাডমিন ভেরিফাই করার পর ব্যালেন্স যোগ হবে।",
@@ -4315,6 +4262,7 @@ public class MainActivity extends Activity {
                                 "নিশ্চিত",
                                 (dialog,which) -> {
 
+                                    recordTransaction("ব্যাংক ট্রান্সফার",bankName+" / "+accountNumber,Double.parseDouble(amountValue),false);
                                     Toast.makeText(
                                             this,
                                             "ব্যাংক ট্রান্সফার রিকোয়েস্ট গ্রহণ করা হয়েছে।",
@@ -4723,6 +4671,7 @@ public class MainActivity extends Activity {
                                 "নিশ্চিত",
                                 (dialog,which) -> {
 
+                                    recordTransaction("মোবাইল ব্যাংকিং",selectedMobileProvider+" / "+num,Double.parseDouble(money),false);
                                     Toast.makeText(
                                             this,
                                             selectedMobileProvider
@@ -5340,6 +5289,7 @@ public class MainActivity extends Activity {
                                 "নিশ্চিত",
                                 (dialog,which) -> {
 
+                                    recordTransaction("মোবাইল রিচার্জ",selectedRechargeOperator+" / "+num,Double.parseDouble(money),false);
                                     Toast.makeText(
                                             this,
                                             selectedRechargeOperator
@@ -5721,6 +5671,7 @@ public class MainActivity extends Activity {
                                 "OK",
                                 (d,w) -> {
 
+                                    recordTransaction(type,type+" / "+num,Double.parseDouble(raw),false);
                                     Toast.makeText(
                                             this,
                                             "রিকোয়েস্ট গ্রহণ করা হয়েছে।",
