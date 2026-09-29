@@ -45,14 +45,6 @@ public class MainActivity extends Activity {
     private String selectedAccountType = "পার্সোনাল";
     private String selectedRechargeOperator = "GP";
 
-    // Firebase-controlled Add Money payment numbers
-    private String bkashPaymentNumber = "";
-    private String nagadPaymentNumber = "";
-    private String rocketPaymentNumber = "";
-    private boolean bkashPaymentVisible = true;
-    private boolean nagadPaymentVisible = true;
-    private boolean rocketPaymentVisible = true;
-
     /* BILL PAY */
     private String selectedBillType = "";
     private String selectedBillCode = "";
@@ -126,8 +118,6 @@ public class MainActivity extends Activity {
         }
 
         if (pref.getBoolean("logged_in", false)) {
-
-            ensureFirebaseSession();
 
             if (pref.getString("pin", "").length() == 8) {
                 showPinUnlock();
@@ -225,7 +215,7 @@ public class MainActivity extends Activity {
     private String tx(String bn,String en){return isEnglish()?en:bn;}
     private void toggleLanguage(){pref.edit().putBoolean("language_english",!isEnglish()).apply();if(pref.getBoolean("logged_in",false))showHome();else showLogin();}
     private String now(){return new SimpleDateFormat("dd/MM/yyyy hh:mm a",Locale.getDefault()).format(new Date());}
-    private void recordTransaction(String type,String detail,double amount,boolean credit){try{JSONArray a=new JSONArray(pref.getString("transaction_history","[]"));JSONObject o=new JSONObject();o.put("type",type);o.put("detail",detail);o.put("amount",amount);o.put("credit",credit);o.put("status","Pending");o.put("time",now());a.put(0,o);pref.edit().putString("transaction_history",a.toString()).apply();}catch(Exception ignored){} writeFirebaseTransaction(type,detail,amount,credit);}
+    private void recordTransaction(String type,String detail,double amount,boolean credit){try{JSONArray a=new JSONArray(pref.getString("transaction_history","[]"));JSONObject o=new JSONObject();o.put("type",type);o.put("detail",detail);o.put("amount",amount);o.put("credit",credit);o.put("status","SUCCESS");o.put("time",now());a.put(0,o);pref.edit().putString("transaction_history",a.toString()).apply();}catch(Exception ignored){}}
     private String panelText(String key,String fallback){String v=pref.getString(key,"");return v.trim().isEmpty()?fallback:v;}
     private JSONArray panelArray(String key){try{return new JSONArray(pref.getString(key,"[]"));}catch(Exception e){return new JSONArray();}}
     private void openExternal(String url){try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));}catch(Exception e){Toast.makeText(this,tx("লিংকটি খোলা যাচ্ছে না","Unable to open link"),Toast.LENGTH_SHORT).show();}}
@@ -414,8 +404,6 @@ public class MainActivity extends Activity {
                     .putString("password",pw)
                     .putBoolean("logged_in",true)
                     .apply();
-
-            ensureFirebaseSession();
 
             if (pref.getString("pin","").length() == 8) {
                 showHome();
@@ -3889,11 +3877,33 @@ public class MainActivity extends Activity {
 
         space(content,12);
 
-        if (bkashPaymentVisible) addDepositProvider(content,"bKash","বিকাশ পার্সোনাল",bkashPaymentNumber);
-        if (nagadPaymentVisible) addDepositProvider(content,"Nagad","নগদ পার্সোনাল",nagadPaymentNumber);
-        if (rocketPaymentVisible) addDepositProvider(content,"Rocket","রকেট পার্সোনাল",rocketPaymentNumber);
+        addDepositProvider(
+                content,
+                "bKash",
+                "বিকাশ পার্সোনাল",
+                ""
+        );
 
-        loadPaymentNumbersAndRefresh(content);
+        addDepositProvider(
+                content,
+                "Nagad",
+                "নগদ পার্সোনাল",
+                ""
+        );
+
+        addDepositProvider(
+                content,
+                "Rocket",
+                "রকেট পার্সোনাল",
+                ""
+        );
+
+        addDepositProvider(
+                content,
+                "Upay",
+                "উপায় পার্সোনাল",
+                ""
+        );
 
         space(content,12);
 
@@ -5751,7 +5761,7 @@ public class MainActivity extends Activity {
 
         TextView info =
                 tv(
-                        "বিকাশ / নগদ / রকেট",
+                        "বিকাশ / নগদ / রকেট / উপায়",
                         16,
                         BLUE
                 );
@@ -6059,8 +6069,6 @@ public class MainActivity extends Activity {
                     .putBoolean("logged_in",true)
                     .apply();
 
-            ensureFirebaseSession();
-
             showPinSetup();
         });
 
@@ -6189,55 +6197,6 @@ public class MainActivity extends Activity {
 
     private void showForgotPassword() {
         showChangePassword();
-    }
-
-    /* =========================================================
-       FIREBASE CONTROLLED SETTINGS
-       ========================================================= */
-
-    private void ensureFirebaseSession() {
-        if (firebaseAuth == null) return;
-        if (firebaseAuth.getCurrentUser() != null) {
-            syncCurrentUserToFirebase();
-            return;
-        }
-        firebaseAuth.signInAnonymously()
-                .addOnSuccessListener(r -> syncCurrentUserToFirebase())
-                .addOnFailureListener(e -> {
-                    // Existing local UI remains usable if Firebase is unavailable.
-                });
-    }
-
-    private void loadPaymentNumbersAndRefresh(LinearLayout content) {
-        if (firestore == null || firebaseAuth == null || firebaseAuth.getCurrentUser() == null) return;
-        firestore.collection("settings").document("general").get()
-                .addOnSuccessListener(s -> {
-                    bkashPaymentNumber = s.getString("bkashNumber");
-                    nagadPaymentNumber = s.getString("nagadNumber");
-                    rocketPaymentNumber = s.getString("rocketNumber");
-                    Boolean bv = s.getBoolean("bkashVisible");
-                    Boolean nv = s.getBoolean("nagadVisible");
-                    Boolean rv = s.getBoolean("rocketVisible");
-                    bkashPaymentVisible = bv == null || bv;
-                    nagadPaymentVisible = nv == null || nv;
-                    rocketPaymentVisible = rv == null || rv;
-                    showAutoDeposit();
-                });
-    }
-
-    private void writeFirebaseTransaction(String type, String detail, double amount, boolean credit) {
-        if (firestore == null || firebaseAuth == null || firebaseAuth.getCurrentUser() == null) return;
-        java.util.Map<String,Object> data = new java.util.HashMap<>();
-        data.put("userId", firebaseAuth.getCurrentUser().getUid());
-        data.put("name", pref.getString("name", ""));
-        data.put("phone", pref.getString("phone", ""));
-        data.put("type", type);
-        data.put("detail", detail);
-        data.put("amount", amount);
-        data.put("credit", credit);
-        data.put("status", "Pending");
-        data.put("createdAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
-        firestore.collection("transactions").add(data);
     }
 
     /* =========================================================
