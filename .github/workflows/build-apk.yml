@@ -27,7 +27,7 @@ jobs:
 
       - name: Install Android SDK packages
         run: |
-          yes | sdkmanager --licenses
+          yes | sdkmanager --licenses || true
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
@@ -37,12 +37,11 @@ jobs:
 
       - name: Get SHA-1
         run: |
-          chmod +x ./gradlew
-          ./gradlew signingReport
+          gradle :app:signingReport
 
       - name: Build Quick Pay APK
         run: |
-          ./gradlew :app:assembleDebug --no-daemon
+          gradle :app:assembleDebug --no-daemon
 
       - name: Upload Quick Pay APK
         uses: actions/upload-artifact@v4
