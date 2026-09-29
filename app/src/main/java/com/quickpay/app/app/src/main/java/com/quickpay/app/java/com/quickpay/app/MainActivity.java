@@ -753,6 +753,22 @@ public class MainActivity extends Activity {
 
             box.setOnClickListener(v -> showInviteBonus());
 
+        } else if (title.contains("বিশেষ\nঅফার")) {
+
+            box.setOnClickListener(v -> showSpecialOffers());
+
+        } else if (title.contains("কাস্টমার\nকেয়ার")) {
+
+            box.setOnClickListener(v -> showCustomerCare());
+
+        } else if (title.contains("কাস্টমার\nরিভিউ")) {
+
+            box.setOnClickListener(v -> showCustomerReviews());
+
+        } else if (title.contains("ভিডিও\nটিউটোরিয়াল")) {
+
+            box.setOnClickListener(v -> showVideoTutorials());
+
         } else if (title.contains("বিল\nপে")) {
 
             box.setOnClickListener(v -> showBillPay());
@@ -2681,6 +2697,283 @@ public class MainActivity extends Activity {
                     new LinearLayout.LayoutParams(dp(78),dp(55))
             );
         }
+    }
+
+
+    /* =========================================================
+       SPECIAL OFFERS
+       ========================================================= */
+
+    private JSONArray getSpecialOfferData() {
+        String saved = pref.getString("special_offers", "");
+        try {
+            if (!saved.trim().isEmpty()) return new JSONArray(saved);
+        } catch (Exception ignored) {}
+
+        JSONArray defaults = new JSONArray();
+        defaults.put(makeOffer("গ্রামীণফোন","","10 GB","100 মিনিট","","299","50","30 দিন","বিশেষ ইন্টারনেট ও মিনিট অফার"));
+        defaults.put(makeOffer("গ্রামীণফোন","","5 GB","200 মিনিট","50 SMS","199","30","15 দিন","দৈনন্দিন ব্যবহারের অফার"));
+        defaults.put(makeOffer("বাংলালিংক","","12 GB","100 মিনিট","","299","50","30 দিন","ডাটা + মিনিট প্যাক"));
+        defaults.put(makeOffer("Airtel","","10 GB","150 মিনিট","","279","50","30 দিন","ডাটা ও মিনিট অফার"));
+        defaults.put(makeOffer("Robi","","8 GB","200 মিনিট","","299","100","30 দিন","বোনাসসহ অফার"));
+        defaults.put(makeOffer("Teletalk","","5 GB","100 মিনিট","","199","50","15 দিন","কম দামের প্যাক"));
+
+        pref.edit().putString("special_offers", defaults.toString()).apply();
+        return defaults;
+    }
+
+    private JSONObject makeOffer(String operator, String logo, String data, String minutes,
+                                 String sms, String price, String bonus, String validity,
+                                 String description) {
+        JSONObject o = new JSONObject();
+        try {
+            o.put("operator", operator);
+            o.put("logo", logo);
+            o.put("data", data);
+            o.put("minutes", minutes);
+            o.put("sms", sms);
+            o.put("price", price);
+            o.put("bonus", bonus);
+            o.put("validity", validity);
+            o.put("description", description);
+            o.put("visible", true);
+        } catch (Exception ignored) {}
+        return o;
+    }
+
+    private String offerText(JSONObject o, String key) {
+        try { return o.optString(key, "").trim(); }
+        catch (Exception e) { return ""; }
+    }
+
+    private boolean offerVisible(JSONObject o) {
+        return o.optBoolean("visible", true);
+    }
+
+    private void showSpecialOffers() {
+        getWindow().setStatusBarColor(BLUE);
+        getWindow().setNavigationBarColor(Color.WHITE);
+
+        LinearLayout main = new LinearLayout(this);
+        main.setOrientation(LinearLayout.VERTICAL);
+        main.setBackgroundColor(Color.rgb(247,248,250));
+        setContentView(main);
+
+        LinearLayout header = new LinearLayout(this);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(dp(8),0,dp(8),0);
+        header.setBackgroundColor(BLUE);
+        main.addView(header,new LinearLayout.LayoutParams(-1,dp(62)));
+
+        TextView back = tv("‹",38,Color.WHITE);
+        back.setGravity(Gravity.CENTER);
+        header.addView(back,new LinearLayout.LayoutParams(dp(52),dp(62)));
+        back.setOnClickListener(v -> showHome());
+
+        TextView title = tv("বিশেষ অফার",21,Color.WHITE);
+        title.setGravity(Gravity.CENTER);
+        title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        header.addView(title,new LinearLayout.LayoutParams(0,dp(62),1));
+        header.addView(new Space(this),new LinearLayout.LayoutParams(dp(52),dp(62)));
+
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(12),dp(12),dp(12),dp(25));
+        scroll.addView(content);
+        main.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+
+        TextView intro = tv("📱  সিমের বিশেষ অফার",18,DARK);
+        intro.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        intro.setPadding(dp(4),dp(2),dp(4),dp(10));
+        content.addView(intro,new LinearLayout.LayoutParams(-1,dp(45)));
+
+        JSONArray offers = getSpecialOfferData();
+        String[] operators = {"গ্রামীণফোন","বাংলালিংক","Airtel","Robi","Teletalk"};
+
+        for (String operator : operators) {
+            boolean hasOffer = false;
+            for (int i=0;i<offers.length();i++) {
+                JSONObject o=offers.optJSONObject(i);
+                if (o!=null && offerVisible(o) && operator.equalsIgnoreCase(offerText(o,"operator"))) { hasOffer=true; break; }
+            }
+            if (!hasOffer) continue;
+
+            TextView opTitle = tv(operator,18,BLUE);
+            opTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+            opTitle.setPadding(dp(4),dp(8),dp(4),dp(8));
+            content.addView(opTitle,new LinearLayout.LayoutParams(-1,dp(42)));
+
+            for (int i=0;i<offers.length();i++) {
+                JSONObject o=offers.optJSONObject(i);
+                if (o==null || !offerVisible(o) || !operator.equalsIgnoreCase(offerText(o,"operator"))) continue;
+
+                LinearLayout card = new LinearLayout(this);
+                card.setOrientation(LinearLayout.VERTICAL);
+                card.setPadding(dp(15),dp(13),dp(15),dp(13));
+                card.setBackground(bg(Color.WHITE,16));
+                LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);
+                cp.setMargins(0,0,0,dp(10));
+                content.addView(card,cp);
+
+                String logo=offerText(o,"logo");
+                TextView name=tv((logo.isEmpty()?"📱  ":logo+"  ")+operator,16,DARK);
+                name.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+                card.addView(name);
+
+                String data=offerText(o,"data"), minutes=offerText(o,"minutes"), sms=offerText(o,"sms");
+                if(!data.isEmpty()) { TextView x=tv("📶  "+data,15,DARK); x.setPadding(0,dp(9),0,0); card.addView(x); }
+                if(!minutes.isEmpty()) { TextView x=tv("📞  "+minutes,15,DARK); x.setPadding(0,dp(5),0,0); card.addView(x); }
+                if(!sms.isEmpty()) { TextView x=tv("✉  "+sms,15,DARK); x.setPadding(0,dp(5),0,0); card.addView(x); }
+
+                String price=offerText(o,"price"), bonus=offerText(o,"bonus"), validity=offerText(o,"validity"), description=offerText(o,"description");
+                if(!price.isEmpty()) { TextView x=tv("মূল্য: ৳ "+price,16,BLUE); x.setTypeface(Typeface.DEFAULT,Typeface.BOLD); x.setPadding(0,dp(9),0,0); card.addView(x); }
+                if(!bonus.isEmpty() && !bonus.equals("0")) { TextView x=tv("🎁 বোনাস: ৳ "+bonus,15,GREEN); x.setTypeface(Typeface.DEFAULT,Typeface.BOLD); x.setPadding(0,dp(5),0,0); card.addView(x); }
+                if(!validity.isEmpty()) { TextView x=tv("মেয়াদ: "+validity,14,Color.DKGRAY); x.setPadding(0,dp(5),0,0); card.addView(x); }
+                if(!description.isEmpty()) { TextView x=tv(description,13,Color.GRAY); x.setPadding(0,dp(7),0,dp(7)); card.addView(x); }
+
+                TextView take=button("অফার নিন",GREEN,Color.WHITE);
+                card.addView(take,new LinearLayout.LayoutParams(-1,dp(50)));
+                take.setOnClickListener(v -> {
+                    String msg="অপারেটর: "+operator
+                            +(data.isEmpty()?"":"\n"+data)
+                            +(minutes.isEmpty()?"":"\n"+minutes)
+                            +(sms.isEmpty()?"":"\n"+sms)
+                            +(price.isEmpty()?"":"\nমূল্য: ৳ "+price)
+                            +(bonus.isEmpty()||bonus.equals("0")?"":"\nবোনাস: ৳ "+bonus)
+                            +(validity.isEmpty()?"":"\nমেয়াদ: "+validity);
+                    new AlertDialog.Builder(this).setTitle("অফার").setMessage(msg)
+                            .setNegativeButton("বন্ধ",null).setPositiveButton("ঠিক আছে",null).show();
+                });
+            }
+        }
+    }
+
+    /* =========================================================
+       CUSTOMER CARE
+       ========================================================= */
+
+    private String getCustomerCareWhatsApp() {
+        return pref.getString("customer_care_whatsapp", "").trim();
+    }
+
+    private void showCustomerCare() {
+        getWindow().setStatusBarColor(BLUE);
+        getWindow().setNavigationBarColor(Color.WHITE);
+        LinearLayout main=new LinearLayout(this);
+        main.setOrientation(LinearLayout.VERTICAL);
+        main.setBackgroundColor(Color.rgb(247,248,250));
+        setContentView(main);
+
+        LinearLayout header=new LinearLayout(this);
+        header.setGravity(Gravity.CENTER_VERTICAL); header.setPadding(dp(8),0,dp(8),0); header.setBackgroundColor(BLUE);
+        main.addView(header,new LinearLayout.LayoutParams(-1,dp(62)));
+        TextView back=tv("‹",38,Color.WHITE); back.setGravity(Gravity.CENTER);
+        header.addView(back,new LinearLayout.LayoutParams(dp(52),dp(62))); back.setOnClickListener(v->showHome());
+        TextView title=tv("কাস্টমার কেয়ার",21,Color.WHITE); title.setGravity(Gravity.CENTER); title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        header.addView(title,new LinearLayout.LayoutParams(0,dp(62),1)); header.addView(new Space(this),new LinearLayout.LayoutParams(dp(52),dp(62)));
+
+        LinearLayout content=new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL); content.setGravity(Gravity.TOP); content.setPadding(dp(16),dp(20),dp(16),dp(25));
+        main.addView(content,new LinearLayout.LayoutParams(-1,0,1));
+        LinearLayout card=new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL); card.setGravity(Gravity.CENTER_HORIZONTAL); card.setPadding(dp(18),dp(25),dp(18),dp(25)); card.setBackground(bg(Color.WHITE,18));
+        content.addView(card,new LinearLayout.LayoutParams(-1,-2));
+        TextView icon=tv("💬",48,GREEN); icon.setGravity(Gravity.CENTER); card.addView(icon,new LinearLayout.LayoutParams(-1,dp(65)));
+        TextView heading=tv("কাস্টমার কেয়ার",22,DARK); heading.setTypeface(Typeface.DEFAULT,Typeface.BOLD); heading.setGravity(Gravity.CENTER); card.addView(heading,new LinearLayout.LayoutParams(-1,dp(40)));
+
+        String number=getCustomerCareWhatsApp();
+        TextView numberText=tv(number.isEmpty()?"WhatsApp নম্বর এখনো সেট করা হয়নি":"WhatsApp: "+number,15,Color.DKGRAY);
+        numberText.setGravity(Gravity.CENTER); numberText.setPadding(0,dp(8),0,dp(15)); card.addView(numberText,new LinearLayout.LayoutParams(-1,dp(55)));
+        TextView contact=button("WhatsApp-এ যোগাযোগ করুন",GREEN,Color.WHITE);
+        card.addView(contact,new LinearLayout.LayoutParams(-1,dp(55)));
+        contact.setEnabled(!number.isEmpty());
+        if(number.isEmpty()) contact.setBackground(bg(Color.rgb(170,170,170),12));
+        contact.setOnClickListener(v->openCustomerCareWhatsApp(number));
+    }
+
+    private void openCustomerCareWhatsApp(String rawNumber) {
+        String number=rawNumber.replaceAll("[^0-9]","");
+        if(number.startsWith("00")) number=number.substring(2);
+        if(number.startsWith("0")) number="88"+number;
+        else if(!number.startsWith("88")) number="88"+number;
+        try {
+            android.content.Intent app=new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("whatsapp://send?phone="+number));
+            startActivity(app);
+        } catch(Exception e) {
+            try {
+                android.content.Intent web=new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://wa.me/"+number));
+                startActivity(web);
+            } catch(Exception ignored) {
+                Toast.makeText(this,"WhatsApp খোলা যাচ্ছে না",Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    /* =========================================================
+       CUSTOMER REVIEWS
+       ========================================================= */
+
+    private JSONArray getCustomerReviewData() {
+        String saved=pref.getString("customer_reviews","");
+        try { if(!saved.trim().isEmpty()) return new JSONArray(saved); }
+        catch(Exception ignored) {}
+        return new JSONArray();
+    }
+
+    private void showCustomerReviews() {
+        getWindow().setStatusBarColor(BLUE); getWindow().setNavigationBarColor(Color.WHITE);
+        LinearLayout main=new LinearLayout(this); main.setOrientation(LinearLayout.VERTICAL); main.setBackgroundColor(Color.rgb(247,248,250)); setContentView(main);
+        LinearLayout header=new LinearLayout(this); header.setGravity(Gravity.CENTER_VERTICAL); header.setPadding(dp(8),0,dp(8),0); header.setBackgroundColor(BLUE); main.addView(header,new LinearLayout.LayoutParams(-1,dp(62)));
+        TextView back=tv("‹",38,Color.WHITE); back.setGravity(Gravity.CENTER); header.addView(back,new LinearLayout.LayoutParams(dp(52),dp(62))); back.setOnClickListener(v->showHome());
+        TextView title=tv("কাস্টমার রিভিউ",21,Color.WHITE); title.setGravity(Gravity.CENTER); title.setTypeface(Typeface.DEFAULT,Typeface.BOLD); header.addView(title,new LinearLayout.LayoutParams(0,dp(62),1)); header.addView(new Space(this),new LinearLayout.LayoutParams(dp(52),dp(62)));
+        ScrollView scroll=new ScrollView(this); LinearLayout list=new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(dp(12),dp(12),dp(12),dp(25)); scroll.addView(list); main.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        JSONArray reviews=getCustomerReviewData();
+        if(reviews.length()==0) { addVideoEmptyState(list,"⭐","কাস্টমার রিভিউ","কাস্টমারদের ভিডিও রিভিউ এখানে দেখা যাবে।"); return; }
+        for(int i=0;i<reviews.length();i++) { JSONObject item=reviews.optJSONObject(i); if(item==null||!item.optBoolean("visible",true)) continue; addVideoCard(list,item.optString("title","কাস্টমার রিভিউ"),item.optString("description",""),item.optString("url","")); }
+    }
+
+    /* =========================================================
+       VIDEO TUTORIALS
+       ========================================================= */
+
+    private JSONArray getTutorialData() {
+        String saved=pref.getString("video_tutorials","");
+        try { if(!saved.trim().isEmpty()) return new JSONArray(saved); }
+        catch(Exception ignored) {}
+        return new JSONArray();
+    }
+
+    private void showVideoTutorials() {
+        getWindow().setStatusBarColor(BLUE); getWindow().setNavigationBarColor(Color.WHITE);
+        LinearLayout main=new LinearLayout(this); main.setOrientation(LinearLayout.VERTICAL); main.setBackgroundColor(Color.rgb(247,248,250)); setContentView(main);
+        LinearLayout header=new LinearLayout(this); header.setGravity(Gravity.CENTER_VERTICAL); header.setPadding(dp(8),0,dp(8),0); header.setBackgroundColor(BLUE); main.addView(header,new LinearLayout.LayoutParams(-1,dp(62)));
+        TextView back=tv("‹",38,Color.WHITE); back.setGravity(Gravity.CENTER); header.addView(back,new LinearLayout.LayoutParams(dp(52),dp(62))); back.setOnClickListener(v->showHome());
+        TextView title=tv("ভিডিও টিউটোরিয়াল",21,Color.WHITE); title.setGravity(Gravity.CENTER); title.setTypeface(Typeface.DEFAULT,Typeface.BOLD); header.addView(title,new LinearLayout.LayoutParams(0,dp(62),1)); header.addView(new Space(this),new LinearLayout.LayoutParams(dp(52),dp(62)));
+        ScrollView scroll=new ScrollView(this); LinearLayout list=new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(dp(12),dp(12),dp(12),dp(25)); scroll.addView(list); main.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        JSONArray tutorials=getTutorialData();
+        if(tutorials.length()==0) { addVideoEmptyState(list,"▶","ভিডিও টিউটোরিয়াল","অ্যাপ ব্যবহার শেখানোর ভিডিও এখানে দেখা যাবে।"); return; }
+        for(int i=0;i<tutorials.length();i++) { JSONObject item=tutorials.optJSONObject(i); if(item==null||!item.optBoolean("visible",true)) continue; addVideoCard(list,item.optString("title","ভিডিও টিউটোরিয়াল"),item.optString("description",""),item.optString("url","")); }
+    }
+
+    private void addVideoEmptyState(LinearLayout parent,String iconText,String titleText,String messageText) {
+        LinearLayout card=new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL); card.setGravity(Gravity.CENTER); card.setPadding(dp(20),dp(25),dp(20),dp(25)); card.setBackground(bg(Color.WHITE,16)); parent.addView(card,new LinearLayout.LayoutParams(-1,dp(210)));
+        TextView icon=tv(iconText,44,DARK); icon.setGravity(Gravity.CENTER); card.addView(icon,new LinearLayout.LayoutParams(-1,dp(58)));
+        TextView title=tv(titleText,18,DARK); title.setGravity(Gravity.CENTER); title.setTypeface(Typeface.DEFAULT,Typeface.BOLD); card.addView(title,new LinearLayout.LayoutParams(-1,dp(38)));
+        TextView message=tv(messageText,14,Color.GRAY); message.setGravity(Gravity.CENTER); card.addView(message,new LinearLayout.LayoutParams(-1,dp(55)));
+    }
+
+    private void addVideoCard(LinearLayout parent,String titleText,String descriptionText,String url) {
+        LinearLayout card=new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL); card.setPadding(dp(15),dp(14),dp(15),dp(14)); card.setBackground(bg(Color.WHITE,16));
+        LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2); cp.setMargins(0,0,0,dp(10)); parent.addView(card,cp);
+        TextView play=tv("▶",34,BLUE); play.setGravity(Gravity.CENTER); card.addView(play,new LinearLayout.LayoutParams(-1,dp(62)));
+        TextView title=tv(titleText,17,DARK); title.setTypeface(Typeface.DEFAULT,Typeface.BOLD); card.addView(title,new LinearLayout.LayoutParams(-1,dp(32)));
+        if(!descriptionText.trim().isEmpty()) { TextView description=tv(descriptionText,13,Color.GRAY); description.setPadding(0,dp(4),0,dp(9)); card.addView(description,new LinearLayout.LayoutParams(-1,-2)); }
+        TextView watch=button("ভিডিও দেখুন",BLUE,Color.WHITE); card.addView(watch,new LinearLayout.LayoutParams(-1,dp(50))); watch.setEnabled(!url.trim().isEmpty()); if(url.trim().isEmpty()) watch.setBackground(bg(Color.rgb(170,170,170),12)); watch.setOnClickListener(v->openVideoUrl(url));
+    }
+
+    private void openVideoUrl(String url) {
+        if(url==null||url.trim().isEmpty()) { Toast.makeText(this,"ভিডিও লিংক এখনো সেট করা হয়নি",Toast.LENGTH_SHORT).show(); return; }
+        try { startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(url.trim()))); }
+        catch(Exception e) { Toast.makeText(this,"ভিডিও খোলা যাচ্ছে না",Toast.LENGTH_SHORT).show(); }
     }
 
     /* =========================================================
