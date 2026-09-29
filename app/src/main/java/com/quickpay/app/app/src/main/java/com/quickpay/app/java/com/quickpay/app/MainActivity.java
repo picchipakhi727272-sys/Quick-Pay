@@ -1813,6 +1813,9 @@ public class MainActivity extends Activity {
                 return;
             }
 
+            final String finalBillNumber = number;
+            final String finalBillMoney = money;
+
             new AlertDialog.Builder(this)
                     .setTitle(
                             "বিল পেমেন্ট নিশ্চিত করুন"
@@ -1838,7 +1841,7 @@ public class MainActivity extends Activity {
                             "নিশ্চিত করুন",
                             (dialog,which) -> {
 
-                                recordTransaction("বিল পে",selectedBillType+" / "+number,Double.parseDouble(money),false);
+                                recordTransaction("বিল পে",selectedBillType+" / "+finalBillNumber,Double.parseDouble(finalBillMoney),false);
                                 Toast.makeText(
                                         this,
                                         selectedBillType
@@ -3801,6 +3804,9 @@ public class MainActivity extends Activity {
                 return;
             }
 
+            final String finalDepositMoney = money;
+            final String finalDepositTransaction = transaction;
+
             new AlertDialog.Builder(this)
                     .setTitle("ডিপোজিট সাবমিট")
                     .setMessage(
@@ -3815,7 +3821,7 @@ public class MainActivity extends Activity {
                             "সাবমিট",
                             (dialog,which) -> {
 
-                                recordTransaction("অ্যাড মানি","ডিপোজিট / "+transaction,Double.parseDouble(money),true);
+                                recordTransaction("অ্যাড মানি","ডিপোজিট / "+finalDepositTransaction,Double.parseDouble(finalDepositMoney),true);
                                 Toast.makeText(
                                         this,
                                         "ডিপোজিট রিকোয়েস্ট সাবমিট হয়েছে। অ্যাডমিন ভেরিফাই করার পর ব্যালেন্স যোগ হবে।",
@@ -4254,6 +4260,10 @@ public class MainActivity extends Activity {
                         )
                                 + "ট্রান্সফার তথ্যগুলো সঠিক কিনা যাচাই করুন।";
 
+                final String finalBankName = bankName;
+                final String finalAccountNumber = accountNumber;
+                final String finalAmountValue = amountValue;
+
                 new AlertDialog.Builder(this)
                         .setTitle("ব্যাংক ট্রান্সফার নিশ্চিত করুন")
                         .setMessage(message)
@@ -4262,7 +4272,7 @@ public class MainActivity extends Activity {
                                 "নিশ্চিত",
                                 (dialog,which) -> {
 
-                                    recordTransaction("ব্যাংক ট্রান্সফার",bankName+" / "+accountNumber,Double.parseDouble(amountValue),false);
+                                    recordTransaction("ব্যাংক ট্রান্সফার",finalBankName+" / "+finalAccountNumber,Double.parseDouble(finalAmountValue),false);
                                     Toast.makeText(
                                             this,
                                             "ব্যাংক ট্রান্সফার রিকোয়েস্ট গ্রহণ করা হয়েছে।",
@@ -4652,6 +4662,9 @@ public class MainActivity extends Activity {
                     return;
                 }
 
+                final String finalSendNumber = num;
+                final String finalSendMoney = money;
+
                 new AlertDialog.Builder(this)
                         .setTitle("টাকা পাঠানো নিশ্চিত করুন")
                         .setMessage(
@@ -4671,7 +4684,7 @@ public class MainActivity extends Activity {
                                 "নিশ্চিত",
                                 (dialog,which) -> {
 
-                                    recordTransaction("মোবাইল ব্যাংকিং",selectedMobileProvider+" / "+num,Double.parseDouble(money),false);
+                                    recordTransaction("মোবাইল ব্যাংকিং",selectedMobileProvider+" / "+finalSendNumber,Double.parseDouble(finalSendMoney),false);
                                     Toast.makeText(
                                             this,
                                             selectedMobileProvider
@@ -5270,6 +5283,9 @@ public class MainActivity extends Activity {
                                 ? "প্রিপেইড"
                                 : "পোস্টপেইড";
 
+                final String finalRechargeNumber = num;
+                final String finalRechargeMoney = money;
+
                 new AlertDialog.Builder(this)
                         .setTitle("রিচার্জ নিশ্চিত করুন")
                         .setMessage(
@@ -5289,7 +5305,7 @@ public class MainActivity extends Activity {
                                 "নিশ্চিত",
                                 (dialog,which) -> {
 
-                                    recordTransaction("মোবাইল রিচার্জ",selectedRechargeOperator+" / "+num,Double.parseDouble(money),false);
+                                    recordTransaction("মোবাইল রিচার্জ",selectedRechargeOperator+" / "+finalRechargeNumber,Double.parseDouble(finalRechargeMoney),false);
                                     Toast.makeText(
                                             this,
                                             selectedRechargeOperator
@@ -5656,6 +5672,9 @@ public class MainActivity extends Activity {
                     return;
                 }
 
+                final String finalProviderNumber = num;
+                final String finalProviderRaw = raw;
+
                 new AlertDialog.Builder(this)
                         .setTitle(type + " নিশ্চিত করুন")
                         .setMessage(
@@ -5671,7 +5690,7 @@ public class MainActivity extends Activity {
                                 "OK",
                                 (d,w) -> {
 
-                                    recordTransaction(type,type+" / "+num,Double.parseDouble(raw),false);
+                                    recordTransaction(type,type+" / "+finalProviderNumber,Double.parseDouble(finalProviderRaw),false);
                                     Toast.makeText(
                                             this,
                                             "রিকোয়েস্ট গ্রহণ করা হয়েছে।",
