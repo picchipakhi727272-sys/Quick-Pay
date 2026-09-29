@@ -21,7 +21,9 @@ jobs:
           java-version: '17'
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
 
       - name: Install Android SDK packages
         run: |
@@ -37,18 +39,16 @@ jobs:
         run: |
           mkdir -p "$HOME/.config/.android"
 
-          if [ ! -f "$HOME/.config/.android/debug.keystore" ]; then
-            keytool -genkeypair \
-              -v \
-              -keystore "$HOME/.config/.android/debug.keystore" \
-              -storepass android \
-              -alias AndroidDebugKey \
-              -keypass android \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -dname "CN=Android Debug,O=Android,C=US"
-          fi
+          keytool -genkeypair \
+            -v \
+            -keystore "$HOME/.config/.android/debug.keystore" \
+            -storepass android \
+            -alias AndroidDebugKey \
+            -keypass android \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
 
       - name: Get SHA-1
         run: |
