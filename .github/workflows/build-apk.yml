@@ -21,9 +21,7 @@ jobs:
           java-version: '17'
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
-        with:
-          packages: 'platform-tools'
+        uses: android-actions/setup-android@v3
 
       - name: Install Android SDK packages
         run: |
@@ -35,13 +33,40 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Create Android Debug Keystore
+        run: |
+          mkdir -p "$HOME/.config/.android"
+
+          if [ ! -f "$HOME/.config/.android/debug.keystore" ]; then
+            keytool -genkeypair \
+              -v \
+              -keystore "$HOME/.config/.android/debug.keystore" \
+              -storepass android \
+              -alias AndroidDebugKey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
       - name: Get SHA-1
         run: |
-          gradle :app:signingReport
+          ./gradlew :app:signingReport
+
+          echo "=============================="
+          echo "QUICK PAY SHA-1"
+          echo "=============================="
+
+          keytool -list -v \
+            -keystore "$HOME/.config/.android/debug.keystore" \
+            -alias AndroidDebugKey \
+            -storepass android \
+            -keypass android | grep -i "SHA1"
 
       - name: Build Quick Pay APK
         run: |
-          gradle :app:assembleDebug --no-daemon
+          ./gradlew :app:assembleDebug --no-daemon
 
       - name: Upload Quick Pay APK
         uses: actions/upload-artifact@v4
