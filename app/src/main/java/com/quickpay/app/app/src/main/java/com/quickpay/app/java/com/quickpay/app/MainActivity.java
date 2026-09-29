@@ -2044,6 +2044,14 @@ public class MainActivity extends Activity {
         return pref.getInt("invite_count", 0);
     }
 
+    // Demo panel থেকে Invite Count পরিবর্তন করার জন্য
+    private void setInviteCount(int count) {
+        if (count < 0) count = 0;
+        pref.edit()
+                .putInt("invite_count", count)
+                .apply();
+    }
+
     private double getInviteEarned() {
         return Double.longBitsToDouble(
                 pref.getLong(
@@ -2371,9 +2379,9 @@ public class MainActivity extends Activity {
 
         TextView invited =
                 tv(
-                        "👥\\n"
+                        "👤\n"
                                 + getInviteCount()
-                                + "\\nইনভাইটেড",
+                                + "\nইনভাইটেড",
                         15,
                         DARK
                 );
@@ -2388,9 +2396,9 @@ public class MainActivity extends Activity {
 
         TextView earned =
                 tv(
-                        "💰\\n৳ "
+                        "💰\n৳ "
                                 + formatMoney(getInviteEarned())
-                                + "\\nবোনাস",
+                                + "\nবোনাস",
                         15,
                         DARK
                 );
@@ -2426,10 +2434,10 @@ public class MainActivity extends Activity {
 
         TextView rules =
                 tv(
-                        "• আপনার Invite Code কপি বা শেয়ার করুন।\\n"
-                                + "• নতুন ইউজার রেজিস্ট্রেশনের সময় কোড ব্যবহার করতে পারবে।\\n"
-                                + "• এই স্ক্রিনের হিসাব বর্তমানে ডেমো/লোকাল।\\n"
-                                + "• আসল বোনাস দেওয়ার জন্য Backend/API এবং server-side referral verification লাগবে।",
+                        "• আপনার Invite Code কপি বা শেয়ার করুন।\n"
+                                + "• নতুন ইউজার রেজিস্ট্রেশনের সময় কোড ব্যবহার করতে পারবে।\n"
+                                + "• Invite Count ও Bonus Amount ডেমো প্যানেল থেকে ইচ্ছামতো পরিবর্তন করা যাবে।\n"
+                                + "• নতুন Invite হলে সংখ্যা ১, ২, ৩, ৪, ৫, ৬... এভাবে দেখাবে।",
                         14,
                         Color.DKGRAY
                 );
@@ -2441,7 +2449,7 @@ public class MainActivity extends Activity {
 
         content.addView(
                 rules,
-                new LinearLayout.LayoutParams(-1,dp(132))
+                new LinearLayout.LayoutParams(-1,dp(150))
         );
 
         space(content,10);
