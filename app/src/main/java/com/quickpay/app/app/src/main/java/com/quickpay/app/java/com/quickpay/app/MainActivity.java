@@ -177,22 +177,17 @@ public class MainActivity extends Activity {
     private void ensureFirebaseSession() {
         if (!firebaseReady || firebaseAuth == null) return;
 
-        FirebaseUser current = firebaseAuth.getCurrentUser();
-        if (current != null) {
+        FirebaseUser currentUser = firebaseAuth.getCurrentUser();
+        if (currentUser != null) {
             syncCurrentProfile();
             return;
         }
 
-        // Keep a Firebase-authenticated session available for Firestore requests
-        // even when the local Quick Pay login is restored after an app restart.
         firebaseAuth.signInAnonymously()
-                .addOnSuccessListener(result -> {
-                    syncCurrentProfile();
-                })
+                .addOnSuccessListener(result -> syncCurrentProfile())
                 .addOnFailureListener(e -> {
-                    Toast.makeText(this,
-                            "Firebase session তৈরি হয়নি: " + firebaseError(e),
-                            Toast.LENGTH_LONG).show();
+                    // Do not block the local app if Firebase sign-in fails.
+                    // Deposit submit will show the actual Firebase error to the user.
                 });
     }
 
