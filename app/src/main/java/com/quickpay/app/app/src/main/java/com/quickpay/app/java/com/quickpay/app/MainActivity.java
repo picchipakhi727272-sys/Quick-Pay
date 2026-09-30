@@ -2159,7 +2159,7 @@ public class MainActivity extends Activity {
                             .toString()
                             .trim();
 
-            if (number.isEmpty()) {
+            if (finalNumber.isEmpty()) {
                 billNumber.setError(
                         "বিল নম্বর দিন"
                 );
@@ -4350,6 +4350,8 @@ public class MainActivity extends Activity {
 
         String adminNumber = paymentNumberFor(name);
         if (!adminNumber.isEmpty()) number = adminNumber;
+        // Keep a final copy because this value is used inside the click lambda below.
+        final String finalNumber = number;
 
         LinearLayout card = new LinearLayout(this);
 
@@ -4389,11 +4391,11 @@ public class MainActivity extends Activity {
 
         TextView phone =
                 tv(
-                        number.isEmpty()
+                        finalNumber.isEmpty()
                                 ? "নম্বর এখনো সেট করা হয়নি"
-                                : number,
+                                : finalNumber,
                         15,
-                        number.isEmpty()
+                        finalNumber.isEmpty()
                                 ? Color.GRAY
                                 : DARK
                 );
@@ -4419,7 +4421,7 @@ public class MainActivity extends Activity {
 
         copy.setOnClickListener(v -> {
 
-            if (number.isEmpty()) {
+            if (finalNumber.isEmpty()) {
 
                 Toast.makeText(
                         this,
