@@ -403,6 +403,24 @@ public class MainActivity extends Activity {
         return true;
     }
 
+    private void createDepositRequest(String detail,double amount){
+        if(!firebaseReady || firestore==null || accountKey().isEmpty())return;
+        String ref=detail==null?"":detail.replace("ডিপোজিট / ","");
+        java.util.Map<String,Object> r=new java.util.HashMap<>();
+        r.put("uid",accountKey());
+        r.put("userId",accountKey());
+        r.put("name",pref.getString("name",""));
+        r.put("phone",pref.getString("phone",""));
+        r.put("ownerUid",firebaseAuth!=null && firebaseAuth.getCurrentUser()!=null ? firebaseAuth.getCurrentUser().getUid() : "");
+        r.put("amount",Math.max(0,amount));
+        r.put("method","Manual Deposit");
+        r.put("transactionId",ref);
+        r.put("status","PENDING");
+        r.put("createdAt",com.google.firebase.firestore.FieldValue.serverTimestamp());
+        firestore.collection("depositRequests").add(r)
+                .addOnSuccessListener(d->writeCloudTransaction("অ্যাড মানি",detail,amount,true,"PENDING",d.getId()));
+    }
+
     private void recordTransaction(String type,String detail,double amount,boolean credit){
         if(!firebaseReady){
             Toast.makeText(this,credit?"Firebase সংযোগ পাওয়া যাচ্ছে না।":"Firebase সংযোগ ছাড়া এই লেনদেন করা যাবে না।",Toast.LENGTH_LONG).show();
@@ -3575,6 +3593,13 @@ public class MainActivity extends Activity {
             addChatEmptyState(chatBox);
         }
         chatBox.postDelayed(() -> scroll.fullScroll(ScrollView.FOCUS_DOWN), 100);
+    }
+
+    private void addChatEmptyState(LinearLayout parent){
+        TextView e=tv(tx("এখনও কোনো অনুমোদিত মেসেজ নেই","No approved messages yet"),16,Color.GRAY);
+        e.setGravity(Gravity.CENTER);
+        e.setPadding(dp(12),dp(30),dp(12),dp(30));
+        parent.addView(e,new LinearLayout.LayoutParams(-1,dp(100)));
     }
 
     /* =========================================================
