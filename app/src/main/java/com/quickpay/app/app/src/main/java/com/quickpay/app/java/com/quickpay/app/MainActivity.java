@@ -86,8 +86,8 @@ public class MainActivity extends Activity {
         return e.getMessage();
     }
 
-    private String selectedMobileProvider = "à¦¬à¦¿à¦•à¦¾à¦¶";
-    private String selectedAccountType = "à¦ªà¦¾à¦°à§à¦¸à§‹à¦¨à¦¾à¦²";
+    private String selectedMobileProvider = "বিকাশ";
+    private String selectedAccountType = "পার্সোনাল";
     private String selectedRechargeOperator = "GP";
 
     /* BILL PAY */
@@ -155,11 +155,7 @@ public class MainActivity extends Activity {
         firebaseAuth = FirebaseAuth.getInstance();
         firestore = FirebaseFirestore.getInstance();
         firebaseReady = true;
-
-        // Ensure a Firebase-authenticated session is available for Firestore requests.
-        if (firebaseAuth.getCurrentUser() == null) {
-            firebaseAuth.signInAnonymously();
-        }
+        ensureFirebaseSession();
 
         if (pref.getBoolean("logged_in", false)) {
 
@@ -196,7 +192,7 @@ public class MainActivity extends Activity {
     private void startPhoneVerification(String rawPhone, boolean registration, String name, String password) {
         String phone = cleanPhone(rawPhone);
         if (!phone.matches("\\+8801[3-9][0-9]{8}")) {
-            Toast.makeText(this, "à¦¸à¦ à¦¿à¦• à¦¬à¦¾à¦‚à¦²à¦¾à¦¦à§‡à¦¶à¦¿ à¦®à§‹à¦¬à¦¾à¦‡à¦² à¦¨à¦®à§à¦¬à¦° à¦¦à¦¿à¦¨", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "সঠিক বাংলাদেশি মোবাইল নম্বর দিন", Toast.LENGTH_SHORT).show();
             return;
         }
         pendingRegistration = registration;
@@ -214,7 +210,7 @@ public class MainActivity extends Activity {
                     }
                     @Override public void onVerificationFailed(com.google.firebase.FirebaseException e) {
                         Toast.makeText(MainActivity.this,
-                                "OTP à¦ªà¦¾à¦ à¦¾à¦¨à§‹ à¦¯à¦¾à¦¯à¦¼à¦¨à¦¿: " + firebaseError(e), Toast.LENGTH_LONG).show();
+                                "OTP পাঠানো যায়নি: " + firebaseError(e), Toast.LENGTH_LONG).show();
                     }
                     @Override public void onCodeSent(String id, PhoneAuthProvider.ForceResendingToken token) {
                         verificationId = id;
@@ -226,19 +222,19 @@ public class MainActivity extends Activity {
     }
 
     private void showOtpDialog() {
-        final EditText otp = input("à§¬ à¦¡à¦¿à¦œà¦¿à¦Ÿ OTP", false);
+        final EditText otp = input("৬ ডিজিট OTP", false);
         otp.setInputType(InputType.TYPE_CLASS_NUMBER);
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("OTP à¦¯à¦¾à¦šà¦¾à¦‡")
-                .setMessage("" + pendingPhone + " à¦¨à¦®à§à¦¬à¦°à§‡ à¦ªà¦¾à¦ à¦¾à¦¨à§‹ OTP à¦²à¦¿à¦–à§à¦¨à¥¤")
+                .setTitle("OTP যাচাই")
+                .setMessage("" + pendingPhone + " নম্বরে পাঠানো OTP লিখুন।")
                 .setView(otp)
-                .setNegativeButton("à¦¬à¦¾à¦¤à¦¿à¦²", null)
-                .setPositiveButton("à¦¯à¦¾à¦šà¦¾à¦‡", null)
+                .setNegativeButton("বাতিল", null)
+                .setPositiveButton("যাচাই", null)
                 .create();
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String code = otp.getText().toString().trim();
-            if (code.length() != 6) { otp.setError("à§¬ à¦¡à¦¿à¦œà¦¿à¦Ÿà§‡à¦° OTP à¦¦à¦¿à¦¨"); return; }
-            if (verificationId.isEmpty()) { Toast.makeText(this,"OTP session à¦ªà¦¾à¦“à¦¯à¦¼à¦¾ à¦¯à¦¾à¦¯à¦¼à¦¨à¦¿à¥¤ à¦†à¦¬à¦¾à¦° à¦šà§‡à¦·à§à¦Ÿà¦¾ à¦•à¦°à§à¦¨à¥¤",Toast.LENGTH_SHORT).show(); return; }
+            if (code.length() != 6) { otp.setError("৬ ডিজিটের OTP দিন"); return; }
+            if (verificationId.isEmpty()) { Toast.makeText(this,"OTP session পাওয়া যায়নি। আবার চেষ্টা করুন।",Toast.LENGTH_SHORT).show(); return; }
             PhoneAuthCredential credential = PhoneAuthProvider.getCredential(verificationId, code);
             signInWithPhoneCredential(credential);
             dialog.dismiss();
@@ -259,7 +255,7 @@ public class MainActivity extends Activity {
                     }
                 })
                 .addOnFailureListener(e -> Toast.makeText(this,
-                        "OTP à¦¯à¦¾à¦šà¦¾à¦‡ à¦¬à§à¦¯à¦°à§à¦¥ à¦¹à¦¯à¦¼à§‡à¦›à§‡à¥¤", Toast.LENGTH_LONG).show());
+                        "OTP যাচাই ব্যর্থ হয়েছে।", Toast.LENGTH_LONG).show());
     }
 
     private void createRegisteredProfile(String uid) {
@@ -282,12 +278,12 @@ public class MainActivity extends Activity {
                     pref.edit().putString("name", pendingName).putString("phone", pendingPhone)
                             .putString("password", pendingPassword).putBoolean("logged_in", true).apply();
                     cacheProfile(0,0,false,false,false);
-                    Toast.makeText(this,"à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦¤à§ˆà¦°à¦¿ à¦¹à¦¯à¦¼à§‡à¦›à§‡à¥¤",Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this,"অ্যাকাউন্ট তৈরি হয়েছে।",Toast.LENGTH_SHORT).show();
                     showPinSetup();
                     listenToProfile();
                 })
                 .addOnFailureListener(e -> Toast.makeText(this,
-                        "à¦ªà§à¦°à§‹à¦«à¦¾à¦‡à¦² à¦¤à§ˆà¦°à¦¿ à¦•à¦°à¦¾ à¦¯à¦¾à¦¯à¦¼à¦¨à¦¿: " + firebaseError(e), Toast.LENGTH_LONG).show());
+                        "প্রোফাইল তৈরি করা যায়নি: " + firebaseError(e), Toast.LENGTH_LONG).show());
     }
 
     private void verifyExistingProfileAfterPhoneLogin(String uid) {
@@ -295,13 +291,13 @@ public class MainActivity extends Activity {
                 .addOnSuccessListener(snapshot -> {
                     if (!snapshot.exists()) {
                         firebaseAuth.signOut();
-                        Toast.makeText(this,"à¦à¦‡ à¦¨à¦®à§à¦¬à¦°à§‡à¦° Quick Pay à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦ªà¦¾à¦“à¦¯à¦¼à¦¾ à¦¯à¦¾à¦¯à¦¼à¦¨à¦¿à¥¤ à¦°à§‡à¦œà¦¿à¦¸à§à¦Ÿà¦¾à¦° à¦•à¦°à§à¦¨à¥¤",Toast.LENGTH_LONG).show();
+                        Toast.makeText(this,"এই নম্বরের Quick Pay অ্যাকাউন্ট পাওয়া যায়নি। রেজিস্টার করুন।",Toast.LENGTH_LONG).show();
                         return;
                     }
                     String savedHash = snapshot.getString("passwordHash");
                     if (savedHash != null && !savedHash.equals(sha256(pendingPassword))) {
                         firebaseAuth.signOut();
-                        Toast.makeText(this,"à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦¸à¦ à¦¿à¦• à¦¨à¦¯à¦¼à¥¤",Toast.LENGTH_LONG).show();
+                        Toast.makeText(this,"পাসওয়ার্ড সঠিক নয়।",Toast.LENGTH_LONG).show();
                         return;
                     }
                     pref.edit().putString("name", snapshot.getString("name") == null ? "" : snapshot.getString("name"))
@@ -317,7 +313,7 @@ public class MainActivity extends Activity {
                     listenToProfile();
                     if (pref.getString("pin", "").length() == 8) showHome(); else showPinSetup();
                 })
-                .addOnFailureListener(e -> Toast.makeText(this,"à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦¤à¦¥à§à¦¯ à¦ªà¦¡à¦¼à¦¾ à¦¯à¦¾à¦¯à¦¼à¦¨à¦¿à¥¤",Toast.LENGTH_LONG).show());
+                .addOnFailureListener(e -> Toast.makeText(this,"অ্যাকাউন্ট তথ্য পড়া যায়নি।",Toast.LENGTH_LONG).show());
     }
 
     private void syncCurrentProfile() {
@@ -383,7 +379,7 @@ public class MainActivity extends Activity {
 
     private boolean transactionBlocked() {
         if (pref.getBoolean("account_locked", false) || pref.getBoolean("main_balance_locked", false)) {
-            Toast.makeText(this, "à¦†à¦ªà¦¨à¦¾à¦° à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿà§‡ à¦ªà¦°à§à¦¯à¦¾à¦ªà§à¦¤ à¦¬à§à¦¯à¦¾à¦²à§‡à¦¨à§à¦¸ à¦¨à¦¾à¦‡", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "আপনার অ্যাকাউন্টে পর্যাপ্ত ব্যালেন্স নাই", Toast.LENGTH_LONG).show();
             return true;
         }
         return false;
@@ -393,7 +389,7 @@ public class MainActivity extends Activity {
         if (transactionBlocked()) return true;
         double balance = getMainBalance();
         if (amount > 0 && balance < amount) {
-            Toast.makeText(this, "à¦†à¦ªà¦¨à¦¾à¦° à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿà§‡ à¦ªà¦°à§à¦¯à¦¾à¦ªà§à¦¤ à¦¬à§à¦¯à¦¾à¦²à§‡à¦¨à§à¦¸ à¦¨à¦¾à¦‡", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "আপনার অ্যাকাউন্টে পর্যাপ্ত ব্যালেন্স নাই", Toast.LENGTH_LONG).show();
             return true;
         }
         return false;
@@ -417,7 +413,7 @@ public class MainActivity extends Activity {
 
     private void submitDepositRequestToFirebase(double amount, String transactionId) {
         if (!firebaseReady || firestore == null || firebaseAuth == null) {
-            Toast.makeText(this, "Firebase à¦¸à¦‚à¦¯à§‹à¦— à¦¨à§‡à¦‡à¥¤ à¦ªà¦°à§‡ à¦†à¦¬à¦¾à¦° à¦šà§‡à¦·à§à¦Ÿà¦¾ à¦•à¦°à§à¦¨à¥¤", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Firebase সংযোগ নেই। পরে আবার চেষ্টা করুন।", Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -426,7 +422,7 @@ public class MainActivity extends Activity {
             firebaseAuth.signInAnonymously()
                     .addOnSuccessListener(result -> writeDepositRequest(amount, transactionId))
                     .addOnFailureListener(e -> Toast.makeText(this,
-                            "Firebase à¦²à¦—à¦‡à¦¨ à¦•à¦°à¦¾ à¦¯à¦¾à¦¯à¦¼à¦¨à¦¿: " + firebaseError(e), Toast.LENGTH_LONG).show());
+                            "Firebase লগইন করা যায়নি: " + firebaseError(e), Toast.LENGTH_LONG).show());
             return;
         }
         writeDepositRequest(amount, transactionId);
@@ -435,7 +431,7 @@ public class MainActivity extends Activity {
     private void writeDepositRequest(double amount, String transactionId) {
         String uid = firebaseUid();
         if (uid.isEmpty()) {
-            Toast.makeText(this, "Firebase à¦‡à¦‰à¦œà¦¾à¦° à¦¸à§‡à¦¶à¦¨ à¦ªà¦¾à¦“à¦¯à¦¼à¦¾ à¦¯à¦¾à¦¯à¦¼à¦¨à¦¿à¥¤", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Firebase ইউজার সেশন পাওয়া যায়নি।", Toast.LENGTH_LONG).show();
             return;
         }
         Map<String,Object> m = new HashMap<>();
@@ -449,19 +445,19 @@ public class MainActivity extends Activity {
         m.put("createdAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
         firestore.collection("depositRequests").add(m)
                 .addOnSuccessListener(v -> {
-                    recordTransaction("à¦…à§à¦¯à¦¾à¦¡ à¦®à¦¾à¦¨à¦¿", "à¦¡à¦¿à¦ªà§‹à¦œà¦¿à¦Ÿ / " + transactionId, amount, true, "PENDING");
+                    recordTransaction("অ্যাড মানি", "ডিপোজিট / " + transactionId, amount, true, "PENDING");
                     Toast.makeText(this,
-                            "à¦¡à¦¿à¦ªà§‹à¦œà¦¿à¦Ÿ à¦°à¦¿à¦•à§‹à¦¯à¦¼à§‡à¦¸à§à¦Ÿ à¦…à§à¦¯à¦¾à¦¡à¦®à¦¿à¦¨à§‡à¦° à¦•à¦¾à¦›à§‡ à¦ªà¦¾à¦ à¦¾à¦¨à§‹ à¦¹à¦¯à¦¼à§‡à¦›à§‡à¥¤",
+                            "ডিপোজিট রিকোয়েস্ট অ্যাডমিনের কাছে পাঠানো হয়েছে।",
                             Toast.LENGTH_LONG).show();
                 })
                 .addOnFailureListener(e -> Toast.makeText(this,
-                        "à¦¡à¦¿à¦ªà§‹à¦œà¦¿à¦Ÿ à¦°à¦¿à¦•à§‹à¦¯à¦¼à§‡à¦¸à§à¦Ÿ à¦ªà¦¾à¦ à¦¾à¦¨à§‹ à¦¯à¦¾à¦¯à¦¼à¦¨à¦¿: " + firebaseError(e),
+                        "ডিপোজিট রিকোয়েস্ট পাঠানো যায়নি: " + firebaseError(e),
                         Toast.LENGTH_LONG).show());
     }
 
     private void submitFirestoreRequest(String collection, Map<String,Object> data) {
         if (!firebaseReady || firestore == null || firebaseUid().isEmpty()) {
-            Toast.makeText(this, "Firebase à¦¸à¦‚à¦¯à§‹à¦— à¦¨à§‡à¦‡à¥¤ à¦ªà¦°à§‡ à¦†à¦¬à¦¾à¦° à¦šà§‡à¦·à§à¦Ÿà¦¾ à¦•à¦°à§à¦¨à¥¤", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Firebase সংযোগ নেই। পরে আবার চেষ্টা করুন।", Toast.LENGTH_LONG).show();
             return;
         }
         data.put("userId", firebaseUid());
@@ -494,9 +490,9 @@ public class MainActivity extends Activity {
 
     private String paymentNumberFor(String name) {
         String key = name.toLowerCase(Locale.US);
-        if (key.contains("bkash") || key.contains("à¦¬à¦¿à¦•à¦¾à¦¶")) return pref.getBoolean("payment_bkash_active", true) ? pref.getString("payment_bkash", "") : "";
-        if (key.contains("nagad") || key.contains("à¦¨à¦—à¦¦")) return pref.getBoolean("payment_nagad_active", true) ? pref.getString("payment_nagad", "") : "";
-        if (key.contains("rocket") || key.contains("à¦°à¦•à§‡à¦Ÿ")) return pref.getBoolean("payment_rocket_active", true) ? pref.getString("payment_rocket", "") : "";
+        if (key.contains("bkash") || key.contains("বিকাশ")) return pref.getBoolean("payment_bkash_active", true) ? pref.getString("payment_bkash", "") : "";
+        if (key.contains("nagad") || key.contains("নগদ")) return pref.getBoolean("payment_nagad_active", true) ? pref.getString("payment_nagad", "") : "";
+        if (key.contains("rocket") || key.contains("রকেট")) return pref.getBoolean("payment_rocket_active", true) ? pref.getString("payment_rocket", "") : "";
         return "";
     }
 
@@ -527,11 +523,11 @@ public class MainActivity extends Activity {
 
         boolean numeric =
                 password
-                || h.contains("à¦«à§‹à¦¨")
-                || h.contains("à¦¨à¦®à§à¦¬à¦°")
-                || h.contains("à¦Ÿà¦¾à¦•à¦¾à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£")
+                || h.contains("ফোন")
+                || h.contains("নম্বর")
+                || h.contains("টাকার পরিমাণ")
                 || h.contains("PIN")
-                || h.contains("à¦ªà¦¿à¦¨");
+                || h.contains("পিন");
 
         if (numeric) {
 
@@ -606,10 +602,10 @@ public class MainActivity extends Activity {
     }
     private String panelText(String key,String fallback){String v=pref.getString(key,"");return v.trim().isEmpty()?fallback:v;}
     private JSONArray panelArray(String key){try{return new JSONArray(pref.getString(key,"[]"));}catch(Exception e){return new JSONArray();}}
-    private void openExternal(String url){try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));}catch(Exception e){Toast.makeText(this,tx("à¦²à¦¿à¦‚à¦•à¦Ÿà¦¿ à¦–à§‹à¦²à¦¾ à¦¯à¦¾à¦šà§à¦›à§‡ à¦¨à¦¾","Unable to open link"),Toast.LENGTH_SHORT).show();}}
+    private void openExternal(String url){try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));}catch(Exception e){Toast.makeText(this,tx("লিংকটি খোলা যাচ্ছে না","Unable to open link"),Toast.LENGTH_SHORT).show();}}
     private void addLiveActivityTicker(LinearLayout header){
         LinearLayout live=new LinearLayout(this); live.setGravity(Gravity.CENTER_VERTICAL); live.setBackground(bg(Color.WHITE,14)); live.setPadding(dp(8),0,dp(8),0);
-        TextView badge=tv("â— LIVE",12,Color.RED); badge.setTypeface(Typeface.DEFAULT,Typeface.BOLD); live.addView(badge,new LinearLayout.LayoutParams(dp(62),dp(38)));
+        TextView badge=tv("● LIVE",12,Color.RED); badge.setTypeface(Typeface.DEFAULT,Typeface.BOLD); live.addView(badge,new LinearLayout.LayoutParams(dp(62),dp(38)));
         TextView a=tv("Quick Pay Live Activity",12,Color.DKGRAY); a.setSingleLine(true); a.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE); a.setMarqueeRepeatLimit(-1); a.setSelected(true); live.addView(a,new LinearLayout.LayoutParams(0,dp(38),1));
         header.addView(live,new LinearLayout.LayoutParams(-1,dp(38)));
         if (!firebaseReady || firestore == null || firebaseUid().isEmpty()) return;
@@ -619,7 +615,7 @@ public class MainActivity extends Activity {
             java.util.ArrayList<String> items=new java.util.ArrayList<>();
             for(DocumentSnapshot d:snap.getDocuments()){
                 String text=d.getString("text");
-                if(text==null || text.trim().isEmpty()){ String name=d.getString("name"); String phone=d.getString("phone"); String type=d.getString("type"); Double amount=d.getDouble("amount"); String when=d.getString("displayTime"); StringBuilder b=new StringBuilder(); if(name!=null)b.append(name); if(phone!=null&&!phone.isEmpty())b.append(" (").append(phone).append(")"); if(amount!=null)b.append(" ").append(String.format(Locale.getDefault(),"à§³ %.0f",amount)); if(type!=null&&!type.isEmpty())b.append(" ").append(type); if(when!=null&&!when.isEmpty())b.append(" â€¢ ").append(when); text=b.toString().trim(); }
+                if(text==null || text.trim().isEmpty()){ String name=d.getString("name"); String phone=d.getString("phone"); String type=d.getString("type"); Double amount=d.getDouble("amount"); String when=d.getString("displayTime"); StringBuilder b=new StringBuilder(); if(name!=null)b.append(name); if(phone!=null&&!phone.isEmpty())b.append(" (").append(phone).append(")"); if(amount!=null)b.append(" ").append(String.format(Locale.getDefault(),"৳ %.0f",amount)); if(type!=null&&!type.isEmpty())b.append(" ").append(type); if(when!=null&&!when.isEmpty())b.append(" • ").append(when); text=b.toString().trim(); }
                 if(!text.isEmpty()) items.add(text);
             }
             if(items.isEmpty()){a.setText("Quick Pay Live Activity");return;}
@@ -628,10 +624,10 @@ public class MainActivity extends Activity {
         });
         firestore.collection("settings").document("general").get().addOnSuccessListener(d->{Long sec=d.getLong("liveRotateSeconds"); if(sec!=null)pref.edit().putInt("live_rotate_seconds",Math.max(3,Math.min(60,sec.intValue()))).apply();});
     }
-    private void addProfileItem(LinearLayout parent,String icon,String text,View.OnClickListener click){LinearLayout r=new LinearLayout(this);r.setGravity(Gravity.CENTER_VERTICAL);r.setPadding(dp(14),0,dp(10),0);r.setBackground(bg(Color.WHITE,14));TextView i=tv(icon,22,DARK);i.setGravity(Gravity.CENTER);r.addView(i,new LinearLayout.LayoutParams(dp(55),dp(62)));TextView t=tv(text,18,DARK);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);r.addView(t,new LinearLayout.LayoutParams(0,dp(62),1));TextView a=tv("â€º",30,Color.GRAY);a.setGravity(Gravity.CENTER);r.addView(a,new LinearLayout.LayoutParams(dp(35),dp(62)));parent.addView(r,new LinearLayout.LayoutParams(-1,dp(62)));space(parent,1);r.setOnClickListener(click);}
-    private void showTransactionHistory(){getWindow().setStatusBarColor(BLUE);getWindow().setNavigationBarColor(Color.WHITE);LinearLayout main=new LinearLayout(this);main.setOrientation(LinearLayout.VERTICAL);main.setBackgroundColor(Color.rgb(247,248,250));setContentView(main);LinearLayout h=new LinearLayout(this);h.setGravity(Gravity.CENTER_VERTICAL);h.setBackgroundColor(BLUE);main.addView(h,new LinearLayout.LayoutParams(-1,dp(62)));TextView b=tv("â€¹",38,Color.WHITE);b.setGravity(Gravity.CENTER);h.addView(b,new LinearLayout.LayoutParams(dp(52),dp(62)));b.setOnClickListener(v->showHome());TextView t=tv(tx("à¦²à§‡à¦¨à¦¦à§‡à¦¨","Transactions"),21,Color.WHITE);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);h.addView(t,new LinearLayout.LayoutParams(0,dp(62),1));ScrollView sc=new ScrollView(this);LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);list.setPadding(dp(12),dp(12),dp(12),dp(20));sc.addView(list);main.addView(sc,new LinearLayout.LayoutParams(-1,0,1));JSONArray a=panelArray("transaction_history");if(a.length()==0){TextView e=tv(tx("à¦à¦–à¦¨à¦“ à¦•à§‹à¦¨à§‹ à¦²à§‡à¦¨à¦¦à§‡à¦¨ à¦¨à§‡à¦‡","No transactions yet"),17,Color.GRAY);e.setGravity(Gravity.CENTER);list.addView(e,new LinearLayout.LayoutParams(-1,dp(100)));return;}for(int i=0;i<a.length();i++)try{JSONObject o=a.getJSONObject(i);String type=o.optString("type","Transaction"),detail=o.optString("detail",""),time=o.optString("time","");double amount=o.optDouble("amount",0);boolean credit=o.optBoolean("credit",false);LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(16),dp(12),dp(16),dp(12));c.setBackground(bg(Color.WHITE,16));LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.setMargins(0,0,0,dp(10));list.addView(c,cp);LinearLayout r=new LinearLayout(this);r.setGravity(Gravity.CENTER_VERTICAL);TextView tt=tv(type,16,DARK);tt.setTypeface(Typeface.DEFAULT,Typeface.BOLD);r.addView(tt,new LinearLayout.LayoutParams(0,dp(28),1));TextView am=tv((credit?"+ ":"- ")+String.format(Locale.getDefault(),"à§³ %.2f",amount),16,credit?Color.rgb(30,150,80):Color.rgb(190,45,45));am.setTypeface(Typeface.DEFAULT,Typeface.BOLD);r.addView(am,new LinearLayout.LayoutParams(-2,dp(28)));c.addView(r);c.addView(tv(detail,13,Color.DKGRAY),new LinearLayout.LayoutParams(-1,dp(26)));c.addView(tv(time+"   â€¢   SUCCESS",11,Color.GRAY),new LinearLayout.LayoutParams(-1,dp(22)));}catch(Exception ignored){}}
-    private void showProfile(){getWindow().setStatusBarColor(BLUE);getWindow().setNavigationBarColor(Color.WHITE);LinearLayout main=new LinearLayout(this);main.setOrientation(LinearLayout.VERTICAL);main.setBackgroundColor(Color.rgb(247,248,250));setContentView(main);LinearLayout h=new LinearLayout(this);h.setGravity(Gravity.CENTER_VERTICAL);h.setBackgroundColor(BLUE);main.addView(h,new LinearLayout.LayoutParams(-1,dp(62)));TextView title=tv(tx("à¦ªà§à¦°à§‹à¦«à¦¾à¦‡à¦²","Profile"),24,Color.WHITE);title.setGravity(Gravity.CENTER);title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);h.addView(title,new LinearLayout.LayoutParams(0,dp(62),1));TextView out=tv("â‡¥",28,Color.WHITE);out.setGravity(Gravity.CENTER);h.addView(out,new LinearLayout.LayoutParams(dp(60),dp(62)));out.setOnClickListener(v->{pref.edit().putBoolean("logged_in",false).apply();showLogin();});ScrollView sc=new ScrollView(this);LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(16),dp(16),dp(16),dp(20));sc.addView(c);main.addView(sc,new LinearLayout.LayoutParams(-1,0,1));LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(20),dp(18),dp(20),dp(18));card.setBackground(bg(Color.WHITE,18));c.addView(card,new LinearLayout.LayoutParams(-1,-2));TextView n=tv(pref.getString("name","Rosy"),25,DARK);n.setTypeface(Typeface.DEFAULT,Typeface.BOLD);card.addView(n,new LinearLayout.LayoutParams(-1,dp(40)));card.addView(tv(pref.getString("phone",""),16,Color.GRAY),new LinearLayout.LayoutParams(-1,dp(30)));card.addView(tv("à¦°à§‡à¦«à¦¾à¦° à¦•à§‹à¦¡: "+getInviteCode(),15,Color.DKGRAY),new LinearLayout.LayoutParams(-1,dp(30)));space(c,12);addProfileItem(c,"ðŸ›¡",tx("à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨","Change Password"),v->showChangePassword());addProfileItem(c,"ðŸ›¡",tx("à¦ªà¦¿à¦¨ à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨","Change PIN"),v->showChangePin());addProfileItem(c,"ðŸŽ§",tx("à¦•à¦¾à¦¸à§à¦Ÿà¦®à¦¾à¦° à¦•à§‡à§Ÿà¦¾à¦°","Customer Care"),v->showCustomerCare());addProfileItem(c,"ðŸŒ",tx("à¦†à¦®à¦¾à¦¦à§‡à¦° à¦¸à¦®à§à¦ªà¦°à§à¦•à§‡","About Us"),v->showAboutUs());TextView ver=tv("à¦­à¦¾à¦°à§à¦¸à¦¨ 1.0.0",15,Color.GRAY);ver.setGravity(Gravity.CENTER);c.addView(ver,new LinearLayout.LayoutParams(-1,dp(60)));}
-    private void showAboutUs(){getWindow().setStatusBarColor(BLUE);getWindow().setNavigationBarColor(Color.WHITE);LinearLayout main=new LinearLayout(this);main.setOrientation(LinearLayout.VERTICAL);main.setBackgroundColor(Color.rgb(247,248,250));setContentView(main);LinearLayout h=new LinearLayout(this);h.setGravity(Gravity.CENTER_VERTICAL);h.setBackgroundColor(BLUE);main.addView(h,new LinearLayout.LayoutParams(-1,dp(62)));TextView b=tv("â€¹",38,Color.WHITE);b.setGravity(Gravity.CENTER);h.addView(b,new LinearLayout.LayoutParams(dp(52),dp(62)));b.setOnClickListener(v->showProfile());TextView t=tv(tx("à¦†à¦®à¦¾à¦¦à§‡à¦° à¦¸à¦®à§à¦ªà¦°à§à¦•à§‡","About Us"),21,Color.WHITE);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);h.addView(t,new LinearLayout.LayoutParams(0,dp(62),1));ScrollView sc=new ScrollView(this);LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(16),dp(16),dp(16),dp(30));sc.addView(c);main.addView(sc,new LinearLayout.LayoutParams(-1,0,1));String[] keys={"about_company_name","about_intro","about_status","about_license","about_registration","about_validity","about_address","about_phone","about_extra"};String[] labels={"à¦ªà§à¦°à¦¤à¦¿à¦·à§à¦ à¦¾à¦¨à§‡à¦° à¦¨à¦¾à¦®","à¦ªà¦°à¦¿à¦šà¦¿à¦¤à¦¿","à¦ªà§à¦°à¦¤à¦¿à¦·à§à¦ à¦¾à¦¨à§‡à¦° à¦§à¦°à¦¨/à¦¸à§à¦Ÿà§à¦¯à¦¾à¦Ÿà¦¾à¦¸","à¦²à¦¾à¦‡à¦¸à§‡à¦¨à§à¦¸ à¦¤à¦¥à§à¦¯","à¦°à§‡à¦œà¦¿à¦¸à§à¦Ÿà§à¦°à§‡à¦¶à¦¨ à¦¤à¦¥à§à¦¯","à¦²à¦¾à¦‡à¦¸à§‡à¦¨à§à¦¸/à¦°à§‡à¦œà¦¿à¦¸à§à¦Ÿà§à¦°à§‡à¦¶à¦¨à§‡à¦° à¦®à§‡à§Ÿà¦¾à¦¦","à¦ à¦¿à¦•à¦¾à¦¨à¦¾","à¦¯à§‹à¦—à¦¾à¦¯à§‹à¦—","à¦…à¦¤à¦¿à¦°à¦¿à¦•à§à¦¤ à¦¤à¦¥à§à¦¯"};int added=0;for(int i=0;i<keys.length;i++){String v=pref.getString(keys[i],"");if(v.trim().isEmpty())continue;added++;TextView l=tv(labels[i],13,BLUE);l.setTypeface(Typeface.DEFAULT,Typeface.BOLD);c.addView(l,new LinearLayout.LayoutParams(-1,dp(26)));TextView val=tv(v,16,DARK);val.setPadding(dp(14),dp(12),dp(14),dp(12));val.setBackground(bg(Color.WHITE,14));c.addView(val,new LinearLayout.LayoutParams(-1,-2));space(c,10);}if(added==0){TextView v=tv(tx("à¦†à¦®à¦¾à¦¦à§‡à¦° à¦¸à¦®à§à¦ªà¦°à§à¦•à§‡ à¦¤à¦¥à§à¦¯ Panel à¦¥à§‡à¦•à§‡ à¦¯à§‹à¦— à¦•à¦°à¦¾ à¦¹à¦¬à§‡à¥¤","About information will be provided from the panel."),16,Color.GRAY);c.addView(v,new LinearLayout.LayoutParams(-1,dp(100)));}}
+    private void addProfileItem(LinearLayout parent,String icon,String text,View.OnClickListener click){LinearLayout r=new LinearLayout(this);r.setGravity(Gravity.CENTER_VERTICAL);r.setPadding(dp(14),0,dp(10),0);r.setBackground(bg(Color.WHITE,14));TextView i=tv(icon,22,DARK);i.setGravity(Gravity.CENTER);r.addView(i,new LinearLayout.LayoutParams(dp(55),dp(62)));TextView t=tv(text,18,DARK);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);r.addView(t,new LinearLayout.LayoutParams(0,dp(62),1));TextView a=tv("›",30,Color.GRAY);a.setGravity(Gravity.CENTER);r.addView(a,new LinearLayout.LayoutParams(dp(35),dp(62)));parent.addView(r,new LinearLayout.LayoutParams(-1,dp(62)));space(parent,1);r.setOnClickListener(click);}
+    private void showTransactionHistory(){getWindow().setStatusBarColor(BLUE);getWindow().setNavigationBarColor(Color.WHITE);LinearLayout main=new LinearLayout(this);main.setOrientation(LinearLayout.VERTICAL);main.setBackgroundColor(Color.rgb(247,248,250));setContentView(main);LinearLayout h=new LinearLayout(this);h.setGravity(Gravity.CENTER_VERTICAL);h.setBackgroundColor(BLUE);main.addView(h,new LinearLayout.LayoutParams(-1,dp(62)));TextView b=tv("‹",38,Color.WHITE);b.setGravity(Gravity.CENTER);h.addView(b,new LinearLayout.LayoutParams(dp(52),dp(62)));b.setOnClickListener(v->showHome());TextView t=tv(tx("লেনদেন","Transactions"),21,Color.WHITE);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);h.addView(t,new LinearLayout.LayoutParams(0,dp(62),1));ScrollView sc=new ScrollView(this);LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);list.setPadding(dp(12),dp(12),dp(12),dp(20));sc.addView(list);main.addView(sc,new LinearLayout.LayoutParams(-1,0,1));JSONArray a=panelArray("transaction_history");if(a.length()==0){TextView e=tv(tx("এখনও কোনো লেনদেন নেই","No transactions yet"),17,Color.GRAY);e.setGravity(Gravity.CENTER);list.addView(e,new LinearLayout.LayoutParams(-1,dp(100)));return;}for(int i=0;i<a.length();i++)try{JSONObject o=a.getJSONObject(i);String type=o.optString("type","Transaction"),detail=o.optString("detail",""),time=o.optString("time","");double amount=o.optDouble("amount",0);boolean credit=o.optBoolean("credit",false);LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(16),dp(12),dp(16),dp(12));c.setBackground(bg(Color.WHITE,16));LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.setMargins(0,0,0,dp(10));list.addView(c,cp);LinearLayout r=new LinearLayout(this);r.setGravity(Gravity.CENTER_VERTICAL);TextView tt=tv(type,16,DARK);tt.setTypeface(Typeface.DEFAULT,Typeface.BOLD);r.addView(tt,new LinearLayout.LayoutParams(0,dp(28),1));TextView am=tv((credit?"+ ":"- ")+String.format(Locale.getDefault(),"৳ %.2f",amount),16,credit?Color.rgb(30,150,80):Color.rgb(190,45,45));am.setTypeface(Typeface.DEFAULT,Typeface.BOLD);r.addView(am,new LinearLayout.LayoutParams(-2,dp(28)));c.addView(r);c.addView(tv(detail,13,Color.DKGRAY),new LinearLayout.LayoutParams(-1,dp(26)));c.addView(tv(time+"   •   SUCCESS",11,Color.GRAY),new LinearLayout.LayoutParams(-1,dp(22)));}catch(Exception ignored){}}
+    private void showProfile(){getWindow().setStatusBarColor(BLUE);getWindow().setNavigationBarColor(Color.WHITE);LinearLayout main=new LinearLayout(this);main.setOrientation(LinearLayout.VERTICAL);main.setBackgroundColor(Color.rgb(247,248,250));setContentView(main);LinearLayout h=new LinearLayout(this);h.setGravity(Gravity.CENTER_VERTICAL);h.setBackgroundColor(BLUE);main.addView(h,new LinearLayout.LayoutParams(-1,dp(62)));TextView title=tv(tx("প্রোফাইল","Profile"),24,Color.WHITE);title.setGravity(Gravity.CENTER);title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);h.addView(title,new LinearLayout.LayoutParams(0,dp(62),1));TextView out=tv("⇥",28,Color.WHITE);out.setGravity(Gravity.CENTER);h.addView(out,new LinearLayout.LayoutParams(dp(60),dp(62)));out.setOnClickListener(v->{pref.edit().putBoolean("logged_in",false).apply();showLogin();});ScrollView sc=new ScrollView(this);LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(16),dp(16),dp(16),dp(20));sc.addView(c);main.addView(sc,new LinearLayout.LayoutParams(-1,0,1));LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(20),dp(18),dp(20),dp(18));card.setBackground(bg(Color.WHITE,18));c.addView(card,new LinearLayout.LayoutParams(-1,-2));TextView n=tv(pref.getString("name","Rosy"),25,DARK);n.setTypeface(Typeface.DEFAULT,Typeface.BOLD);card.addView(n,new LinearLayout.LayoutParams(-1,dp(40)));card.addView(tv(pref.getString("phone",""),16,Color.GRAY),new LinearLayout.LayoutParams(-1,dp(30)));card.addView(tv("রেফার কোড: "+getInviteCode(),15,Color.DKGRAY),new LinearLayout.LayoutParams(-1,dp(30)));space(c,12);addProfileItem(c,"🛡",tx("পাসওয়ার্ড পরিবর্তন","Change Password"),v->showChangePassword());addProfileItem(c,"🛡",tx("পিন পরিবর্তন","Change PIN"),v->showChangePin());addProfileItem(c,"🎧",tx("কাস্টমার কেয়ার","Customer Care"),v->showCustomerCare());addProfileItem(c,"🌐",tx("আমাদের সম্পর্কে","About Us"),v->showAboutUs());TextView ver=tv("ভার্সন 1.0.0",15,Color.GRAY);ver.setGravity(Gravity.CENTER);c.addView(ver,new LinearLayout.LayoutParams(-1,dp(60)));}
+    private void showAboutUs(){getWindow().setStatusBarColor(BLUE);getWindow().setNavigationBarColor(Color.WHITE);LinearLayout main=new LinearLayout(this);main.setOrientation(LinearLayout.VERTICAL);main.setBackgroundColor(Color.rgb(247,248,250));setContentView(main);LinearLayout h=new LinearLayout(this);h.setGravity(Gravity.CENTER_VERTICAL);h.setBackgroundColor(BLUE);main.addView(h,new LinearLayout.LayoutParams(-1,dp(62)));TextView b=tv("‹",38,Color.WHITE);b.setGravity(Gravity.CENTER);h.addView(b,new LinearLayout.LayoutParams(dp(52),dp(62)));b.setOnClickListener(v->showProfile());TextView t=tv(tx("আমাদের সম্পর্কে","About Us"),21,Color.WHITE);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);h.addView(t,new LinearLayout.LayoutParams(0,dp(62),1));ScrollView sc=new ScrollView(this);LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(16),dp(16),dp(16),dp(30));sc.addView(c);main.addView(sc,new LinearLayout.LayoutParams(-1,0,1));String[] keys={"about_company_name","about_intro","about_status","about_license","about_registration","about_validity","about_address","about_phone","about_extra"};String[] labels={"প্রতিষ্ঠানের নাম","পরিচিতি","প্রতিষ্ঠানের ধরন/স্ট্যাটাস","লাইসেন্স তথ্য","রেজিস্ট্রেশন তথ্য","লাইসেন্স/রেজিস্ট্রেশনের মেয়াদ","ঠিকানা","যোগাযোগ","অতিরিক্ত তথ্য"};int added=0;for(int i=0;i<keys.length;i++){String v=pref.getString(keys[i],"");if(v.trim().isEmpty())continue;added++;TextView l=tv(labels[i],13,BLUE);l.setTypeface(Typeface.DEFAULT,Typeface.BOLD);c.addView(l,new LinearLayout.LayoutParams(-1,dp(26)));TextView val=tv(v,16,DARK);val.setPadding(dp(14),dp(12),dp(14),dp(12));val.setBackground(bg(Color.WHITE,14));c.addView(val,new LinearLayout.LayoutParams(-1,-2));space(c,10);}if(added==0){TextView v=tv(tx("আমাদের সম্পর্কে তথ্য Panel থেকে যোগ করা হবে।","About information will be provided from the panel."),16,Color.GRAY);c.addView(v,new LinearLayout.LayoutParams(-1,dp(100)));}}
 
     /* =========================================================
        LOGIN
@@ -663,7 +659,7 @@ public class MainActivity extends Activity {
 
         setContentView(scroll);
 
-        TextView lang = tv(isEnglish()?"BN     English":"à¦¬à¦¾à¦‚à¦²à¦¾     EN",16,Color.WHITE);
+        TextView lang = tv(isEnglish()?"BN     English":"বাংলা     EN",16,Color.WHITE);
 
         lang.setGravity(Gravity.CENTER);
         lang.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
@@ -697,7 +693,7 @@ public class MainActivity extends Activity {
 
         TextView sub =
                 tv(
-                        "à¦¬à¦¾à¦‚à¦²à¦¾à¦¦à§‡à¦¶à§‡à¦° à¦¸à§‡à¦°à¦¾ à¦°à¦¿à¦šà¦¾à¦°à§à¦œ à¦¬à§à¦¯à¦¬à¦¸à¦¾ à¦ªà§à¦²à§à¦¯à¦¾à¦Ÿà¦«à¦°à§à¦®",
+                        "বাংলাদেশের সেরা রিচার্জ ব্যবসা প্ল্যাটফর্ম",
                         16,
                         Color.WHITE
                 );
@@ -711,7 +707,7 @@ public class MainActivity extends Activity {
 
         space(root,15);
 
-        EditText phone = input("à¦«à§‹à¦¨",false);
+        EditText phone = input("ফোন",false);
 
         root.addView(
                 phone,
@@ -726,7 +722,7 @@ public class MainActivity extends Activity {
         passBox.setPadding(dp(5),0,dp(5),0);
         passBox.setBackground(bg(Color.WHITE,12));
 
-        EditText pass = input("à§¬ à¦¡à¦¿à¦œà¦¿à¦Ÿ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡",true);
+        EditText pass = input("৬ ডিজিট পাসওয়ার্ড",true);
         pass.setBackgroundColor(Color.TRANSPARENT);
 
         passBox.addView(
@@ -734,7 +730,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(0,dp(62),1)
         );
 
-        TextView eye = tv("â—‰",23,BLUE);
+        TextView eye = tv("◉",23,BLUE);
         eye.setGravity(Gravity.CENTER);
 
         passBox.addView(
@@ -768,7 +764,7 @@ public class MainActivity extends Activity {
 
         space(root,20);
 
-        TextView login = button("à¦²à¦—à¦‡à¦¨",Color.WHITE,BLUE);
+        TextView login = button("লগইন",Color.WHITE,BLUE);
 
         root.addView(
                 login,
@@ -781,12 +777,12 @@ public class MainActivity extends Activity {
             String pw = pass.getText().toString().trim();
 
             if (p.isEmpty()) {
-                phone.setError("à¦«à§‹à¦¨ à¦¨à¦®à§à¦¬à¦° à¦¦à¦¿à¦¨");
+                phone.setError("ফোন নম্বর দিন");
                 return;
             }
 
             if (pw.isEmpty()) {
-                pass.setError("à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦¦à¦¿à¦¨");
+                pass.setError("পাসওয়ার্ড দিন");
                 return;
             }
 
@@ -795,7 +791,7 @@ public class MainActivity extends Activity {
 
         TextView forgot =
                 tv(
-                        "à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦­à§à¦²à§‡ à¦—à§‡à¦›à§‡à¦¨?",
+                        "পাসওয়ার্ড ভুলে গেছেন?",
                         16,
                         Color.WHITE
                 );
@@ -811,7 +807,7 @@ public class MainActivity extends Activity {
 
         TextView reg =
                 tv(
-                        "à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦¨à§‡à¦‡?  à¦°à§‡à¦œà¦¿à¦¸à§à¦Ÿà¦¾à¦° à¦•à¦°à§à¦¨",
+                        "অ্যাকাউন্ট নেই?  রেজিস্টার করুন",
                         17,
                         Color.WHITE
                 );
@@ -865,7 +861,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(500))
         );
 
-        TextView lock = tv("ðŸ”’",50,BLUE);
+        TextView lock = tv("🔒",50,BLUE);
         lock.setGravity(Gravity.CENTER);
         lock.setBackground(bg(Color.rgb(232,240,250),70));
 
@@ -876,7 +872,7 @@ public class MainActivity extends Activity {
 
         space(card,18);
 
-        TextView title = tv("à¦ªà¦¿à¦¨ à¦¸à§‡à¦Ÿ à¦•à¦°à§à¦¨",26,BLUE);
+        TextView title = tv("পিন সেট করুন",26,BLUE);
         title.setGravity(Gravity.CENTER);
         title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
 
@@ -887,7 +883,7 @@ public class MainActivity extends Activity {
 
         TextView sub =
                 tv(
-                        "à¦…à§à¦¯à¦¾à¦ªà§‡ à¦¢à§‹à¦•à¦¾à¦° à¦œà¦¨à§à¦¯ à§® à¦¡à¦¿à¦œà¦¿à¦Ÿà§‡à¦° à¦ªà¦¿à¦¨ à¦¦à¦¿à¦¨",
+                        "অ্যাপে ঢোকার জন্য ৮ ডিজিটের পিন দিন",
                         17,
                         Color.DKGRAY
                 );
@@ -901,8 +897,8 @@ public class MainActivity extends Activity {
 
         space(card,8);
 
-        EditText p = pinInput("à§® à¦¡à¦¿à¦œà¦¿à¦Ÿ PIN");
-        EditText c = pinInput("PIN à¦†à¦¬à¦¾à¦° à¦¦à¦¿à¦¨");
+        EditText p = pinInput("৮ ডিজিট PIN");
+        EditText c = pinInput("PIN আবার দিন");
 
         card.addView(
                 p,
@@ -920,7 +916,7 @@ public class MainActivity extends Activity {
 
         TextView save =
                 button(
-                        "à¦ªà¦¿à¦¨ à¦¸à§‡à¦Ÿ à¦•à¦°à§à¦¨  âœ“",
+                        "পিন সেট করুন  ✓",
                         Color.TRANSPARENT,
                         BLUE
                 );
@@ -944,12 +940,12 @@ public class MainActivity extends Activity {
             String b = c.getText().toString().trim();
 
             if (a.length() != 8) {
-                p.setError("à§® à¦¡à¦¿à¦œà¦¿à¦Ÿà§‡à¦° PIN à¦¦à¦¿à¦¨");
+                p.setError("৮ ডিজিটের PIN দিন");
                 return;
             }
 
             if (!a.equals(b)) {
-                c.setError("à¦¦à§à¦‡à¦Ÿà¦¿ PIN à¦à¦•à¦‡ à¦¨à¦¯à¦¼");
+                c.setError("দুইটি PIN একই নয়");
                 return;
             }
 
@@ -1000,7 +996,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(480))
         );
 
-        TextView lock = tv("ðŸ”’",50,BLUE);
+        TextView lock = tv("🔒",50,BLUE);
         lock.setGravity(Gravity.CENTER);
         lock.setBackground(bg(Color.rgb(232,240,250),70));
 
@@ -1011,7 +1007,7 @@ public class MainActivity extends Activity {
 
         space(card,18);
 
-        TextView title = tv("à¦ªà¦¿à¦¨ à¦¯à¦¾à¦šà¦¾à¦‡ à¦•à¦°à§à¦¨",26,BLUE);
+        TextView title = tv("পিন যাচাই করুন",26,BLUE);
         title.setGravity(Gravity.CENTER);
         title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
 
@@ -1022,7 +1018,7 @@ public class MainActivity extends Activity {
 
         TextView sub =
                 tv(
-                        "à¦†à¦ªà¦¨à¦¾à¦° à§® à¦¡à¦¿à¦œà¦¿à¦Ÿà§‡à¦° à¦ªà¦¿à¦¨ à¦¦à¦¿à¦¨",
+                        "আপনার ৮ ডিজিটের পিন দিন",
                         17,
                         Color.DKGRAY
                 );
@@ -1047,7 +1043,7 @@ public class MainActivity extends Activity {
 
         TextView verify =
                 button(
-                        "à¦¯à¦¾à¦šà¦¾à¦‡ à¦•à¦°à§à¦¨  âœ“",
+                        "যাচাই করুন  ✓",
                         Color.TRANSPARENT,
                         BLUE
                 );
@@ -1072,13 +1068,13 @@ public class MainActivity extends Activity {
             if (p.getText().toString().trim().equals(saved)) {
                 showHome();
             } else {
-                p.setError("à¦­à§à¦² PIN");
+                p.setError("ভুল PIN");
             }
         });
 
         TextView forgot =
                 tv(
-                        "PIN à¦­à§à¦²à§‡ à¦—à§‡à¦›à§‡à¦¨?  à¦²à¦—à¦‡à¦¨ à¦•à¦°à§à¦¨",
+                        "PIN ভুলে গেছেন?  লগইন করুন",
                         16,
                         BLUE
                 );
@@ -1151,47 +1147,47 @@ public class MainActivity extends Activity {
 
         row.addView(box,p);
 
-        if (title.contains("à¦…à§à¦¯à¦¾à¦¡\nà¦¬à§à¦¯à¦¾à¦²à§‡à¦¨à§à¦¸")) {
+        if (title.contains("অ্যাড\nব্যালেন্স")) {
 
             box.setOnClickListener(v -> showAddBalance());
 
-        } else if (title.contains("à¦®à§‹à¦¬à¦¾à¦‡à¦²\nà¦¬à§à¦¯à¦¾à¦‚à¦•à¦¿à¦‚")) {
+        } else if (title.contains("মোবাইল\nব্যাংকিং")) {
 
             box.setOnClickListener(v -> showMobileBanking());
 
-        } else if (title.contains("à¦¬à§à¦¯à¦¾à¦‚à¦•\nà¦Ÿà§à¦°à¦¾à¦¨à§à¦¸à¦«à¦¾à¦°")) {
+        } else if (title.contains("ব্যাংক\nট্রান্সফার")) {
 
             box.setOnClickListener(v -> showBankTransfer());
 
-        } else if (title.contains("à¦®à§‹à¦¬à¦¾à¦‡à¦²\nà¦°à¦¿à¦šà¦¾à¦°à§à¦œ")) {
+        } else if (title.contains("মোবাইল\nরিচার্জ")) {
 
             box.setOnClickListener(v -> showMobileRecharge());
 
-        } else if (title.contains("à¦—à§à¦°à§à¦ª\nà¦šà§à¦¯à¦¾à¦Ÿ")) {
+        } else if (title.contains("গ্রুপ\nচ্যাট")) {
 
             box.setOnClickListener(v -> showGroupChat());
 
-        } else if (title.contains("à¦‡à¦¨à¦­à¦¾à¦‡à¦Ÿ\nà¦¬à§‹à¦¨à¦¾à¦¸")) {
+        } else if (title.contains("ইনভাইট\nবোনাস")) {
 
             box.setOnClickListener(v -> showInviteBonus());
 
-        } else if (title.contains("à¦¬à¦¿à¦¶à§‡à¦·\nà¦…à¦«à¦¾à¦°")) {
+        } else if (title.contains("বিশেষ\nঅফার")) {
 
             box.setOnClickListener(v -> showSpecialOffers());
 
-        } else if (title.contains("à¦•à¦¾à¦¸à§à¦Ÿà¦®à¦¾à¦°\nà¦•à§‡à¦¯à¦¼à¦¾à¦°")) {
+        } else if (title.contains("কাস্টমার\nকেয়ার")) {
 
             box.setOnClickListener(v -> showCustomerCare());
 
-        } else if (title.contains("à¦•à¦¾à¦¸à§à¦Ÿà¦®à¦¾à¦°\nà¦°à¦¿à¦­à¦¿à¦‰")) {
+        } else if (title.contains("কাস্টমার\nরিভিউ")) {
 
             box.setOnClickListener(v -> showCustomerReviews());
 
-        } else if (title.contains("à¦­à¦¿à¦¡à¦¿à¦“\nà¦Ÿà¦¿à¦‰à¦Ÿà§‹à¦°à¦¿à¦¯à¦¼à¦¾à¦²")) {
+        } else if (title.contains("ভিডিও\nটিউটোরিয়াল")) {
 
             box.setOnClickListener(v -> showVideoTutorials());
 
-        } else if (title.contains("à¦¬à¦¿à¦²\nà¦ªà§‡")) {
+        } else if (title.contains("বিল\nপে")) {
 
             box.setOnClickListener(v -> showBillPay());
         }
@@ -1294,7 +1290,7 @@ public class MainActivity extends Activity {
         );
         en.setOnClickListener(v -> toggleLanguage());
 
-        TextView bell = tv("ðŸ””",19,Color.WHITE);
+        TextView bell = tv("🔔",19,Color.WHITE);
         bell.setGravity(Gravity.CENTER);
 
         top.addView(
@@ -1342,12 +1338,12 @@ public class MainActivity extends Activity {
         Runnable refreshBalance = () -> {
             if (balanceVisible[0]) {
                 bal.setText(
-                        "Main Balance  à§³ " + formatMoney(getMainBalance())
-                                + "\nDrive Balance  à§³ " + formatMoney(getDriveBalance())
-                                + "  ðŸ‘"
+                        "Main Balance  ৳ " + formatMoney(getMainBalance())
+                                + "\nDrive Balance  ৳ " + formatMoney(getDriveBalance())
+                                + "  👁"
                 );
             } else {
-                bal.setText("Main Balance  â€¢ â€¢ â€¢ â€¢  /  Drive Balance  â€¢ â€¢ â€¢ â€¢  ðŸ‘");
+                bal.setText("Main Balance  • • • •  /  Drive Balance  • • • •  👁");
             }
         };
 
@@ -1378,30 +1374,30 @@ public class MainActivity extends Activity {
 
         LinearLayout r = serviceRow(services);
 
-        service(r,"ðŸ‘›","à¦…à§à¦¯à¦¾à¦¡\nà¦¬à§à¦¯à¦¾à¦²à§‡à¦¨à§à¦¸");
-        service(r,"ðŸ’µ","à¦®à§‹à¦¬à¦¾à¦‡à¦²\nà¦¬à§à¦¯à¦¾à¦‚à¦•à¦¿à¦‚");
-        service(r,"ðŸ¦","à¦¬à§à¦¯à¦¾à¦‚à¦•\nà¦Ÿà§à¦°à¦¾à¦¨à§à¦¸à¦«à¦¾à¦°");
-        service(r,"ðŸ“±","à¦®à§‹à¦¬à¦¾à¦‡à¦²\nà¦°à¦¿à¦šà¦¾à¦°à§à¦œ");
+        service(r,"👛","অ্যাড\nব্যালেন্স");
+        service(r,"💵","মোবাইল\nব্যাংকিং");
+        service(r,"🏦","ব্যাংক\nট্রান্সফার");
+        service(r,"📱","মোবাইল\nরিচার্জ");
 
         r = serviceRow(services);
 
-        service(r,"ðŸ’¬","à¦—à§à¦°à§à¦ª\nà¦šà§à¦¯à¦¾à¦Ÿ");
-        service(r,"ðŸŽ","à¦‡à¦¨à¦­à¦¾à¦‡à¦Ÿ\nà¦¬à§‹à¦¨à¦¾à¦¸");
-        service(r,"ðŸ§¾","à¦¬à¦¿à¦²\nà¦ªà§‡");
-        service(r,"ðŸ·","à¦¬à¦¿à¦¶à§‡à¦·\nà¦…à¦«à¦¾à¦°");
+        service(r,"💬","গ্রুপ\nচ্যাট");
+        service(r,"🎁","ইনভাইট\nবোনাস");
+        service(r,"🧾","বিল\nপে");
+        service(r,"🏷","বিশেষ\nঅফার");
 
         r = serviceRow(services);
 
-        service(r,"ðŸŽ§","à¦•à¦¾à¦¸à§à¦Ÿà¦®à¦¾à¦°\nà¦•à§‡à¦¯à¦¼à¦¾à¦°");
-        service(r,"â­","à¦•à¦¾à¦¸à§à¦Ÿà¦®à¦¾à¦°\nà¦°à¦¿à¦­à¦¿à¦‰");
-        service(r,"â–¶","à¦­à¦¿à¦¡à¦¿à¦“\nà¦Ÿà¦¿à¦‰à¦Ÿà§‹à¦°à¦¿à¦¯à¦¼à¦¾à¦²");
-        service(r,"ðŸ‘¥","à¦•à¦¨à§à¦Ÿà¦¾à¦•à§à¦Ÿ\nà¦†à¦¸");
+        service(r,"🎧","কাস্টমার\nকেয়ার");
+        service(r,"⭐","কাস্টমার\nরিভিউ");
+        service(r,"▶","ভিডিও\nটিউটোরিয়াল");
+        service(r,"👥","কন্টাক্ট\nআস");
 
         String bannerUri=pref.getString("deposit_banner_uri","");
         if(!bannerUri.isEmpty()){
             ImageView iv=new ImageView(this);iv.setScaleType(ImageView.ScaleType.CENTER_CROP);try{iv.setImageURI(Uri.parse(bannerUri));}catch(Exception ignored){}main.addView(iv,new LinearLayout.LayoutParams(-1,dp(118)));iv.setOnClickListener(v->{String action=pref.getString("deposit_banner_action","");if(!action.isEmpty())openExternal(action);});
         }else{
-            LinearLayout bonus=new LinearLayout(this);bonus.setOrientation(LinearLayout.VERTICAL);bonus.setPadding(dp(10),dp(2),dp(10),dp(3));bonus.setBackground(bg(GREEN,16));main.addView(bonus,new LinearLayout.LayoutParams(-1,dp(98)));TextView bt=tv(tx("ðŸŽ  à¦¡à¦¿à¦ªà§‹à¦œà¦¿à¦Ÿ à¦¬à§‹à¦¨à¦¾à¦¸ à¦…à¦«à¦¾à¦°","ðŸŽ  Deposit Bonus Offer"),18,Color.WHITE);bt.setGravity(Gravity.CENTER_VERTICAL);bt.setTypeface(Typeface.DEFAULT,Typeface.BOLD);bonus.addView(bt,new LinearLayout.LayoutParams(-1,dp(32)));TextView bs=tv(tx("à¦à¦–à¦¨à¦‡ à¦•à¦°à§à¦¨, à¦¬à§‹à¦¨à¦¾à¦¸ à¦¨à¦¿à¦¯à¦¼à§‡ à¦¨à¦¿à¦¨!","Deposit now and get bonus!"),11,Color.WHITE);bonus.addView(bs,new LinearLayout.LayoutParams(-1,dp(20)));LinearLayout bb=new LinearLayout(this);bb.setGravity(Gravity.CENTER);bonus.addView(bb,new LinearLayout.LayoutParams(-1,dp(42)));bonusBox(bb,panelText("deposit_bonus_1_amount","à§³ à§«à§¦à§¦"),panelText("deposit_bonus_1_bonus","à¦¬à§‹à¦¨à¦¾à¦¸ à§³ à§«à§¦"));bonusBox(bb,panelText("deposit_bonus_2_amount","à§³ à§§à§¦à§¦à§¦"),panelText("deposit_bonus_2_bonus","à¦¬à§‹à¦¨à¦¾à¦¸ à§³ à§§à§¦à§¦"));bonusBox(bb,panelText("deposit_bonus_3_amount","à§³ à§¨à§¦à§¦à§¦"),panelText("deposit_bonus_3_bonus","à¦¬à§‹à¦¨à¦¾à¦¸ à§³ à§¨à§¦à§¦"));
+            LinearLayout bonus=new LinearLayout(this);bonus.setOrientation(LinearLayout.VERTICAL);bonus.setPadding(dp(10),dp(2),dp(10),dp(3));bonus.setBackground(bg(GREEN,16));main.addView(bonus,new LinearLayout.LayoutParams(-1,dp(98)));TextView bt=tv(tx("🎁  ডিপোজিট বোনাস অফার","🎁  Deposit Bonus Offer"),18,Color.WHITE);bt.setGravity(Gravity.CENTER_VERTICAL);bt.setTypeface(Typeface.DEFAULT,Typeface.BOLD);bonus.addView(bt,new LinearLayout.LayoutParams(-1,dp(32)));TextView bs=tv(tx("এখনই করুন, বোনাস নিয়ে নিন!","Deposit now and get bonus!"),11,Color.WHITE);bonus.addView(bs,new LinearLayout.LayoutParams(-1,dp(20)));LinearLayout bb=new LinearLayout(this);bb.setGravity(Gravity.CENTER);bonus.addView(bb,new LinearLayout.LayoutParams(-1,dp(42)));bonusBox(bb,panelText("deposit_bonus_1_amount","৳ ৫০০"),panelText("deposit_bonus_1_bonus","বোনাস ৳ ৫০"));bonusBox(bb,panelText("deposit_bonus_2_amount","৳ ১০০০"),panelText("deposit_bonus_2_bonus","বোনাস ৳ ১০০"));bonusBox(bb,panelText("deposit_bonus_3_amount","৳ ২০০০"),panelText("deposit_bonus_3_bonus","বোনাস ৳ ২০০"));
         }
 
         LinearLayout bottom = new LinearLayout(this);
@@ -1414,9 +1410,9 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(58))
         );
 
-        nav(bottom,"âŒ‚\n"+tx("à¦¹à§‹à¦®","Home"),v->showHome());
-        nav(bottom,"â—·\n"+tx("à¦²à§‡à¦¨à¦¦à§‡à¦¨","Transactions"),v->showTransactionHistory());
-        nav(bottom,"â™™\n"+tx("à¦ªà§à¦°à§‹à¦«à¦¾à¦‡à¦²","Profile"),v->showProfile());
+        nav(bottom,"⌂\n"+tx("হোম","Home"),v->showHome());
+        nav(bottom,"◷\n"+tx("লেনদেন","Transactions"),v->showTransactionHistory());
+        nav(bottom,"♙\n"+tx("প্রোফাইল","Profile"),v->showProfile());
     }
 
     /* =========================================================
@@ -1450,7 +1446,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(62))
         );
 
-        TextView back = tv("â€¹",38,Color.WHITE);
+        TextView back = tv("‹",38,Color.WHITE);
         back.setGravity(Gravity.CENTER);
 
         header.addView(
@@ -1460,7 +1456,7 @@ public class MainActivity extends Activity {
 
         back.setOnClickListener(v -> showHome());
 
-        TextView title = tv("à¦¬à¦¿à¦² à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ",21,Color.WHITE);
+        TextView title = tv("বিল পেমেন্ট",21,Color.WHITE);
 
         title.setGravity(Gravity.CENTER);
         title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
@@ -1498,7 +1494,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(45))
         );
 
-        TextView doc = tv("â–¤",23,Color.rgb(70,80,95));
+        TextView doc = tv("▤",23,Color.rgb(70,80,95));
         doc.setGravity(Gravity.CENTER);
 
         heading.addView(
@@ -1508,7 +1504,7 @@ public class MainActivity extends Activity {
 
         TextView choose =
                 tv(
-                        "à¦¬à¦¿à¦²à§‡à¦° à¦§à¦°à¦¨ à¦¨à¦¿à¦°à§à¦¬à¦¾à¦šà¦¨ à¦•à¦°à§à¦¨",
+                        "বিলের ধরন নির্বাচন করুন",
                         16,
                         DARK
                 );
@@ -1524,17 +1520,17 @@ public class MainActivity extends Activity {
         LinearLayout row = null;
 
         String[][] types = {
-                {"à¦¡à§‡à¦¸à¦•à§‹","âš¡","DES","0"},
-                {"à¦¡à¦¿à¦ªà¦¿à¦¡à¦¿à¦¸à¦¿","âš¡","DPDC","1"},
-                {"à¦¨à§‡à¦¸à¦•à§‹","ÏŸ","NESCO","2"},
-                {"à¦“à§Ÿà¦¾à¦¸à¦¾","ðŸ’§","WASA","3"},
-                {"à¦—à§à¦¯à¦¾à¦¸","â™¨","GAS","4"},
-                {"à¦Ÿà§‡à¦²à¦¿à¦«à§‹à¦¨","â˜Ž","TEL","5"},
-                {"à¦‡à¦¨à§à¦Ÿà¦¾à¦°à¦¨à§‡à¦Ÿ","âŒ","INT","6"},
-                {"à¦®à§‹à¦¬à¦¾à¦‡à¦²","â–¯","MOB","7"},
-                {"à¦•à§‡à¦¬à¦²","â–­","CAB","8"},
-                {"à¦¡à¦¿à¦¶","â—‰","DISH","9"},
-                {"à¦¸à¦¿à¦Ÿà¦¿ à¦•à¦°à§à¦ª","â–¥","CITY","10"}
+                {"ডেসকো","⚡","DES","0"},
+                {"ডিপিডিসি","⚡","DPDC","1"},
+                {"নেসকো","ϟ","NESCO","2"},
+                {"ওয়াসা","💧","WASA","3"},
+                {"গ্যাস","♨","GAS","4"},
+                {"টেলিফোন","☎","TEL","5"},
+                {"ইন্টারনেট","⌁","INT","6"},
+                {"মোবাইল","▯","MOB","7"},
+                {"কেবল","▭","CAB","8"},
+                {"ডিশ","◉","DISH","9"},
+                {"সিটি কর্প","▥","CITY","10"}
         };
 
         for (int i = 0; i < types.length; i++) {
@@ -1722,7 +1718,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(62))
         );
 
-        TextView back = tv("â€¹",38,Color.WHITE);
+        TextView back = tv("‹",38,Color.WHITE);
         back.setGravity(Gravity.CENTER);
 
         header.addView(
@@ -1732,7 +1728,7 @@ public class MainActivity extends Activity {
 
         back.setOnClickListener(v -> showHome());
 
-        TextView title = tv("à¦¬à¦¿à¦² à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ",21,Color.WHITE);
+        TextView title = tv("বিল পেমেন্ট",21,Color.WHITE);
 
         title.setGravity(Gravity.CENTER);
         title.setTypeface(
@@ -1781,7 +1777,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(45))
         );
 
-        TextView doc = tv("â–¤",23,Color.rgb(70,80,95));
+        TextView doc = tv("▤",23,Color.rgb(70,80,95));
         doc.setGravity(Gravity.CENTER);
 
         heading.addView(
@@ -1791,7 +1787,7 @@ public class MainActivity extends Activity {
 
         TextView headingText =
                 tv(
-                        "à¦¬à¦¿à¦²à§‡à¦° à¦§à¦°à¦¨ à¦¨à¦¿à¦°à§à¦¬à¦¾à¦šà¦¨ à¦•à¦°à§à¦¨",
+                        "বিলের ধরন নির্বাচন করুন",
                         16,
                         DARK
                 );
@@ -1812,7 +1808,7 @@ public class MainActivity extends Activity {
 
         TextView change =
                 tv(
-                        "à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨",
+                        "পরিবর্তন",
                         14,
                         BLUE
                 );
@@ -1927,7 +1923,7 @@ public class MainActivity extends Activity {
         );
 
         TextView infoIcon =
-                tv("â“˜",21,Color.rgb(70,80,95));
+                tv("ⓘ",21,Color.rgb(70,80,95));
 
         infoIcon.setGravity(Gravity.CENTER);
 
@@ -1938,7 +1934,7 @@ public class MainActivity extends Activity {
 
         TextView info =
                 tv(
-                        "à¦¬à¦¿à¦²à§‡à¦° à¦¤à¦¥à§à¦¯ à¦¦à¦¿à¦¨",
+                        "বিলের তথ্য দিন",
                         17,
                         DARK
                 );
@@ -1961,7 +1957,7 @@ public class MainActivity extends Activity {
 
         TextView numberTitle =
                 tv(
-                        "à¦¬à¦¿à¦² à¦¨à¦®à§à¦¬à¦°",
+                        "বিল নম্বর",
                         14,
                         Color.DKGRAY
                 );
@@ -1980,7 +1976,7 @@ public class MainActivity extends Activity {
                 new EditText(this);
 
         billNumber.setHint(
-                "à¦¬à¦¿à¦² à¦¨à¦®à§à¦¬à¦° (" +
+                "বিল নম্বর (" +
                         selectedBillCode +
                         "...)"
         );
@@ -2018,7 +2014,7 @@ public class MainActivity extends Activity {
 
         TextView amountTitle =
                 tv(
-                        "à¦¬à¦¿à¦²à§‡à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£",
+                        "বিলের পরিমাণ",
                         14,
                         Color.DKGRAY
                 );
@@ -2037,7 +2033,7 @@ public class MainActivity extends Activity {
                 new EditText(this);
 
         billAmount.setHint(
-                "à¦¬à¦¿à¦²à§‡à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£ (à¦¸à¦°à§à¦¬à¦¨à¦¿à¦®à§à¦¨ à§³500)"
+                "বিলের পরিমাণ (সর্বনিম্ন ৳500)"
         );
 
         billAmount.setTextSize(16);
@@ -2074,7 +2070,7 @@ public class MainActivity extends Activity {
 
         TextView pay =
                 button(
-                        "à¦¬à¦¿à¦² à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ à¦•à¦°à§à¦¨",
+                        "বিল পেমেন্ট করুন",
                         Color.rgb(165,165,165),
                         Color.WHITE
                 );
@@ -2093,7 +2089,7 @@ public class MainActivity extends Activity {
 
         TextView balanceView =
                 tv(
-                        "â–£  à¦¬à¦°à§à¦¤à¦®à¦¾à¦¨ à¦¬à§à¦¯à¦¾à¦²à§‡à¦¨à§à¦¸:  à§³ "
+                        "▣  বর্তমান ব্যালেন্স:  ৳ "
                                 + formatMoney(balance),
                         17,
                         Color.rgb(55,75,100)
@@ -2165,14 +2161,14 @@ public class MainActivity extends Activity {
 
             if (number.isEmpty()) {
                 billNumber.setError(
-                        "à¦¬à¦¿à¦² à¦¨à¦®à§à¦¬à¦° à¦¦à¦¿à¦¨"
+                        "বিল নম্বর দিন"
                 );
                 return;
             }
 
             if (money.isEmpty()) {
                 billAmount.setError(
-                        "à¦¬à¦¿à¦²à§‡à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£ à¦¦à¦¿à¦¨"
+                        "বিলের পরিমাণ দিন"
                 );
                 return;
             }
@@ -2189,7 +2185,7 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
 
                 billAmount.setError(
-                        "à¦¸à¦ à¦¿à¦• à¦Ÿà¦¾à¦•à¦¾à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£ à¦¦à¦¿à¦¨"
+                        "সঠিক টাকার পরিমাণ দিন"
                 );
 
                 return;
@@ -2198,7 +2194,7 @@ public class MainActivity extends Activity {
             if (value < 500) {
 
                 billAmount.setError(
-                        "à¦¸à¦°à§à¦¬à¦¨à¦¿à¦®à§à¦¨ à¦¬à¦¿à¦² à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ à§³500"
+                        "সর্বনিম্ন বিল পেমেন্ট ৳500"
                 );
 
                 return;
@@ -2212,21 +2208,21 @@ public class MainActivity extends Activity {
 
                 new AlertDialog.Builder(this)
                         .setTitle(
-                                "à¦ªà¦°à§à¦¯à¦¾à¦ªà§à¦¤ à¦¬à§à¦¯à¦¾à¦²à§‡à¦¨à§à¦¸ à¦¨à§‡à¦‡"
+                                "পর্যাপ্ত ব্যালেন্স নেই"
                         )
                         .setMessage(
-                                "à¦†à¦ªà¦¨à¦¾à¦° à¦¬à¦°à§à¦¤à¦®à¦¾à¦¨ à¦¬à§à¦¯à¦¾à¦²à§‡à¦¨à§à¦¸: à§³ "
+                                "আপনার বর্তমান ব্যালেন্স: ৳ "
                                         + formatMoney(
                                         currentBalance
                                 )
                                         + "\n"
-                                        + "à¦¬à¦¿à¦²à§‡à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£: à§³ "
+                                        + "বিলের পরিমাণ: ৳ "
                                         + formatMoney(
                                         value
                                 )
                         )
                         .setPositiveButton(
-                                "à¦ à¦¿à¦• à¦†à¦›à§‡",
+                                "ঠিক আছে",
                                 null
                         )
                         .show();
@@ -2239,35 +2235,35 @@ public class MainActivity extends Activity {
 
             new AlertDialog.Builder(this)
                     .setTitle(
-                            "à¦¬à¦¿à¦² à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ à¦¨à¦¿à¦¶à§à¦šà¦¿à¦¤ à¦•à¦°à§à¦¨"
+                            "বিল পেমেন্ট নিশ্চিত করুন"
                     )
                     .setMessage(
-                            "à¦¬à¦¿à¦²à§‡à¦° à¦§à¦°à¦¨: "
+                            "বিলের ধরন: "
                                     + selectedBillType
                                     + "\n\n"
-                                    + "à¦¬à¦¿à¦² à¦¨à¦®à§à¦¬à¦°: "
+                                    + "বিল নম্বর: "
                                     + number
                                     + "\n\n"
-                                    + "à¦¬à¦¿à¦²à§‡à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£: à§³ "
+                                    + "বিলের পরিমাণ: ৳ "
                                     + money
                                     + "\n\n"
-                                    + "à¦à¦‡ à¦­à¦¾à¦°à§à¦¸à¦¨à§‡ à¦à¦Ÿà¦¿ Demo Bill Payment Requestà¥¤ "
-                                    + "à¦†à¦¸à¦² à¦¬à¦¿à¦² à¦ªà¦°à¦¿à¦¶à§‹à¦§à§‡à¦° à¦œà¦¨à§à¦¯ à¦¸à¦‚à¦¶à§à¦²à¦¿à¦·à§à¦Ÿ Provider API/Backend à¦¸à¦‚à¦¯à§à¦•à§à¦¤ à¦•à¦°à¦¤à§‡ à¦¹à¦¬à§‡à¥¤"
+                                    + "এই ভার্সনে এটি Demo Bill Payment Request। "
+                                    + "আসল বিল পরিশোধের জন্য সংশ্লিষ্ট Provider API/Backend সংযুক্ত করতে হবে।"
                     )
                     .setNegativeButton(
-                            "à¦¬à¦¾à¦¤à¦¿à¦²",
+                            "বাতিল",
                             null
                     )
                     .setPositiveButton(
-                            "à¦¨à¦¿à¦¶à§à¦šà¦¿à¦¤ à¦•à¦°à§à¦¨",
+                            "নিশ্চিত করুন",
                             (dialog,which) -> {
 
                                 if (transactionBlockedFor(Double.parseDouble(finalBillMoney))) return;
-                                Map<String,Object> req = new HashMap<>(); req.put("billType", selectedBillType); req.put("billNumber", finalBillNumber); req.put("amount", Double.parseDouble(finalBillMoney)); submitFirestoreRequest("billPayRequests", req); recordTransaction("à¦¬à¦¿à¦² à¦ªà§‡",selectedBillType+" / "+finalBillNumber,Double.parseDouble(finalBillMoney),false,"PENDING");
+                                Map<String,Object> req = new HashMap<>(); req.put("billType", selectedBillType); req.put("billNumber", finalBillNumber); req.put("amount", Double.parseDouble(finalBillMoney)); submitFirestoreRequest("billPayRequests", req); recordTransaction("বিল পে",selectedBillType+" / "+finalBillNumber,Double.parseDouble(finalBillMoney),false,"PENDING");
                                 Toast.makeText(
                                         this,
                                         selectedBillType
-                                                + " à¦¬à¦¿à¦² à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ à¦°à¦¿à¦•à§‹à§Ÿà§‡à¦¸à§à¦Ÿ à¦—à§à¦°à¦¹à¦£ à¦•à¦°à¦¾ à¦¹à§Ÿà§‡à¦›à§‡à¥¤",
+                                                + " বিল পেমেন্ট রিকোয়েস্ট গ্রহণ করা হয়েছে।",
                                         Toast.LENGTH_LONG
                                 ).show();
 
@@ -2338,19 +2334,19 @@ public class MainActivity extends Activity {
 
     private String getBillIcon(String type) {
 
-        if (type.equals("à¦¡à§‡à¦¸à¦•à§‹")) return "âš¡";
-        if (type.equals("à¦¡à¦¿à¦ªà¦¿à¦¡à¦¿à¦¸à¦¿")) return "âš¡";
-        if (type.equals("à¦¨à§‡à¦¸à¦•à§‹")) return "ÏŸ";
-        if (type.equals("à¦“à§Ÿà¦¾à¦¸à¦¾")) return "ðŸ’§";
-        if (type.equals("à¦—à§à¦¯à¦¾à¦¸")) return "â™¨";
-        if (type.equals("à¦Ÿà§‡à¦²à¦¿à¦«à§‹à¦¨")) return "â˜Ž";
-        if (type.equals("à¦‡à¦¨à§à¦Ÿà¦¾à¦°à¦¨à§‡à¦Ÿ")) return "âŒ";
-        if (type.equals("à¦®à§‹à¦¬à¦¾à¦‡à¦²")) return "â–¯";
-        if (type.equals("à¦•à§‡à¦¬à¦²")) return "â–­";
-        if (type.equals("à¦¡à¦¿à¦¶")) return "â—‰";
-        if (type.equals("à¦¸à¦¿à¦Ÿà¦¿ à¦•à¦°à§à¦ª")) return "â–¥";
+        if (type.equals("ডেসকো")) return "⚡";
+        if (type.equals("ডিপিডিসি")) return "⚡";
+        if (type.equals("নেসকো")) return "ϟ";
+        if (type.equals("ওয়াসা")) return "💧";
+        if (type.equals("গ্যাস")) return "♨";
+        if (type.equals("টেলিফোন")) return "☎";
+        if (type.equals("ইন্টারনেট")) return "⌁";
+        if (type.equals("মোবাইল")) return "▯";
+        if (type.equals("কেবল")) return "▭";
+        if (type.equals("ডিশ")) return "◉";
+        if (type.equals("সিটি কর্প")) return "▥";
 
-        return "â–¤";
+        return "▤";
     }
 
     /* =========================================================
@@ -2435,7 +2431,7 @@ public class MainActivity extends Activity {
         return pref.getInt("invite_count", 0);
     }
 
-    // Demo panel à¦¥à§‡à¦•à§‡ Invite Count à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨ à¦•à¦°à¦¾à¦° à¦œà¦¨à§à¦¯
+    // Demo panel থেকে Invite Count পরিবর্তন করার জন্য
     private void setInviteCount(int count) {
         if (count < 0) count = 0;
         pref.edit()
@@ -2479,7 +2475,7 @@ public class MainActivity extends Activity {
 
         Toast.makeText(
                 this,
-                "à¦‡à¦¨à¦­à¦¾à¦‡à¦Ÿ à¦•à§‹à¦¡ à¦•à¦ªà¦¿ à¦¹à¦¯à¦¼à§‡à¦›à§‡: " + code,
+                "ইনভাইট কোড কপি হয়েছে: " + code,
                 Toast.LENGTH_SHORT
         ).show();
     }
@@ -2492,10 +2488,10 @@ public class MainActivity extends Activity {
                 "quickpay://invite/" + code;
 
         String message =
-                "ðŸŽ Quick Pay-à¦ à¦†à¦®à¦¾à¦•à§‡ à¦‡à¦¨à¦­à¦¾à¦‡à¦Ÿ à¦•à¦°à¦¾ à¦¹à¦¯à¦¼à§‡à¦›à§‡!\n\n"
+                "🎁 Quick Pay-এ আমাকে ইনভাইট করা হয়েছে!\n\n"
                         + "Invite Code: " + code + "\n"
                         + "Invite Link: " + link + "\n\n"
-                        + "à¦…à§à¦¯à¦¾à¦ªà§‡ à¦°à§‡à¦œà¦¿à¦¸à§à¦Ÿà§à¦°à§‡à¦¶à¦¨à§‡à¦° à¦¸à¦®à¦¯à¦¼ à¦à¦‡ à¦•à§‹à¦¡ à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦° à¦•à¦°à§à¦¨à¥¤";
+                        + "অ্যাপে রেজিস্ট্রেশনের সময় এই কোড ব্যবহার করুন।";
 
         android.content.Intent share =
                 new android.content.Intent(
@@ -2511,7 +2507,7 @@ public class MainActivity extends Activity {
         startActivity(
                 android.content.Intent.createChooser(
                         share,
-                        "à¦‡à¦¨à¦­à¦¾à¦‡à¦Ÿ à¦¶à§‡à¦¯à¦¼à¦¾à¦° à¦•à¦°à§à¦¨"
+                        "ইনভাইট শেয়ার করুন"
                 )
         );
     }
@@ -2540,7 +2536,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(62))
         );
 
-        TextView back = tv("â€¹",38,Color.WHITE);
+        TextView back = tv("‹",38,Color.WHITE);
         back.setGravity(Gravity.CENTER);
 
         header.addView(
@@ -2551,7 +2547,7 @@ public class MainActivity extends Activity {
         back.setOnClickListener(v -> showHome());
 
         TextView title =
-                tv("à¦‡à¦¨à¦­à¦¾à¦‡à¦Ÿ à¦¬à§‹à¦¨à¦¾à¦¸",21,Color.WHITE);
+                tv("ইনভাইট বোনাস",21,Color.WHITE);
 
         title.setGravity(Gravity.CENTER);
         title.setTypeface(
@@ -2599,7 +2595,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(190))
         );
 
-        TextView gift = tv("ðŸŽ",44,Color.WHITE);
+        TextView gift = tv("🎁",44,Color.WHITE);
         gift.setGravity(Gravity.CENTER);
 
         hero.addView(
@@ -2609,7 +2605,7 @@ public class MainActivity extends Activity {
 
         TextView ht =
                 tv(
-                        "à¦¬à¦¨à§à¦§à§à¦•à§‡ à¦‡à¦¨à¦­à¦¾à¦‡à¦Ÿ à¦•à¦°à§à¦¨",
+                        "বন্ধুকে ইনভাইট করুন",
                         22,
                         Color.WHITE
                 );
@@ -2627,7 +2623,7 @@ public class MainActivity extends Activity {
 
         TextView hs =
                 tv(
-                        "à¦†à¦ªà¦¨à¦¾à¦° à¦‡à¦¨à¦­à¦¾à¦‡à¦Ÿ à¦•à§‹à¦¡ à¦¶à§‡à¦¯à¦¼à¦¾à¦° à¦•à¦°à§‡ à¦¨à¦¤à§à¦¨ à¦‡à¦‰à¦œà¦¾à¦° à¦†à¦¨à§à¦¨",
+                        "আপনার ইনভাইট কোড শেয়ার করে নতুন ইউজার আনুন",
                         13,
                         Color.WHITE
                 );
@@ -2656,7 +2652,7 @@ public class MainActivity extends Activity {
 
         TextView cl =
                 tv(
-                        "à¦†à¦ªà¦¨à¦¾à¦° Invite Code",
+                        "আপনার Invite Code",
                         14,
                         Color.DKGRAY
                 );
@@ -2688,7 +2684,7 @@ public class MainActivity extends Activity {
 
         TextView copy =
                 button(
-                        "à¦•à§‹à¦¡ à¦•à¦ªà¦¿ à¦•à¦°à§à¦¨",
+                        "কোড কপি করুন",
                         BLUE,
                         Color.WHITE
                 );
@@ -2746,7 +2742,7 @@ public class MainActivity extends Activity {
 
         TextView share =
                 button(
-                        "à¦¶à§‡à¦¯à¦¼à¦¾à¦° à¦‡à¦¨à¦­à¦¾à¦‡à¦Ÿ",
+                        "শেয়ার ইনভাইট",
                         GREEN,
                         Color.WHITE
                 );
@@ -2771,9 +2767,9 @@ public class MainActivity extends Activity {
 
         TextView invited =
                 tv(
-                        "ðŸ‘¤\n"
+                        "👤\n"
                                 + getInviteCount()
-                                + "\nà¦‡à¦¨à¦­à¦¾à¦‡à¦Ÿà§‡à¦¡",
+                                + "\nইনভাইটেড",
                         15,
                         DARK
                 );
@@ -2788,9 +2784,9 @@ public class MainActivity extends Activity {
 
         TextView earned =
                 tv(
-                        "ðŸ’°\nà§³ "
+                        "💰\n৳ "
                                 + formatMoney(getInviteEarned())
-                                + "\nà¦¬à§‹à¦¨à¦¾à¦¸",
+                                + "\nবোনাস",
                         15,
                         DARK
                 );
@@ -2809,7 +2805,7 @@ public class MainActivity extends Activity {
 
         TextView rulesTitle =
                 tv(
-                        "ðŸ“‹ à¦‡à¦¨à¦­à¦¾à¦‡à¦Ÿ à¦¬à§‹à¦¨à¦¾à¦¸ à¦¨à¦¿à¦¯à¦¼à¦®",
+                        "📋 ইনভাইট বোনাস নিয়ম",
                         18,
                         DARK
                 );
@@ -2826,10 +2822,10 @@ public class MainActivity extends Activity {
 
         TextView rules =
                 tv(
-                        "â€¢ à¦†à¦ªà¦¨à¦¾à¦° Invite Code à¦•à¦ªà¦¿ à¦¬à¦¾ à¦¶à§‡à¦¯à¦¼à¦¾à¦° à¦•à¦°à§à¦¨à¥¤\n"
-                                + "â€¢ à¦¨à¦¤à§à¦¨ à¦‡à¦‰à¦œà¦¾à¦° à¦°à§‡à¦œà¦¿à¦¸à§à¦Ÿà§à¦°à§‡à¦¶à¦¨à§‡à¦° à¦¸à¦®à¦¯à¦¼ à¦•à§‹à¦¡ à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦° à¦•à¦°à¦¤à§‡ à¦ªà¦¾à¦°à¦¬à§‡à¥¤\n"
-                                + "â€¢ Invite Count à¦“ Bonus Amount à¦¡à§‡à¦®à§‹ à¦ªà§à¦¯à¦¾à¦¨à§‡à¦² à¦¥à§‡à¦•à§‡ à¦‡à¦šà§à¦›à¦¾à¦®à¦¤à§‹ à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨ à¦•à¦°à¦¾ à¦¯à¦¾à¦¬à§‡à¥¤\n"
-                                + "â€¢ à¦¨à¦¤à§à¦¨ Invite à¦¹à¦²à§‡ à¦¸à¦‚à¦–à§à¦¯à¦¾ à§§, à§¨, à§©, à§ª, à§«, à§¬... à¦à¦­à¦¾à¦¬à§‡ à¦¦à§‡à¦–à¦¾à¦¬à§‡à¥¤",
+                        "• আপনার Invite Code কপি বা শেয়ার করুন।\n"
+                                + "• নতুন ইউজার রেজিস্ট্রেশনের সময় কোড ব্যবহার করতে পারবে।\n"
+                                + "• Invite Count ও Bonus Amount ডেমো প্যানেল থেকে ইচ্ছামতো পরিবর্তন করা যাবে।\n"
+                                + "• নতুন Invite হলে সংখ্যা ১, ২, ৩, ৪, ৫, ৬... এভাবে দেখাবে।",
                         14,
                         Color.DKGRAY
                 );
@@ -2848,7 +2844,7 @@ public class MainActivity extends Activity {
 
         TextView historyButton =
                 button(
-                        "ðŸŽ à¦‡à¦¨à¦­à¦¾à¦‡à¦Ÿ à¦Ÿà§à¦°à¦¾à¦¨à§à¦¸à§‡à¦•à¦¶à¦¨ / à¦¹à¦¿à¦¸à§à¦Ÿà§‹à¦°à¦¿",
+                        "🎁 ইনভাইট ট্রান্সেকশন / হিস্টোরি",
                         Color.WHITE,
                         BLUE
                 );
@@ -2863,7 +2859,7 @@ public class MainActivity extends Activity {
         );
     }
 
-    private void syncInviteBonusTransaction(){try{double earned=getInviteEarned();double recorded=Double.parseDouble(pref.getString("invite_earned_recorded","0"));if(earned>recorded){recordTransaction("à¦‡à¦¨à¦­à¦¾à¦‡à¦Ÿ à¦¬à§‹à¦¨à¦¾à¦¸","Invite Bonus",earned-recorded,true);pref.edit().putString("invite_earned_recorded",String.valueOf(earned)).apply();}}catch(Exception ignored){}}
+    private void syncInviteBonusTransaction(){try{double earned=getInviteEarned();double recorded=Double.parseDouble(pref.getString("invite_earned_recorded","0"));if(earned>recorded){recordTransaction("ইনভাইট বোনাস","Invite Bonus",earned-recorded,true);pref.edit().putString("invite_earned_recorded",String.valueOf(earned)).apply();}}catch(Exception ignored){}}
 
     private void showInviteHistory() {
 
@@ -2888,7 +2884,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(62))
         );
 
-        TextView back = tv("â€¹",38,Color.WHITE);
+        TextView back = tv("‹",38,Color.WHITE);
         back.setGravity(Gravity.CENTER);
 
         header.addView(
@@ -2899,7 +2895,7 @@ public class MainActivity extends Activity {
         back.setOnClickListener(v -> showInviteBonus());
 
         TextView title =
-                tv("à¦‡à¦¨à¦­à¦¾à¦‡à¦Ÿ à¦Ÿà§à¦°à¦¾à¦¨à§à¦¸à§‡à¦•à¦¶à¦¨",20,Color.WHITE);
+                tv("ইনভাইট ট্রান্সেকশন",20,Color.WHITE);
 
         title.setGravity(Gravity.CENTER);
         title.setTypeface(
@@ -2951,7 +2947,7 @@ public class MainActivity extends Activity {
                     new LinearLayout.LayoutParams(-1,dp(190))
             );
 
-            TextView icon = tv("ðŸŽ",42,DARK);
+            TextView icon = tv("🎁",42,DARK);
             icon.setGravity(Gravity.CENTER);
 
             empty.addView(
@@ -2961,7 +2957,7 @@ public class MainActivity extends Activity {
 
             TextView msg =
                     tv(
-                            "à¦à¦–à¦¨à¦“ à¦•à§‹à¦¨à§‹ à¦‡à¦¨à¦­à¦¾à¦‡à¦Ÿ à¦Ÿà§à¦°à¦¾à¦¨à§à¦¸à§‡à¦•à¦¶à¦¨ à¦¨à§‡à¦‡",
+                            "এখনও কোনো ইনভাইট ট্রান্সেকশন নেই",
                             16,
                             DARK
                     );
@@ -2975,7 +2971,7 @@ public class MainActivity extends Activity {
 
             TextView sub =
                     tv(
-                            "Invite Code à¦¶à§‡à¦¯à¦¼à¦¾à¦° à¦•à¦°à¦²à§‡ à¦à¦–à¦¾à¦¨à§‡ à¦¹à¦¿à¦¸à¦¾à¦¬ à¦¦à§‡à¦–à¦¾à¦¨à§‹ à¦¯à¦¾à¦¬à§‡à¥¤",
+                            "Invite Code শেয়ার করলে এখানে হিসাব দেখানো যাবে।",
                             13,
                             Color.GRAY
                     );
@@ -3011,7 +3007,7 @@ public class MainActivity extends Activity {
             list.addView(row,rp);
 
             TextView icon =
-                    tv("ðŸ‘¤",30,BLUE);
+                    tv("👤",30,BLUE);
 
             icon.setGravity(Gravity.CENTER);
 
@@ -3089,12 +3085,12 @@ public class MainActivity extends Activity {
         } catch (Exception ignored) {}
 
         JSONArray defaults = new JSONArray();
-        defaults.put(makeOffer("à¦—à§à¦°à¦¾à¦®à§€à¦£à¦«à§‹à¦¨","","10 GB","100 à¦®à¦¿à¦¨à¦¿à¦Ÿ","","299","50","30 à¦¦à¦¿à¦¨","à¦¬à¦¿à¦¶à§‡à¦· à¦‡à¦¨à§à¦Ÿà¦¾à¦°à¦¨à§‡à¦Ÿ à¦“ à¦®à¦¿à¦¨à¦¿à¦Ÿ à¦…à¦«à¦¾à¦°"));
-        defaults.put(makeOffer("à¦—à§à¦°à¦¾à¦®à§€à¦£à¦«à§‹à¦¨","","5 GB","200 à¦®à¦¿à¦¨à¦¿à¦Ÿ","50 SMS","199","30","15 à¦¦à¦¿à¦¨","à¦¦à§ˆà¦¨à¦¨à§à¦¦à¦¿à¦¨ à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦°à§‡à¦° à¦…à¦«à¦¾à¦°"));
-        defaults.put(makeOffer("à¦¬à¦¾à¦‚à¦²à¦¾à¦²à¦¿à¦‚à¦•","","12 GB","100 à¦®à¦¿à¦¨à¦¿à¦Ÿ","","299","50","30 à¦¦à¦¿à¦¨","à¦¡à¦¾à¦Ÿà¦¾ + à¦®à¦¿à¦¨à¦¿à¦Ÿ à¦ªà§à¦¯à¦¾à¦•"));
-        defaults.put(makeOffer("Airtel","","10 GB","150 à¦®à¦¿à¦¨à¦¿à¦Ÿ","","279","50","30 à¦¦à¦¿à¦¨","à¦¡à¦¾à¦Ÿà¦¾ à¦“ à¦®à¦¿à¦¨à¦¿à¦Ÿ à¦…à¦«à¦¾à¦°"));
-        defaults.put(makeOffer("Robi","","8 GB","200 à¦®à¦¿à¦¨à¦¿à¦Ÿ","","299","100","30 à¦¦à¦¿à¦¨","à¦¬à§‹à¦¨à¦¾à¦¸à¦¸à¦¹ à¦…à¦«à¦¾à¦°"));
-        defaults.put(makeOffer("Teletalk","","5 GB","100 à¦®à¦¿à¦¨à¦¿à¦Ÿ","","199","50","15 à¦¦à¦¿à¦¨","à¦•à¦® à¦¦à¦¾à¦®à§‡à¦° à¦ªà§à¦¯à¦¾à¦•"));
+        defaults.put(makeOffer("গ্রামীণফোন","","10 GB","100 মিনিট","","299","50","30 দিন","বিশেষ ইন্টারনেট ও মিনিট অফার"));
+        defaults.put(makeOffer("গ্রামীণফোন","","5 GB","200 মিনিট","50 SMS","199","30","15 দিন","দৈনন্দিন ব্যবহারের অফার"));
+        defaults.put(makeOffer("বাংলালিংক","","12 GB","100 মিনিট","","299","50","30 দিন","ডাটা + মিনিট প্যাক"));
+        defaults.put(makeOffer("Airtel","","10 GB","150 মিনিট","","279","50","30 দিন","ডাটা ও মিনিট অফার"));
+        defaults.put(makeOffer("Robi","","8 GB","200 মিনিট","","299","100","30 দিন","বোনাসসহ অফার"));
+        defaults.put(makeOffer("Teletalk","","5 GB","100 মিনিট","","199","50","15 দিন","কম দামের প্যাক"));
 
         pref.edit().putString("special_offers", defaults.toString()).apply();
         return defaults;
@@ -3143,12 +3139,12 @@ public class MainActivity extends Activity {
         header.setBackgroundColor(BLUE);
         main.addView(header,new LinearLayout.LayoutParams(-1,dp(62)));
 
-        TextView back = tv("â€¹",38,Color.WHITE);
+        TextView back = tv("‹",38,Color.WHITE);
         back.setGravity(Gravity.CENTER);
         header.addView(back,new LinearLayout.LayoutParams(dp(52),dp(62)));
         back.setOnClickListener(v -> showHome());
 
-        TextView title = tv(tx("à¦¬à¦¿à¦¶à§‡à¦· à¦…à¦«à¦¾à¦°","Special Offers"),21,Color.WHITE);
+        TextView title = tv(tx("বিশেষ অফার","Special Offers"),21,Color.WHITE);
         title.setGravity(Gravity.CENTER);
         title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
         header.addView(title,new LinearLayout.LayoutParams(0,dp(62),1));
@@ -3161,12 +3157,12 @@ public class MainActivity extends Activity {
         scroll.addView(content);
         main.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
 
-        TextView intro = tv(tx("à¦…à¦«à¦¾à¦° à¦¨à¦¿à¦°à§à¦¬à¦¾à¦šà¦¨ à¦•à¦°à§à¦¨","Select Offer"),18,DARK);
+        TextView intro = tv(tx("অফার নির্বাচন করুন","Select Offer"),18,DARK);
         intro.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
         intro.setPadding(dp(4),0,dp(4),dp(10));
         content.addView(intro,new LinearLayout.LayoutParams(-1,dp(42)));
 
-        final String[] operators = {"à¦—à§à¦°à¦¾à¦®à§€à¦£à¦«à§‹à¦¨","à¦¬à¦¾à¦‚à¦²à¦¾à¦²à¦¿à¦‚à¦•","Robi","Airtel","Teletalk"};
+        final String[] operators = {"গ্রামীণফোন","বাংলালিংক","Robi","Airtel","Teletalk"};
         final JSONArray offers = getSpecialOfferData();
 
         HorizontalScrollView opScroll = new HorizontalScrollView(this);
@@ -3189,7 +3185,7 @@ public class MainActivity extends Activity {
             offerList.removeAllViews();
 
             TextView selectedLabel = tv(
-                    tx("à¦…à¦«à¦¾à¦° à¦¨à¦¿à¦°à§à¦¬à¦¾à¦šà¦¨ à¦•à¦°à§à¦¨","Choose an offer"),
+                    tx("অফার নির্বাচন করুন","Choose an offer"),
                     16,
                     DARK
             );
@@ -3221,7 +3217,7 @@ public class MainActivity extends Activity {
                 String logo = offerText(o,"logo");
                 String offerName = offerText(o,"offer_name");
                 TextView name = tv(
-                        (logo.isEmpty() ? "ðŸ“± " : logo+"  ")
+                        (logo.isEmpty() ? "📱 " : logo+"  ")
                                 + (offerName.isEmpty() ? selected[0] : offerName),
                         17,
                         DARK
@@ -3256,7 +3252,7 @@ public class MainActivity extends Activity {
 
                 if (!validity.isEmpty()) {
                     TextView x = tv(
-                            tx("à¦®à§‡à¦¯à¦¼à¦¾à¦¦: ","Validity: ") + validity,
+                            tx("মেয়াদ: ","Validity: ") + validity,
                             14,
                             Color.DKGRAY
                     );
@@ -3267,7 +3263,7 @@ public class MainActivity extends Activity {
                 priceRow.setGravity(Gravity.CENTER_VERTICAL);
 
                 if (!price.isEmpty()) {
-                    TextView x = tv("à§³ "+price,19,BLUE);
+                    TextView x = tv("৳ "+price,19,BLUE);
                     x.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
                     priceRow.addView(x,new LinearLayout.LayoutParams(0,dp(34),1));
                 } else {
@@ -3276,7 +3272,7 @@ public class MainActivity extends Activity {
 
                 if (!bonus.isEmpty() && !bonus.equals("0")) {
                     TextView x = tv(
-                            tx("à¦¬à§‹à¦¨à¦¾à¦¸ à§³ "+bonus,"Bonus à§³ "+bonus),
+                            tx("বোনাস ৳ "+bonus,"Bonus ৳ "+bonus),
                             14,
                             GREEN
                     );
@@ -3293,7 +3289,7 @@ public class MainActivity extends Activity {
                 }
 
                 TextView take = button(
-                        tx("à¦…à¦«à¦¾à¦° à¦¨à¦¿à¦¨","Get Offer"),
+                        tx("অফার নিন","Get Offer"),
                         GREEN,
                         Color.WHITE
                 );
@@ -3316,7 +3312,7 @@ public class MainActivity extends Activity {
                     offerReq.put("offer", fOperator); offerReq.put("data", fData); offerReq.put("minutes", fMinutes); offerReq.put("price", amount); offerReq.put("bonus", fBonus); offerReq.put("validity", fValidity);
                     submitFirestoreRequest("specialOfferRequests", offerReq);
                     recordTransaction(
-                            "à¦¬à¦¿à¦¶à§‡à¦· à¦…à¦«à¦¾à¦°",
+                            "বিশেষ অফার",
                             fOperator+" / "+fData+" / "+fMinutes,
                             amount,
                             false,
@@ -3326,22 +3322,22 @@ public class MainActivity extends Activity {
                     String msg = fOperator
                             + (fData.isEmpty() ? "" : "\n"+fData)
                             + (fMinutes.isEmpty() ? "" : "\n"+fMinutes)
-                            + (fPrice.isEmpty() ? "" : "\nà¦®à§‚à¦²à§à¦¯: à§³ "+fPrice)
-                            + (fBonus.isEmpty() || fBonus.equals("0") ? "" : "\nà¦¬à§‹à¦¨à¦¾à¦¸: à§³ "+fBonus)
-                            + (fValidity.isEmpty() ? "" : "\nà¦®à§‡à¦¯à¦¼à¦¾à¦¦: "+fValidity);
+                            + (fPrice.isEmpty() ? "" : "\nমূল্য: ৳ "+fPrice)
+                            + (fBonus.isEmpty() || fBonus.equals("0") ? "" : "\nবোনাস: ৳ "+fBonus)
+                            + (fValidity.isEmpty() ? "" : "\nমেয়াদ: "+fValidity);
 
                     new AlertDialog.Builder(this)
-                            .setTitle(tx("à¦…à¦«à¦¾à¦°","Offer"))
+                            .setTitle(tx("অফার","Offer"))
                             .setMessage(msg)
-                            .setNegativeButton(tx("à¦¬à¦¨à§à¦§","Close"),null)
-                            .setPositiveButton(tx("à¦ à¦¿à¦• à¦†à¦›à§‡","OK"),null)
+                            .setNegativeButton(tx("বন্ধ","Close"),null)
+                            .setPositiveButton(tx("ঠিক আছে","OK"),null)
                             .show();
                 });
             }
 
             if (count == 0) {
                 TextView empty = tv(
-                        tx("à¦à¦‡ à¦…à¦ªà¦¾à¦°à§‡à¦Ÿà¦°à§‡à¦° à¦•à§‹à¦¨à§‹ à¦…à¦«à¦¾à¦° à¦¨à§‡à¦‡","No offers available for this operator"),
+                        tx("এই অপারেটরের কোনো অফার নেই","No offers available for this operator"),
                         15,
                         Color.GRAY
                 );
@@ -3405,22 +3401,22 @@ public class MainActivity extends Activity {
         LinearLayout header=new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL); header.setPadding(dp(8),0,dp(8),0); header.setBackgroundColor(BLUE);
         main.addView(header,new LinearLayout.LayoutParams(-1,dp(62)));
-        TextView back=tv("â€¹",38,Color.WHITE); back.setGravity(Gravity.CENTER);
+        TextView back=tv("‹",38,Color.WHITE); back.setGravity(Gravity.CENTER);
         header.addView(back,new LinearLayout.LayoutParams(dp(52),dp(62))); back.setOnClickListener(v->showHome());
-        TextView title=tv("à¦•à¦¾à¦¸à§à¦Ÿà¦®à¦¾à¦° à¦•à§‡à¦¯à¦¼à¦¾à¦°",21,Color.WHITE); title.setGravity(Gravity.CENTER); title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        TextView title=tv("কাস্টমার কেয়ার",21,Color.WHITE); title.setGravity(Gravity.CENTER); title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
         header.addView(title,new LinearLayout.LayoutParams(0,dp(62),1)); header.addView(new Space(this),new LinearLayout.LayoutParams(dp(52),dp(62)));
 
         LinearLayout content=new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL); content.setGravity(Gravity.TOP); content.setPadding(dp(16),dp(20),dp(16),dp(25));
         main.addView(content,new LinearLayout.LayoutParams(-1,0,1));
         LinearLayout card=new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL); card.setGravity(Gravity.CENTER_HORIZONTAL); card.setPadding(dp(18),dp(25),dp(18),dp(25)); card.setBackground(bg(Color.WHITE,18));
         content.addView(card,new LinearLayout.LayoutParams(-1,-2));
-        TextView icon=tv("ðŸ’¬",48,GREEN); icon.setGravity(Gravity.CENTER); card.addView(icon,new LinearLayout.LayoutParams(-1,dp(65)));
-        TextView heading=tv("à¦•à¦¾à¦¸à§à¦Ÿà¦®à¦¾à¦° à¦•à§‡à¦¯à¦¼à¦¾à¦°",22,DARK); heading.setTypeface(Typeface.DEFAULT,Typeface.BOLD); heading.setGravity(Gravity.CENTER); card.addView(heading,new LinearLayout.LayoutParams(-1,dp(40)));
+        TextView icon=tv("💬",48,GREEN); icon.setGravity(Gravity.CENTER); card.addView(icon,new LinearLayout.LayoutParams(-1,dp(65)));
+        TextView heading=tv("কাস্টমার কেয়ার",22,DARK); heading.setTypeface(Typeface.DEFAULT,Typeface.BOLD); heading.setGravity(Gravity.CENTER); card.addView(heading,new LinearLayout.LayoutParams(-1,dp(40)));
 
         String number=getCustomerCareWhatsApp();
-        TextView numberText=tv(number.isEmpty()?"WhatsApp à¦¨à¦®à§à¦¬à¦° à¦à¦–à¦¨à§‹ à¦¸à§‡à¦Ÿ à¦•à¦°à¦¾ à¦¹à¦¯à¦¼à¦¨à¦¿":"WhatsApp: "+number,15,Color.DKGRAY);
+        TextView numberText=tv(number.isEmpty()?"WhatsApp নম্বর এখনো সেট করা হয়নি":"WhatsApp: "+number,15,Color.DKGRAY);
         numberText.setGravity(Gravity.CENTER); numberText.setPadding(0,dp(8),0,dp(15)); card.addView(numberText,new LinearLayout.LayoutParams(-1,dp(55)));
-        TextView contact=button("WhatsApp-à¦ à¦¯à§‹à¦—à¦¾à¦¯à§‹à¦— à¦•à¦°à§à¦¨",GREEN,Color.WHITE);
+        TextView contact=button("WhatsApp-এ যোগাযোগ করুন",GREEN,Color.WHITE);
         card.addView(contact,new LinearLayout.LayoutParams(-1,dp(55)));
         contact.setEnabled(!number.isEmpty());
         if(number.isEmpty()) contact.setBackground(bg(Color.rgb(170,170,170),12));
@@ -3440,7 +3436,7 @@ public class MainActivity extends Activity {
                 android.content.Intent web=new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://wa.me/"+number));
                 startActivity(web);
             } catch(Exception ignored) {
-                Toast.makeText(this,"WhatsApp à¦–à§‹à¦²à¦¾ à¦¯à¦¾à¦šà§à¦›à§‡ à¦¨à¦¾",Toast.LENGTH_SHORT).show();
+                Toast.makeText(this,"WhatsApp খোলা যাচ্ছে না",Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -3460,12 +3456,12 @@ public class MainActivity extends Activity {
         getWindow().setStatusBarColor(BLUE); getWindow().setNavigationBarColor(Color.WHITE);
         LinearLayout main=new LinearLayout(this); main.setOrientation(LinearLayout.VERTICAL); main.setBackgroundColor(Color.rgb(247,248,250)); setContentView(main);
         LinearLayout header=new LinearLayout(this); header.setGravity(Gravity.CENTER_VERTICAL); header.setPadding(dp(8),0,dp(8),0); header.setBackgroundColor(BLUE); main.addView(header,new LinearLayout.LayoutParams(-1,dp(62)));
-        TextView back=tv("â€¹",38,Color.WHITE); back.setGravity(Gravity.CENTER); header.addView(back,new LinearLayout.LayoutParams(dp(52),dp(62))); back.setOnClickListener(v->showHome());
-        TextView title=tv("à¦•à¦¾à¦¸à§à¦Ÿà¦®à¦¾à¦° à¦°à¦¿à¦­à¦¿à¦‰",21,Color.WHITE); title.setGravity(Gravity.CENTER); title.setTypeface(Typeface.DEFAULT,Typeface.BOLD); header.addView(title,new LinearLayout.LayoutParams(0,dp(62),1)); header.addView(new Space(this),new LinearLayout.LayoutParams(dp(52),dp(62)));
+        TextView back=tv("‹",38,Color.WHITE); back.setGravity(Gravity.CENTER); header.addView(back,new LinearLayout.LayoutParams(dp(52),dp(62))); back.setOnClickListener(v->showHome());
+        TextView title=tv("কাস্টমার রিভিউ",21,Color.WHITE); title.setGravity(Gravity.CENTER); title.setTypeface(Typeface.DEFAULT,Typeface.BOLD); header.addView(title,new LinearLayout.LayoutParams(0,dp(62),1)); header.addView(new Space(this),new LinearLayout.LayoutParams(dp(52),dp(62)));
         ScrollView scroll=new ScrollView(this); LinearLayout list=new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(dp(12),dp(12),dp(12),dp(25)); scroll.addView(list); main.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         JSONArray reviews=getCustomerReviewData();
-        if(reviews.length()==0) { addVideoEmptyState(list,"â­","à¦•à¦¾à¦¸à§à¦Ÿà¦®à¦¾à¦° à¦°à¦¿à¦­à¦¿à¦‰","à¦•à¦¾à¦¸à§à¦Ÿà¦®à¦¾à¦°à¦¦à§‡à¦° à¦­à¦¿à¦¡à¦¿à¦“ à¦°à¦¿à¦­à¦¿à¦‰ à¦à¦–à¦¾à¦¨à§‡ à¦¦à§‡à¦–à¦¾ à¦¯à¦¾à¦¬à§‡à¥¤"); return; }
-        for(int i=0;i<reviews.length();i++) { JSONObject item=reviews.optJSONObject(i); if(item==null||!item.optBoolean("visible",true)) continue; addVideoCard(list,item.optString("title","à¦•à¦¾à¦¸à§à¦Ÿà¦®à¦¾à¦° à¦°à¦¿à¦­à¦¿à¦‰"),item.optString("description",""),item.optString("url","")); }
+        if(reviews.length()==0) { addVideoEmptyState(list,"⭐","কাস্টমার রিভিউ","কাস্টমারদের ভিডিও রিভিউ এখানে দেখা যাবে।"); return; }
+        for(int i=0;i<reviews.length();i++) { JSONObject item=reviews.optJSONObject(i); if(item==null||!item.optBoolean("visible",true)) continue; addVideoCard(list,item.optString("title","কাস্টমার রিভিউ"),item.optString("description",""),item.optString("url","")); }
     }
 
     /* =========================================================
@@ -3483,12 +3479,12 @@ public class MainActivity extends Activity {
         getWindow().setStatusBarColor(BLUE); getWindow().setNavigationBarColor(Color.WHITE);
         LinearLayout main=new LinearLayout(this); main.setOrientation(LinearLayout.VERTICAL); main.setBackgroundColor(Color.rgb(247,248,250)); setContentView(main);
         LinearLayout header=new LinearLayout(this); header.setGravity(Gravity.CENTER_VERTICAL); header.setPadding(dp(8),0,dp(8),0); header.setBackgroundColor(BLUE); main.addView(header,new LinearLayout.LayoutParams(-1,dp(62)));
-        TextView back=tv("â€¹",38,Color.WHITE); back.setGravity(Gravity.CENTER); header.addView(back,new LinearLayout.LayoutParams(dp(52),dp(62))); back.setOnClickListener(v->showHome());
-        TextView title=tv("à¦­à¦¿à¦¡à¦¿à¦“ à¦Ÿà¦¿à¦‰à¦Ÿà§‹à¦°à¦¿à¦¯à¦¼à¦¾à¦²",21,Color.WHITE); title.setGravity(Gravity.CENTER); title.setTypeface(Typeface.DEFAULT,Typeface.BOLD); header.addView(title,new LinearLayout.LayoutParams(0,dp(62),1)); header.addView(new Space(this),new LinearLayout.LayoutParams(dp(52),dp(62)));
+        TextView back=tv("‹",38,Color.WHITE); back.setGravity(Gravity.CENTER); header.addView(back,new LinearLayout.LayoutParams(dp(52),dp(62))); back.setOnClickListener(v->showHome());
+        TextView title=tv("ভিডিও টিউটোরিয়াল",21,Color.WHITE); title.setGravity(Gravity.CENTER); title.setTypeface(Typeface.DEFAULT,Typeface.BOLD); header.addView(title,new LinearLayout.LayoutParams(0,dp(62),1)); header.addView(new Space(this),new LinearLayout.LayoutParams(dp(52),dp(62)));
         ScrollView scroll=new ScrollView(this); LinearLayout list=new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(dp(12),dp(12),dp(12),dp(25)); scroll.addView(list); main.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         JSONArray tutorials=getTutorialData();
-        if(tutorials.length()==0) { addVideoEmptyState(list,"â–¶","à¦­à¦¿à¦¡à¦¿à¦“ à¦Ÿà¦¿à¦‰à¦Ÿà§‹à¦°à¦¿à¦¯à¦¼à¦¾à¦²","à¦…à§à¦¯à¦¾à¦ª à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦° à¦¶à§‡à¦–à¦¾à¦¨à§‹à¦° à¦­à¦¿à¦¡à¦¿à¦“ à¦à¦–à¦¾à¦¨à§‡ à¦¦à§‡à¦–à¦¾ à¦¯à¦¾à¦¬à§‡à¥¤"); return; }
-        for(int i=0;i<tutorials.length();i++) { JSONObject item=tutorials.optJSONObject(i); if(item==null||!item.optBoolean("visible",true)) continue; addVideoCard(list,item.optString("title","à¦­à¦¿à¦¡à¦¿à¦“ à¦Ÿà¦¿à¦‰à¦Ÿà§‹à¦°à¦¿à¦¯à¦¼à¦¾à¦²"),item.optString("description",""),item.optString("url","")); }
+        if(tutorials.length()==0) { addVideoEmptyState(list,"▶","ভিডিও টিউটোরিয়াল","অ্যাপ ব্যবহার শেখানোর ভিডিও এখানে দেখা যাবে।"); return; }
+        for(int i=0;i<tutorials.length();i++) { JSONObject item=tutorials.optJSONObject(i); if(item==null||!item.optBoolean("visible",true)) continue; addVideoCard(list,item.optString("title","ভিডিও টিউটোরিয়াল"),item.optString("description",""),item.optString("url","")); }
     }
 
     private void addVideoEmptyState(LinearLayout parent,String iconText,String titleText,String messageText) {
@@ -3501,16 +3497,16 @@ public class MainActivity extends Activity {
     private void addVideoCard(LinearLayout parent,String titleText,String descriptionText,String url) {
         LinearLayout card=new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL); card.setPadding(dp(15),dp(14),dp(15),dp(14)); card.setBackground(bg(Color.WHITE,16));
         LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2); cp.setMargins(0,0,0,dp(10)); parent.addView(card,cp);
-        TextView play=tv("â–¶",34,BLUE); play.setGravity(Gravity.CENTER); card.addView(play,new LinearLayout.LayoutParams(-1,dp(62)));
+        TextView play=tv("▶",34,BLUE); play.setGravity(Gravity.CENTER); card.addView(play,new LinearLayout.LayoutParams(-1,dp(62)));
         TextView title=tv(titleText,17,DARK); title.setTypeface(Typeface.DEFAULT,Typeface.BOLD); card.addView(title,new LinearLayout.LayoutParams(-1,dp(32)));
         if(!descriptionText.trim().isEmpty()) { TextView description=tv(descriptionText,13,Color.GRAY); description.setPadding(0,dp(4),0,dp(9)); card.addView(description,new LinearLayout.LayoutParams(-1,-2)); }
-        TextView watch=button("à¦­à¦¿à¦¡à¦¿à¦“ à¦¦à§‡à¦–à§à¦¨",BLUE,Color.WHITE); card.addView(watch,new LinearLayout.LayoutParams(-1,dp(50))); watch.setEnabled(!url.trim().isEmpty()); if(url.trim().isEmpty()) watch.setBackground(bg(Color.rgb(170,170,170),12)); watch.setOnClickListener(v->openVideoUrl(url));
+        TextView watch=button("ভিডিও দেখুন",BLUE,Color.WHITE); card.addView(watch,new LinearLayout.LayoutParams(-1,dp(50))); watch.setEnabled(!url.trim().isEmpty()); if(url.trim().isEmpty()) watch.setBackground(bg(Color.rgb(170,170,170),12)); watch.setOnClickListener(v->openVideoUrl(url));
     }
 
     private void openVideoUrl(String url) {
-        if(url==null||url.trim().isEmpty()) { Toast.makeText(this,"à¦­à¦¿à¦¡à¦¿à¦“ à¦²à¦¿à¦‚à¦• à¦à¦–à¦¨à§‹ à¦¸à§‡à¦Ÿ à¦•à¦°à¦¾ à¦¹à¦¯à¦¼à¦¨à¦¿",Toast.LENGTH_SHORT).show(); return; }
+        if(url==null||url.trim().isEmpty()) { Toast.makeText(this,"ভিডিও লিংক এখনো সেট করা হয়নি",Toast.LENGTH_SHORT).show(); return; }
         try { startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(url.trim()))); }
-        catch(Exception e) { Toast.makeText(this,"à¦­à¦¿à¦¡à¦¿à¦“ à¦–à§‹à¦²à¦¾ à¦¯à¦¾à¦šà§à¦›à§‡ à¦¨à¦¾",Toast.LENGTH_SHORT).show(); }
+        catch(Exception e) { Toast.makeText(this,"ভিডিও খোলা যাচ্ছে না",Toast.LENGTH_SHORT).show(); }
     }
 
     /* =========================================================
@@ -3540,7 +3536,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(62))
         );
 
-        TextView back = tv("â€¹",38,Color.WHITE);
+        TextView back = tv("‹",38,Color.WHITE);
         back.setGravity(Gravity.CENTER);
 
         header.addView(
@@ -3560,7 +3556,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(0,dp(62),1)
         );
 
-        TextView title = tv("à¦—à§à¦°à§à¦ª à¦šà§à¦¯à¦¾à¦Ÿ",20,Color.WHITE);
+        TextView title = tv("গ্রুপ চ্যাট",20,Color.WHITE);
         title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
 
         titleBox.addView(
@@ -3575,7 +3571,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(22))
         );
 
-        TextView clear = tv("â‹®",30,Color.WHITE);
+        TextView clear = tv("⋮",30,Color.WHITE);
         clear.setGravity(Gravity.CENTER);
 
         header.addView(
@@ -3619,7 +3615,7 @@ public class MainActivity extends Activity {
 
         EditText message = new EditText(this);
 
-        message.setHint("à¦®à§‡à¦¸à§‡à¦œ à¦²à¦¿à¦–à§à¦¨...");
+        message.setHint("মেসেজ লিখুন...");
         message.setTextSize(16);
         message.setSingleLine(false);
         message.setMaxLines(3);
@@ -3640,7 +3636,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(0,dp(54),1)
         );
 
-        TextView send = tv("âž¤",24,Color.WHITE);
+        TextView send = tv("➤",24,Color.WHITE);
 
         send.setGravity(Gravity.CENTER);
         send.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
@@ -3712,7 +3708,7 @@ public class MainActivity extends Activity {
         } catch (Exception ignored) {}
 
         if (!firebaseReady || firestore == null || firebaseUid().isEmpty()) {
-            Toast.makeText(this,"Firebase à¦¸à¦‚à¦¯à§‹à¦— à¦¨à§‡à¦‡à¥¤ à¦®à§‡à¦¸à§‡à¦œà¦Ÿà¦¿ à¦¶à§à¦§à§ à¦à¦‡ à¦«à§‹à¦¨à§‡ à¦†à¦›à§‡à¥¤",Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,"Firebase সংযোগ নেই। মেসেজটি শুধু এই ফোনে আছে।",Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -3724,12 +3720,12 @@ public class MainActivity extends Activity {
         object.put("status", "PENDING");
         object.put("createdAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
 
-        firestore.collection("groupChatMessages").add(object)
+        firestore.collection("chatMessages").add(object)
                 .addOnSuccessListener(v -> Toast.makeText(this,
-                        "à¦®à§‡à¦¸à§‡à¦œ à¦ªà¦¾à¦ à¦¾à¦¨à§‹ à¦¹à¦¯à¦¼à§‡à¦›à§‡à¥¤ à¦…à§à¦¯à¦¾à¦¡à¦®à¦¿à¦¨ à¦…à¦¨à§à¦®à§‹à¦¦à¦¨à§‡à¦° à¦ªà¦° à¦¸à¦¬à¦¾à¦‡ à¦¦à§‡à¦–à¦¤à§‡ à¦ªà¦¾à¦¬à§‡à¥¤",
+                        "মেসেজ পাঠানো হয়েছে। অ্যাডমিন অনুমোদনের পর সবাই দেখতে পাবে।",
                         Toast.LENGTH_SHORT).show())
                 .addOnFailureListener(e -> Toast.makeText(this,
-                        "à¦®à§‡à¦¸à§‡à¦œ à¦¸à¦¾à¦°à§à¦­à¦¾à¦°à§‡ à¦ªà¦¾à¦ à¦¾à¦¨à§‹ à¦¯à¦¾à¦¯à¦¼à¦¨à¦¿à¥¤",
+                        "মেসেজ সার্ভারে পাঠানো যায়নি।",
                         Toast.LENGTH_SHORT).show());
     }
 
@@ -3748,7 +3744,7 @@ public class MainActivity extends Activity {
 
         if (chatListener != null) chatListener.remove();
 
-        chatListener = firestore.collection("groupChatMessages")
+        chatListener = firestore.collection("chatMessages")
                 .whereEqualTo("status", "APPROVED")
                 .addSnapshotListener((snap, error) -> {
                     if (error != null || snap == null) {
@@ -3783,12 +3779,12 @@ public class MainActivity extends Activity {
         empty.setOrientation(LinearLayout.VERTICAL);
         empty.setGravity(Gravity.CENTER);
         empty.setPadding(dp(20),dp(60),dp(20),dp(60));
-        TextView icon = tv("ðŸ’¬",48,BLUE); icon.setGravity(Gravity.CENTER);
+        TextView icon = tv("💬",48,BLUE); icon.setGravity(Gravity.CENTER);
         empty.addView(icon,new LinearLayout.LayoutParams(-1,dp(70)));
-        TextView title = tv("à¦—à§à¦°à§à¦ª à¦šà§à¦¯à¦¾à¦Ÿà§‡ à¦¸à§à¦¬à¦¾à¦—à¦¤à¦®",21,BLUE);
+        TextView title = tv("গ্রুপ চ্যাটে স্বাগতম",21,BLUE);
         title.setGravity(Gravity.CENTER); title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
         empty.addView(title,new LinearLayout.LayoutParams(-1,dp(40)));
-        TextView sub = tv("à¦…à§à¦¯à¦¾à¦¡à¦®à¦¿à¦¨ à¦…à¦¨à§à¦®à§‹à¦¦à¦¿à¦¤ à¦®à§‡à¦¸à§‡à¦œ à¦à¦–à¦¾à¦¨à§‡ à¦¦à§‡à¦–à¦¾ à¦¯à¦¾à¦¬à§‡à¥¤",15,Color.DKGRAY);
+        TextView sub = tv("অ্যাডমিন অনুমোদিত মেসেজ এখানে দেখা যাবে।",15,Color.DKGRAY);
         sub.setGravity(Gravity.CENTER);
         empty.addView(sub,new LinearLayout.LayoutParams(-1,dp(45)));
         chatBox.addView(empty,new LinearLayout.LayoutParams(-1,-2));
@@ -3895,7 +3891,7 @@ public class MainActivity extends Activity {
         TextView user =
                 tv(
                         mine
-                                ? "à¦†à¦ªà¦¨à¦¿"
+                                ? "আপনি"
                                 : name,
                         13,
                         mine ? BLUE : GREEN
@@ -3961,12 +3957,12 @@ public class MainActivity extends Activity {
     private void showChatMenu() {
 
         String[] options = {
-                "à¦šà§à¦¯à¦¾à¦Ÿ à¦ªà¦°à¦¿à¦·à§à¦•à¦¾à¦° à¦•à¦°à§à¦¨",
-                "à¦šà§à¦¯à¦¾à¦Ÿ à¦¸à¦®à§à¦ªà¦°à§à¦•à§‡"
+                "চ্যাট পরিষ্কার করুন",
+                "চ্যাট সম্পর্কে"
         };
 
         new AlertDialog.Builder(this)
-                .setTitle("à¦—à§à¦°à§à¦ª à¦šà§à¦¯à¦¾à¦Ÿ")
+                .setTitle("গ্রুপ চ্যাট")
                 .setItems(
                         options,
                         (dialog,which) -> {
@@ -3975,17 +3971,17 @@ public class MainActivity extends Activity {
 
                                 new AlertDialog.Builder(this)
                                         .setTitle(
-                                                "à¦šà§à¦¯à¦¾à¦Ÿ à¦ªà¦°à¦¿à¦·à§à¦•à¦¾à¦° à¦•à¦°à¦¬à§‡à¦¨?"
+                                                "চ্যাট পরিষ্কার করবেন?"
                                         )
                                         .setMessage(
-                                                "à¦à¦‡ à¦«à§‹à¦¨à§‡ à¦¸à¦‚à¦°à¦•à§à¦·à¦¿à¦¤ à¦¸à¦¬ à¦—à§à¦°à§à¦ª à¦šà§à¦¯à¦¾à¦Ÿ à¦®à§à¦›à§‡ à¦¯à¦¾à¦¬à§‡à¥¤"
+                                                "এই ফোনে সংরক্ষিত সব গ্রুপ চ্যাট মুছে যাবে।"
                                         )
                                         .setNegativeButton(
-                                                "à¦¬à¦¾à¦¤à¦¿à¦²",
+                                                "বাতিল",
                                                 null
                                         )
                                         .setPositiveButton(
-                                                "à¦®à§à¦›à§‡ à¦«à§‡à¦²à§à¦¨",
+                                                "মুছে ফেলুন",
                                                 (d,w) -> {
 
                                                     pref.edit()
@@ -3998,7 +3994,7 @@ public class MainActivity extends Activity {
 
                                                     Toast.makeText(
                                                             this,
-                                                            "à¦šà§à¦¯à¦¾à¦Ÿ à¦ªà¦°à¦¿à¦·à§à¦•à¦¾à¦° à¦•à¦°à¦¾ à¦¹à¦¯à¦¼à§‡à¦›à§‡",
+                                                            "চ্যাট পরিষ্কার করা হয়েছে",
                                                             Toast.LENGTH_SHORT
                                                     ).show();
                                                 }
@@ -4009,15 +4005,15 @@ public class MainActivity extends Activity {
 
                                 new AlertDialog.Builder(this)
                                         .setTitle(
-                                                "à¦—à§à¦°à§à¦ª à¦šà§à¦¯à¦¾à¦Ÿ"
+                                                "গ্রুপ চ্যাট"
                                         )
                                         .setMessage(
-                                                "à¦à¦–à¦¾à¦¨à§‡ Quick Pay à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦°à¦•à¦¾à¦°à§€à¦°à¦¾ à¦—à§à¦°à§à¦ªà§‡ à¦•à¦¥à¦¾ à¦¬à¦²à¦¤à§‡ à¦ªà¦¾à¦°à¦¬à§‡à¥¤\n\n"
-                                                        + "à¦¬à¦°à§à¦¤à¦®à¦¾à¦¨ à¦­à¦¾à¦°à§à¦¸à¦¨à§‡ à¦®à§‡à¦¸à§‡à¦œ à¦à¦‡ à¦¡à¦¿à¦­à¦¾à¦‡à¦¸à§‡ à¦²à§‹à¦•à¦¾à¦²à¦¿ à¦¸à¦‚à¦°à¦•à§à¦·à¦£ à¦•à¦°à¦¾ à¦¹à¦šà§à¦›à§‡à¥¤\n\n"
-                                                        + "à¦ªà¦°à¦¬à¦°à§à¦¤à§€à¦¤à§‡ Backend / API / Socket à¦¯à§à¦•à§à¦¤ à¦•à¦°à¦²à§‡ à¦à¦•à¦¾à¦§à¦¿à¦• à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦°à¦•à¦¾à¦°à§€à¦° à¦®à¦§à§à¦¯à§‡ à¦²à¦¾à¦‡à¦­ à¦šà§à¦¯à¦¾à¦Ÿ à¦•à¦°à¦¾ à¦¯à¦¾à¦¬à§‡à¥¤"
+                                                "এখানে Quick Pay ব্যবহারকারীরা গ্রুপে কথা বলতে পারবে।\n\n"
+                                                        + "বর্তমান ভার্সনে মেসেজ এই ডিভাইসে লোকালি সংরক্ষণ করা হচ্ছে।\n\n"
+                                                        + "পরবর্তীতে Backend / API / Socket যুক্ত করলে একাধিক ব্যবহারকারীর মধ্যে লাইভ চ্যাট করা যাবে।"
                                         )
                                         .setPositiveButton(
-                                                "à¦ à¦¿à¦• à¦†à¦›à§‡",
+                                                "ঠিক আছে",
                                                 null
                                         )
                                         .show();
@@ -4054,7 +4050,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(62))
         );
 
-        TextView back = tv("â€¹",38,Color.WHITE);
+        TextView back = tv("‹",38,Color.WHITE);
         back.setGravity(Gravity.CENTER);
 
         header.addView(
@@ -4064,7 +4060,7 @@ public class MainActivity extends Activity {
 
         back.setOnClickListener(v -> showHome());
 
-        TextView title = tv("à¦…à§à¦¯à¦¾à¦¡ à¦¬à§à¦¯à¦¾à¦²à§‡à¦¨à§à¦¸",21,Color.WHITE);
+        TextView title = tv("অ্যাড ব্যালেন্স",21,Color.WHITE);
 
         title.setGravity(Gravity.CENTER_VERTICAL);
         title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
@@ -4076,8 +4072,8 @@ public class MainActivity extends Activity {
 
         TextView info =
                 tv(
-                        "à¦†à¦ªà¦¨à¦¾à¦° Quick Pay à¦“à§Ÿà¦¾à¦²à§‡à¦Ÿà§‡ à¦Ÿà¦¾à¦•à¦¾ à¦¯à§‹à¦— à¦•à¦°à§à¦¨à¥¤\n\n"
-                                + "à¦Ÿà¦¾à¦•à¦¾ à¦¯à§‹à¦— à¦•à¦°à¦¾à¦° à¦œà¦¨à§à¦¯ à¦¨à¦¿à¦šà§‡à¦° à¦…à¦Ÿà§‹ à¦¡à¦¿à¦ªà§‹à¦œà¦¿à¦Ÿ à¦…à¦ªà¦¶à¦¨ à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦° à¦•à¦°à§à¦¨à¥¤",
+                        "আপনার Quick Pay ওয়ালেটে টাকা যোগ করুন।\n\n"
+                                + "টাকা যোগ করার জন্য নিচের অটো ডিপোজিট অপশন ব্যবহার করুন।",
                         17,
                         DARK
                 );
@@ -4091,7 +4087,7 @@ public class MainActivity extends Activity {
 
         TextView auto =
                 button(
-                        "à¦…à¦Ÿà§‹ à¦¡à¦¿à¦ªà§‹à¦œà¦¿à¦Ÿ",
+                        "অটো ডিপোজিট",
                         BLUE,
                         Color.WHITE
                 );
@@ -4135,7 +4131,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(62))
         );
 
-        TextView back = tv("â€¹",38,Color.WHITE);
+        TextView back = tv("‹",38,Color.WHITE);
         back.setGravity(Gravity.CENTER);
 
         header.addView(
@@ -4145,7 +4141,7 @@ public class MainActivity extends Activity {
 
         back.setOnClickListener(v -> showAddBalance());
 
-        TextView title = tv("à¦…à¦Ÿà§‹ à¦¡à¦¿à¦ªà§‹à¦œà¦¿à¦Ÿ",21,Color.WHITE);
+        TextView title = tv("অটো ডিপোজিট",21,Color.WHITE);
 
         title.setGravity(Gravity.CENTER_VERTICAL);
         title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
@@ -4171,8 +4167,8 @@ public class MainActivity extends Activity {
 
         TextView notice =
                 tv(
-                        "à¦¨à¦¿à¦šà§‡à¦° à¦¯à§‡à¦•à§‹à¦¨à§‹ à¦¨à¦®à§à¦¬à¦°à§‡ à¦Ÿà¦¾à¦•à¦¾ à¦ªà¦¾à¦ à¦¾à¦¨à¥¤\n"
-                                + "à¦Ÿà¦¾à¦•à¦¾ à¦ªà¦¾à¦ à¦¾à¦¨à§‹à¦° à¦ªà¦° à¦¸à¦ à¦¿à¦• à¦Ÿà¦¾à¦•à¦¾à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£ à¦“ Transaction ID à¦¦à¦¿à¦¯à¦¼à§‡ à¦¸à¦¾à¦¬à¦®à¦¿à¦Ÿ à¦•à¦°à§à¦¨à¥¤",
+                        "নিচের যেকোনো নম্বরে টাকা পাঠান।\n"
+                                + "টাকা পাঠানোর পর সঠিক টাকার পরিমাণ ও Transaction ID দিয়ে সাবমিট করুন।",
                         16,
                         DARK
                 );
@@ -4190,34 +4186,34 @@ public class MainActivity extends Activity {
         addDepositProvider(
                 content,
                 "bKash",
-                "à¦¬à¦¿à¦•à¦¾à¦¶ à¦ªà¦¾à¦°à§à¦¸à§‹à¦¨à¦¾à¦²",
+                "বিকাশ পার্সোনাল",
                 ""
         );
 
         addDepositProvider(
                 content,
                 "Nagad",
-                "à¦¨à¦—à¦¦ à¦ªà¦¾à¦°à§à¦¸à§‹à¦¨à¦¾à¦²",
+                "নগদ পার্সোনাল",
                 ""
         );
 
         addDepositProvider(
                 content,
                 "Rocket",
-                "à¦°à¦•à§‡à¦Ÿ à¦ªà¦¾à¦°à§à¦¸à§‹à¦¨à¦¾à¦²",
+                "রকেট পার্সোনাল",
                 ""
         );
 
         addDepositProvider(
                 content,
                 "Upay",
-                "à¦‰à¦ªà¦¾à§Ÿ à¦ªà¦¾à¦°à§à¦¸à§‹à¦¨à¦¾à¦²",
+                "উপায় পার্সোনাল",
                 ""
         );
 
         space(content,12);
 
-        TextView amountTitle = tv("à¦Ÿà¦¾à¦•à¦¾à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£",16,BLUE);
+        TextView amountTitle = tv("টাকার পরিমাণ",16,BLUE);
 
         amountTitle.setTypeface(
                 Typeface.DEFAULT,
@@ -4229,7 +4225,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(32))
         );
 
-        EditText amount = input("à¦Ÿà¦¾à¦•à¦¾à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£",false);
+        EditText amount = input("টাকার পরিমাণ",false);
 
         amount.setInputType(
                 InputType.TYPE_CLASS_NUMBER
@@ -4255,7 +4251,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(32))
         );
 
-        EditText trx = input("Transaction ID à¦²à¦¿à¦–à§à¦¨",false);
+        EditText trx = input("Transaction ID লিখুন",false);
 
         trx.setInputType(
                 InputType.TYPE_CLASS_TEXT
@@ -4271,7 +4267,7 @@ public class MainActivity extends Activity {
 
         TextView submit =
                 button(
-                        "à¦¡à¦¿à¦ªà§‹à¦œà¦¿à¦Ÿ à¦¸à¦¾à¦¬à¦®à¦¿à¦Ÿ à¦•à¦°à§à¦¨",
+                        "ডিপোজিট সাবমিট করুন",
                         BLUE,
                         Color.WHITE
                 );
@@ -4290,12 +4286,12 @@ public class MainActivity extends Activity {
                     trx.getText().toString().trim();
 
             if (money.isEmpty()) {
-                amount.setError("à¦Ÿà¦¾à¦•à¦¾à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£ à¦¦à¦¿à¦¨");
+                amount.setError("টাকার পরিমাণ দিন");
                 return;
             }
 
             if (transaction.isEmpty()) {
-                trx.setError("Transaction ID à¦¦à¦¿à¦¨");
+                trx.setError("Transaction ID দিন");
                 return;
             }
 
@@ -4305,13 +4301,13 @@ public class MainActivity extends Activity {
                         Double.parseDouble(money);
 
                 if (value < 50) {
-                    amount.setError("à¦¸à¦°à§à¦¬à¦¨à¦¿à¦®à§à¦¨ à§«à§¦ à¦Ÿà¦¾à¦•à¦¾");
+                    amount.setError("সর্বনিম্ন ৫০ টাকা");
                     return;
                 }
 
             } catch (Exception e) {
 
-                amount.setError("à¦¸à¦ à¦¿à¦• à¦Ÿà¦¾à¦•à¦¾à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£ à¦¦à¦¿à¦¨");
+                amount.setError("সঠিক টাকার পরিমাণ দিন");
                 return;
             }
 
@@ -4319,17 +4315,17 @@ public class MainActivity extends Activity {
             final String finalDepositTransaction = transaction;
 
             new AlertDialog.Builder(this)
-                    .setTitle("à¦¡à¦¿à¦ªà§‹à¦œà¦¿à¦Ÿ à¦¸à¦¾à¦¬à¦®à¦¿à¦Ÿ")
+                    .setTitle("ডিপোজিট সাবমিট")
                     .setMessage(
-                            "à¦Ÿà¦¾à¦•à¦¾à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£: à§³ "
+                            "টাকার পরিমাণ: ৳ "
                                     + money
                                     + "\nTransaction ID: "
                                     + transaction
-                                    + "\n\nà¦†à¦ªà¦¨à¦¾à¦° à¦¡à¦¿à¦ªà§‹à¦œà¦¿à¦Ÿ à¦°à¦¿à¦•à§‹à¦¯à¦¼à§‡à¦¸à§à¦Ÿ à¦¸à¦¾à¦¬à¦®à¦¿à¦Ÿ à¦•à¦°à¦¾ à¦¹à¦¬à§‡à¥¤"
+                                    + "\n\nআপনার ডিপোজিট রিকোয়েস্ট সাবমিট করা হবে।"
                     )
-                    .setNegativeButton("à¦¬à¦¾à¦¤à¦¿à¦²",null)
+                    .setNegativeButton("বাতিল",null)
                     .setPositiveButton(
-                            "à¦¸à¦¾à¦¬à¦®à¦¿à¦Ÿ",
+                            "সাবমিট",
                             (dialog,which) -> {
 
                                 submitDepositRequestToFirebase(Double.parseDouble(finalDepositMoney), finalDepositTransaction);
@@ -4354,6 +4350,8 @@ public class MainActivity extends Activity {
 
         String adminNumber = paymentNumberFor(name);
         if (!adminNumber.isEmpty()) number = adminNumber;
+        // Keep a final copy because this value is used inside the click lambda below.
+        final String finalNumber = number;
 
         LinearLayout card = new LinearLayout(this);
 
@@ -4370,7 +4368,7 @@ public class MainActivity extends Activity {
 
         TextView title =
                 tv(
-                        name + "  â€¢  " + subtitle,
+                        name + "  •  " + subtitle,
                         17,
                         BLUE
                 );
@@ -4393,11 +4391,11 @@ public class MainActivity extends Activity {
 
         TextView phone =
                 tv(
-                        number.isEmpty()
-                                ? "à¦¨à¦®à§à¦¬à¦° à¦à¦–à¦¨à§‹ à¦¸à§‡à¦Ÿ à¦•à¦°à¦¾ à¦¹à§Ÿà¦¨à¦¿"
-                                : number,
+                        finalNumber.isEmpty()
+                                ? "নম্বর এখনো সেট করা হয়নি"
+                                : finalNumber,
                         15,
-                        number.isEmpty()
+                        finalNumber.isEmpty()
                                 ? Color.GRAY
                                 : DARK
                 );
@@ -4411,7 +4409,7 @@ public class MainActivity extends Activity {
 
         TextView copy =
                 button(
-                        "à¦•à¦ªà¦¿",
+                        "কপি",
                         BLUE,
                         Color.WHITE
                 );
@@ -4423,11 +4421,11 @@ public class MainActivity extends Activity {
 
         copy.setOnClickListener(v -> {
 
-            if (number.isEmpty()) {
+            if (finalNumber.isEmpty()) {
 
                 Toast.makeText(
                         this,
-                        "à¦¨à¦®à§à¦¬à¦° à¦à¦–à¦¨à§‹ à¦¸à§‡à¦Ÿ à¦•à¦°à¦¾ à¦¹à§Ÿà¦¨à¦¿",
+                        "নম্বর এখনো সেট করা হয়নি",
                         Toast.LENGTH_SHORT
                 ).show();
 
@@ -4443,13 +4441,13 @@ public class MainActivity extends Activity {
             clipboard.setPrimaryClip(
                     android.content.ClipData.newPlainText(
                             "Company Number",
-                            number
+                            finalNumber
                     )
             );
 
             Toast.makeText(
                     this,
-                    name + " à¦¨à¦®à§à¦¬à¦° à¦•à¦ªà¦¿ à¦¹à¦¯à¦¼à§‡à¦›à§‡",
+                    name + " নম্বর কপি হয়েছে",
                     Toast.LENGTH_SHORT
             ).show();
         });
@@ -4482,7 +4480,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(62))
         );
 
-        TextView back = tv("â€¹",38,Color.WHITE);
+        TextView back = tv("‹",38,Color.WHITE);
         back.setGravity(Gravity.CENTER);
 
         header.addView(
@@ -4492,7 +4490,7 @@ public class MainActivity extends Activity {
 
         back.setOnClickListener(v -> showHome());
 
-        TextView title = tv("à¦¬à§à¦¯à¦¾à¦‚à¦• à¦Ÿà§à¦°à¦¾à¦¨à§à¦¸à¦«à¦¾à¦°",21,Color.WHITE);
+        TextView title = tv("ব্যাংক ট্রান্সফার",21,Color.WHITE);
 
         title.setGravity(Gravity.CENTER_VERTICAL);
         title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
@@ -4502,7 +4500,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(0,dp(62),1)
         );
 
-        TextView bankIcon = tv("ðŸ¦",21,Color.WHITE);
+        TextView bankIcon = tv("🏦",21,Color.WHITE);
         bankIcon.setGravity(Gravity.CENTER);
 
         header.addView(
@@ -4526,8 +4524,8 @@ public class MainActivity extends Activity {
 
         TextView info =
                 tv(
-                        "ðŸ¦ à¦¬à§à¦¯à¦¾à¦‚à¦• à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿà§‡ à¦Ÿà¦¾à¦•à¦¾ à¦ªà¦¾à¦ à¦¾à¦¨\n\n"
-                                + "à¦¨à¦¿à¦šà§‡à¦° à¦¤à¦¥à§à¦¯à¦—à§à¦²à§‹ à¦¸à¦ à¦¿à¦•à¦­à¦¾à¦¬à§‡ à¦ªà§‚à¦°à¦£ à¦•à¦°à§‡ à¦Ÿà§à¦°à¦¾à¦¨à§à¦¸à¦«à¦¾à¦° à¦°à¦¿à¦•à§‹à§Ÿà§‡à¦¸à§à¦Ÿ à¦ªà¦¾à¦ à¦¾à¦¨à¥¤",
+                        "🏦 ব্যাংক অ্যাকাউন্টে টাকা পাঠান\n\n"
+                                + "নিচের তথ্যগুলো সঠিকভাবে পূরণ করে ট্রান্সফার রিকোয়েস্ট পাঠান।",
                         16,
                         DARK
                 );
@@ -4553,7 +4551,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,-2)
         );
 
-        TextView bankTitle = tv("à¦¬à§à¦¯à¦¾à¦‚à¦•à§‡à¦° à¦¨à¦¾à¦®",15,DARK);
+        TextView bankTitle = tv("ব্যাংকের নাম",15,DARK);
         bankTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
 
         card.addView(
@@ -4561,7 +4559,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(30))
         );
 
-        EditText bank = input("à¦¬à§à¦¯à¦¾à¦‚à¦•à§‡à¦° à¦¨à¦¾à¦® à¦²à¦¿à¦–à§à¦¨",false);
+        EditText bank = input("ব্যাংকের নাম লিখুন",false);
 
         card.addView(
                 bank,
@@ -4571,7 +4569,7 @@ public class MainActivity extends Activity {
         space(card,12);
 
         TextView holderTitle =
-                tv("à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦¹à§‹à¦²à§à¦¡à¦¾à¦°à§‡à¦° à¦¨à¦¾à¦®",15,DARK);
+                tv("অ্যাকাউন্ট হোল্ডারের নাম",15,DARK);
 
         holderTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
 
@@ -4581,7 +4579,7 @@ public class MainActivity extends Activity {
         );
 
         EditText holder =
-                input("à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦¹à§‹à¦²à§à¦¡à¦¾à¦°à§‡à¦° à¦¨à¦¾à¦®",false);
+                input("অ্যাকাউন্ট হোল্ডারের নাম",false);
 
         card.addView(
                 holder,
@@ -4591,7 +4589,7 @@ public class MainActivity extends Activity {
         space(card,12);
 
         TextView accountTitle =
-                tv("à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦¨à¦®à§à¦¬à¦°",15,DARK);
+                tv("অ্যাকাউন্ট নম্বর",15,DARK);
 
         accountTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
 
@@ -4601,7 +4599,7 @@ public class MainActivity extends Activity {
         );
 
         EditText account =
-                input("à¦¬à§à¦¯à¦¾à¦‚à¦• à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦¨à¦®à§à¦¬à¦°",false);
+                input("ব্যাংক অ্যাকাউন্ট নম্বর",false);
 
         account.setInputType(InputType.TYPE_CLASS_NUMBER);
 
@@ -4613,7 +4611,7 @@ public class MainActivity extends Activity {
         space(card,12);
 
         TextView branchTitle =
-                tv("à¦¶à¦¾à¦–à¦¾à¦° à¦¨à¦¾à¦®",15,DARK);
+                tv("শাখার নাম",15,DARK);
 
         branchTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
 
@@ -4623,7 +4621,7 @@ public class MainActivity extends Activity {
         );
 
         EditText branch =
-                input("à¦¶à¦¾à¦–à¦¾à¦° à¦¨à¦¾à¦® (à¦à¦šà§à¦›à¦¿à¦•)",false);
+                input("শাখার নাম (ঐচ্ছিক)",false);
 
         card.addView(
                 branch,
@@ -4633,7 +4631,7 @@ public class MainActivity extends Activity {
         space(card,12);
 
         TextView amountTitle =
-                tv("à¦Ÿà§à¦°à¦¾à¦¨à§à¦¸à¦«à¦¾à¦°à§‡à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£",15,DARK);
+                tv("ট্রান্সফারের পরিমাণ",15,DARK);
 
         amountTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
 
@@ -4643,7 +4641,7 @@ public class MainActivity extends Activity {
         );
 
         EditText amount =
-                input("à¦Ÿà¦¾à¦•à¦¾à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£",false);
+                input("টাকার পরিমাণ",false);
 
         amount.setInputType(
                 InputType.TYPE_CLASS_NUMBER
@@ -4658,7 +4656,7 @@ public class MainActivity extends Activity {
         space(card,12);
 
         TextView referenceTitle =
-                tv("à¦°à§‡à¦«à¦¾à¦°à§‡à¦¨à§à¦¸",15,DARK);
+                tv("রেফারেন্স",15,DARK);
 
         referenceTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
 
@@ -4668,7 +4666,7 @@ public class MainActivity extends Activity {
         );
 
         EditText reference =
-                input("à¦°à§‡à¦«à¦¾à¦°à§‡à¦¨à§à¦¸ (à¦à¦šà§à¦›à¦¿à¦•)",false);
+                input("রেফারেন্স (ঐচ্ছিক)",false);
 
         card.addView(
                 reference,
@@ -4679,7 +4677,7 @@ public class MainActivity extends Activity {
 
         TextView transfer =
                 button(
-                        "à¦¬à§à¦¯à¦¾à¦‚à¦• à¦Ÿà§à¦°à¦¾à¦¨à§à¦¸à¦«à¦¾à¦° à¦•à¦°à§à¦¨  â†’",
+                        "ব্যাংক ট্রান্সফার করুন  →",
                         BLUE,
                         Color.WHITE
                 );
@@ -4710,27 +4708,27 @@ public class MainActivity extends Activity {
                     reference.getText().toString().trim();
 
             if (bankName.isEmpty()) {
-                bank.setError("à¦¬à§à¦¯à¦¾à¦‚à¦•à§‡à¦° à¦¨à¦¾à¦® à¦¦à¦¿à¦¨");
+                bank.setError("ব্যাংকের নাম দিন");
                 return;
             }
 
             if (holderName.isEmpty()) {
-                holder.setError("à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦¹à§‹à¦²à§à¦¡à¦¾à¦°à§‡à¦° à¦¨à¦¾à¦® à¦¦à¦¿à¦¨");
+                holder.setError("অ্যাকাউন্ট হোল্ডারের নাম দিন");
                 return;
             }
 
             if (accountNumber.isEmpty()) {
-                account.setError("à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦¨à¦®à§à¦¬à¦° à¦¦à¦¿à¦¨");
+                account.setError("অ্যাকাউন্ট নম্বর দিন");
                 return;
             }
 
             if (accountNumber.length() < 8) {
-                account.setError("à¦¸à¦ à¦¿à¦• à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦¨à¦®à§à¦¬à¦° à¦¦à¦¿à¦¨");
+                account.setError("সঠিক অ্যাকাউন্ট নম্বর দিন");
                 return;
             }
 
             if (amountValue.isEmpty()) {
-                amount.setError("à¦Ÿà¦¾à¦•à¦¾à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£ à¦¦à¦¿à¦¨");
+                amount.setError("টাকার পরিমাণ দিন");
                 return;
             }
 
@@ -4740,52 +4738,52 @@ public class MainActivity extends Activity {
                         Double.parseDouble(amountValue);
 
                 if (value < 500) {
-                    amount.setError("à¦¸à¦°à§à¦¬à¦¨à¦¿à¦®à§à¦¨ à§«à§¦à§¦ à¦Ÿà¦¾à¦•à¦¾");
+                    amount.setError("সর্বনিম্ন ৫০০ টাকা");
                     return;
                 }
 
                 String message =
-                        "à¦¬à§à¦¯à¦¾à¦‚à¦•: "
+                        "ব্যাংক: "
                                 + bankName
-                                + "\n\nà¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦¹à§‹à¦²à§à¦¡à¦¾à¦°: "
+                                + "\n\nঅ্যাকাউন্ট হোল্ডার: "
                                 + holderName
-                                + "\n\nà¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦¨à¦®à§à¦¬à¦°: "
+                                + "\n\nঅ্যাকাউন্ট নম্বর: "
                                 + accountNumber
-                                + "\n\nà¦¶à¦¾à¦–à¦¾: "
+                                + "\n\nশাখা: "
                                 + (
                                 branchName.isEmpty()
-                                        ? "à¦¦à§‡à¦“à§Ÿà¦¾ à¦¹à§Ÿà¦¨à¦¿"
+                                        ? "দেওয়া হয়নি"
                                         : branchName
                         )
-                                + "\n\nà¦ªà¦°à¦¿à¦®à¦¾à¦£: à§³ "
+                                + "\n\nপরিমাণ: ৳ "
                                 + amountValue
                                 + "\n\n"
                                 + (
                                 referenceValue.isEmpty()
                                         ? ""
-                                        : "à¦°à§‡à¦«à¦¾à¦°à§‡à¦¨à§à¦¸: "
+                                        : "রেফারেন্স: "
                                         + referenceValue
                                         + "\n\n"
                         )
-                                + "à¦Ÿà§à¦°à¦¾à¦¨à§à¦¸à¦«à¦¾à¦° à¦¤à¦¥à§à¦¯à¦—à§à¦²à§‹ à¦¸à¦ à¦¿à¦• à¦•à¦¿à¦¨à¦¾ à¦¯à¦¾à¦šà¦¾à¦‡ à¦•à¦°à§à¦¨à¥¤";
+                                + "ট্রান্সফার তথ্যগুলো সঠিক কিনা যাচাই করুন।";
 
                 final String finalBankName = bankName;
                 final String finalAccountNumber = accountNumber;
                 final String finalAmountValue = amountValue;
 
                 new AlertDialog.Builder(this)
-                        .setTitle("à¦¬à§à¦¯à¦¾à¦‚à¦• à¦Ÿà§à¦°à¦¾à¦¨à§à¦¸à¦«à¦¾à¦° à¦¨à¦¿à¦¶à§à¦šà¦¿à¦¤ à¦•à¦°à§à¦¨")
+                        .setTitle("ব্যাংক ট্রান্সফার নিশ্চিত করুন")
                         .setMessage(message)
-                        .setNegativeButton("à¦¬à¦¾à¦¤à¦¿à¦²",null)
+                        .setNegativeButton("বাতিল",null)
                         .setPositiveButton(
-                                "à¦¨à¦¿à¦¶à§à¦šà¦¿à¦¤",
+                                "নিশ্চিত",
                                 (dialog,which) -> {
 
                                     if (transactionBlockedFor(Double.parseDouble(finalAmountValue))) return;
-                                    Map<String,Object> req = new HashMap<>(); req.put("bank", finalBankName); req.put("accountNumber", finalAccountNumber); req.put("amount", Double.parseDouble(finalAmountValue)); req.put("holderName", holder.getText().toString().trim()); req.put("branch", branch.getText().toString().trim()); req.put("reference", reference.getText().toString().trim()); submitFirestoreRequest("bankTransferRequests", req); recordTransaction("à¦¬à§à¦¯à¦¾à¦‚à¦• à¦Ÿà§à¦°à¦¾à¦¨à§à¦¸à¦«à¦¾à¦°",finalBankName+" / "+finalAccountNumber,Double.parseDouble(finalAmountValue),false,"PENDING");
+                                    Map<String,Object> req = new HashMap<>(); req.put("bank", finalBankName); req.put("accountNumber", finalAccountNumber); req.put("amount", Double.parseDouble(finalAmountValue)); req.put("holderName", holder.getText().toString().trim()); req.put("branch", branch.getText().toString().trim()); req.put("reference", reference.getText().toString().trim()); submitFirestoreRequest("bankTransferRequests", req); recordTransaction("ব্যাংক ট্রান্সফার",finalBankName+" / "+finalAccountNumber,Double.parseDouble(finalAmountValue),false,"PENDING");
                                     Toast.makeText(
                                             this,
-                                            "à¦¬à§à¦¯à¦¾à¦‚à¦• à¦Ÿà§à¦°à¦¾à¦¨à§à¦¸à¦«à¦¾à¦° à¦°à¦¿à¦•à§‹à§Ÿà§‡à¦¸à§à¦Ÿ à¦—à§à¦°à¦¹à¦£ à¦•à¦°à¦¾ à¦¹à§Ÿà§‡à¦›à§‡à¥¤",
+                                            "ব্যাংক ট্রান্সফার রিকোয়েস্ট গ্রহণ করা হয়েছে।",
                                             Toast.LENGTH_LONG
                                     ).show();
 
@@ -4801,7 +4799,7 @@ public class MainActivity extends Activity {
 
             } catch (Exception e) {
 
-                amount.setError("à¦¸à¦ à¦¿à¦• à¦Ÿà¦¾à¦•à¦¾à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£ à¦¦à¦¿à¦¨");
+                amount.setError("সঠিক টাকার পরিমাণ দিন");
             }
         });
     }
@@ -4839,7 +4837,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(62))
         );
 
-        TextView back = tv("â€¹",38,Color.WHITE);
+        TextView back = tv("‹",38,Color.WHITE);
         back.setGravity(Gravity.CENTER);
 
         header.addView(
@@ -4849,7 +4847,7 @@ public class MainActivity extends Activity {
 
         back.setOnClickListener(v -> showHome());
 
-        TextView title = tv("à¦®à§‹à¦¬à¦¾à¦‡à¦² à¦¬à§à¦¯à¦¾à¦‚à¦•à¦¿à¦‚",21,Color.WHITE);
+        TextView title = tv("মোবাইল ব্যাংকিং",21,Color.WHITE);
 
         title.setGravity(Gravity.CENTER_VERTICAL);
         title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
@@ -4859,7 +4857,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(0,dp(62),1)
         );
 
-        TextView bell = tv("ðŸ””",19,Color.WHITE);
+        TextView bell = tv("🔔",19,Color.WHITE);
         bell.setGravity(Gravity.CENTER);
 
         header.addView(
@@ -4883,7 +4881,7 @@ public class MainActivity extends Activity {
 
         TextView providerTitle =
                 tv(
-                        "à¦®à§‹à¦¬à¦¾à¦‡à¦² à¦¬à§à¦¯à¦¾à¦‚à¦•à¦¿à¦‚ à¦¨à¦¿à¦°à§à¦¬à¦¾à¦šà¦¨ à¦•à¦°à§à¦¨",
+                        "মোবাইল ব্যাংকিং নির্বাচন করুন",
                         16,
                         DARK
                 );
@@ -4904,10 +4902,10 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(78))
         );
 
-        addMobileProviderTab(providers,"à¦¬à¦¿à¦•à¦¾à¦¶","ðŸ’—","à¦¬à¦¿à¦•à¦¾à¦¶");
-        addMobileProviderTab(providers,"à¦¨à¦—à¦¦","ðŸŸ ","à¦¨à¦—à¦¦");
-        addMobileProviderTab(providers,"à¦°à¦•à§‡à¦Ÿ","ðŸŸ£","à¦°à¦•à§‡à¦Ÿ");
-        addMobileProviderTab(providers,"à¦‰à¦ªà¦¾à§Ÿ","ðŸŸ¡","à¦‰à¦ªà¦¾à§Ÿ");
+        addMobileProviderTab(providers,"বিকাশ","💗","বিকাশ");
+        addMobileProviderTab(providers,"নগদ","🟠","নগদ");
+        addMobileProviderTab(providers,"রকেট","🟣","রকেট");
+        addMobileProviderTab(providers,"উপায়","🟡","উপায়");
 
         space(content,10);
 
@@ -4924,7 +4922,7 @@ public class MainActivity extends Activity {
 
         TextView selected =
                 tv(
-                        "âœ“ " + selectedMobileProvider,
+                        "✓ " + selectedMobileProvider,
                         20,
                         BLUE
                 );
@@ -4938,7 +4936,7 @@ public class MainActivity extends Activity {
         );
 
         TextView accountTitle =
-                tv("à¦à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦§à¦°à¦¨",15,DARK);
+                tv("একাউন্ট ধরন",15,DARK);
 
         accountTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
 
@@ -4957,14 +4955,14 @@ public class MainActivity extends Activity {
 
         TextView personal =
                 mobileChoiceButton(
-                        "à¦ªà¦¾à¦°à§à¦¸à§‹à¦¨à¦¾à¦²",
-                        selectedAccountType.equals("à¦ªà¦¾à¦°à§à¦¸à§‹à¦¨à¦¾à¦²")
+                        "পার্সোনাল",
+                        selectedAccountType.equals("পার্সোনাল")
                 );
 
         TextView agent =
                 mobileChoiceButton(
-                        "à¦à¦œà§‡à¦¨à§à¦Ÿ",
-                        selectedAccountType.equals("à¦à¦œà§‡à¦¨à§à¦Ÿ")
+                        "এজেন্ট",
+                        selectedAccountType.equals("এজেন্ট")
                 );
 
         accountRow.addView(
@@ -4981,20 +4979,20 @@ public class MainActivity extends Activity {
 
         personal.setOnClickListener(v -> {
 
-            selectedAccountType = "à¦ªà¦¾à¦°à§à¦¸à§‹à¦¨à¦¾à¦²";
+            selectedAccountType = "পার্সোনাল";
             showMobileBanking(selectedMobileProvider);
         });
 
         agent.setOnClickListener(v -> {
 
-            selectedAccountType = "à¦à¦œà§‡à¦¨à§à¦Ÿ";
+            selectedAccountType = "এজেন্ট";
             showMobileBanking(selectedMobileProvider);
         });
 
         space(card,12);
 
         TextView numberTitle =
-                tv("à¦®à§‹à¦¬à¦¾à¦‡à¦² à¦¨à¦®à§à¦¬à¦°",15,DARK);
+                tv("মোবাইল নম্বর",15,DARK);
 
         numberTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
 
@@ -5032,7 +5030,7 @@ public class MainActivity extends Activity {
 
         EditText number = new EditText(this);
 
-        number.setHint("à¦®à§‹à¦¬à¦¾à¦‡à¦² à¦¨à¦®à§à¦¬à¦° à¦²à¦¿à¦–à§à¦¨");
+        number.setHint("মোবাইল নম্বর লিখুন");
         number.setTextSize(17);
         number.setSingleLine(true);
         number.setTextColor(DARK);
@@ -5049,7 +5047,7 @@ public class MainActivity extends Activity {
         space(card,12);
 
         TextView amountTitle =
-                tv("à¦ªà¦°à¦¿à¦®à¦¾à¦£ à¦²à¦¿à¦–à§à¦¨",15,DARK);
+                tv("পরিমাণ লিখুন",15,DARK);
 
         amountTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
 
@@ -5060,7 +5058,7 @@ public class MainActivity extends Activity {
 
         EditText amount = new EditText(this);
 
-        amount.setHint("à¦Ÿà¦¾à¦•à¦¾à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£ à¦²à¦¿à¦–à§à¦¨");
+        amount.setHint("টাকার পরিমাণ লিখুন");
         amount.setTextSize(17);
         amount.setSingleLine(true);
         amount.setTextColor(DARK);
@@ -5090,7 +5088,7 @@ public class MainActivity extends Activity {
 
         TextView quickTitle =
                 tv(
-                        "à¦¦à§à¦°à§à¦¤ à¦ªà¦°à¦¿à¦®à¦¾à¦£ à¦¨à¦¿à¦°à§à¦¬à¦¾à¦šà¦¨ à¦•à¦°à§à¦¨",
+                        "দ্রুত পরিমাণ নির্বাচন করুন",
                         14,
                         Color.DKGRAY
                 );
@@ -5108,16 +5106,16 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(48))
         );
 
-        addQuickAmount(quickRow,amount,"à§³ 1,000");
-        addQuickAmount(quickRow,amount,"à§³ 10,000");
-        addQuickAmount(quickRow,amount,"à§³ 20,000");
-        addQuickAmount(quickRow,amount,"à§³ 50,000");
+        addQuickAmount(quickRow,amount,"৳ 1,000");
+        addQuickAmount(quickRow,amount,"৳ 10,000");
+        addQuickAmount(quickRow,amount,"৳ 20,000");
+        addQuickAmount(quickRow,amount,"৳ 50,000");
 
         space(card,16);
 
         TextView send =
                 button(
-                        "à¦Ÿà¦¾à¦•à¦¾ à¦ªà¦¾à¦ à¦¾à¦¨  â†’",
+                        "টাকা পাঠান  →",
                         BLUE,
                         Color.WHITE
                 );
@@ -5142,7 +5140,7 @@ public class MainActivity extends Activity {
                             .trim();
 
             if (num.isEmpty()) {
-                number.setError("à¦®à§‹à¦¬à¦¾à¦‡à¦² à¦¨à¦®à§à¦¬à¦° à¦¦à¦¿à¦¨");
+                number.setError("মোবাইল নম্বর দিন");
                 return;
             }
 
@@ -5152,13 +5150,13 @@ public class MainActivity extends Activity {
 
             if (!num.matches("01[0-9]{9}")) {
                 number.setError(
-                        "à¦¸à¦ à¦¿à¦• à§§à§§ à¦¡à¦¿à¦œà¦¿à¦Ÿà§‡à¦° à¦®à§‹à¦¬à¦¾à¦‡à¦² à¦¨à¦®à§à¦¬à¦° à¦¦à¦¿à¦¨"
+                        "সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন"
                 );
                 return;
             }
 
             if (money.isEmpty()) {
-                amount.setError("à¦Ÿà¦¾à¦•à¦¾à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£ à¦¦à¦¿à¦¨");
+                amount.setError("টাকার পরিমাণ দিন");
                 return;
             }
 
@@ -5168,7 +5166,7 @@ public class MainActivity extends Activity {
                         Double.parseDouble(money);
 
                 if (value < 500) {
-                    amount.setError("à¦¸à¦°à§à¦¬à¦¨à¦¿à¦®à§à¦¨ à§«à§¦à§¦ à¦Ÿà¦¾à¦•à¦¾");
+                    amount.setError("সর্বনিম্ন ৫০০ টাকা");
                     return;
                 }
 
@@ -5176,30 +5174,30 @@ public class MainActivity extends Activity {
                 final String finalSendMoney = money;
 
                 new AlertDialog.Builder(this)
-                        .setTitle("à¦Ÿà¦¾à¦•à¦¾ à¦ªà¦¾à¦ à¦¾à¦¨à§‹ à¦¨à¦¿à¦¶à§à¦šà¦¿à¦¤ à¦•à¦°à§à¦¨")
+                        .setTitle("টাকা পাঠানো নিশ্চিত করুন")
                         .setMessage(
-                                "à¦®à¦¾à¦§à§à¦¯à¦®: "
+                                "মাধ্যম: "
                                         + selectedMobileProvider
-                                        + "\nà¦à¦•à¦¾à¦‰à¦¨à§à¦Ÿ: "
+                                        + "\nএকাউন্ট: "
                                         + selectedAccountType
-                                        + "\nà¦¨à¦®à§à¦¬à¦°: +88 "
+                                        + "\nনম্বর: +88 "
                                         + num
-                                        + "\nà¦ªà¦°à¦¿à¦®à¦¾à¦£: à§³ "
+                                        + "\nপরিমাণ: ৳ "
                                         + money
                                         + "\n\n"
-                                        + "à¦à¦Ÿà¦¿ à¦à¦•à¦Ÿà¦¿ à¦¡à§‡à¦®à§‹ à¦°à¦¿à¦•à§‹à§Ÿà§‡à¦¸à§à¦Ÿà¥¤ à¦†à¦¸à¦² à¦Ÿà¦¾à¦•à¦¾ à¦ªà¦¾à¦ à¦¾à¦¨à§‹à¦° à¦œà¦¨à§à¦¯ Provider API à¦¸à¦‚à¦¯à§à¦•à§à¦¤ à¦•à¦°à¦¤à§‡ à¦¹à¦¬à§‡à¥¤"
+                                        + "এটি একটি ডেমো রিকোয়েস্ট। আসল টাকা পাঠানোর জন্য Provider API সংযুক্ত করতে হবে।"
                         )
-                        .setNegativeButton("à¦¬à¦¾à¦¤à¦¿à¦²",null)
+                        .setNegativeButton("বাতিল",null)
                         .setPositiveButton(
-                                "à¦¨à¦¿à¦¶à§à¦šà¦¿à¦¤",
+                                "নিশ্চিত",
                                 (dialog,which) -> {
 
                                     if (transactionBlockedFor(Double.parseDouble(finalSendMoney))) return;
-                                    Map<String,Object> req = new HashMap<>(); req.put("method", selectedMobileProvider); req.put("accountType", selectedAccountType); req.put("destinationNumber", finalSendNumber); req.put("amount", Double.parseDouble(finalSendMoney)); submitFirestoreRequest("mobileBankingRequests", req); recordTransaction("à¦®à§‹à¦¬à¦¾à¦‡à¦² à¦¬à§à¦¯à¦¾à¦‚à¦•à¦¿à¦‚",selectedMobileProvider+" / "+finalSendNumber,Double.parseDouble(finalSendMoney),false,"PENDING");
+                                    Map<String,Object> req = new HashMap<>(); req.put("method", selectedMobileProvider); req.put("accountType", selectedAccountType); req.put("destinationNumber", finalSendNumber); req.put("amount", Double.parseDouble(finalSendMoney)); submitFirestoreRequest("mobileBankingRequests", req); recordTransaction("মোবাইল ব্যাংকিং",selectedMobileProvider+" / "+finalSendNumber,Double.parseDouble(finalSendMoney),false,"PENDING");
                                     Toast.makeText(
                                             this,
                                             selectedMobileProvider
-                                                    + " à¦Ÿà¦¾à¦•à¦¾ à¦ªà¦¾à¦ à¦¾à¦¨à§‹à¦° à¦°à¦¿à¦•à§‹à§Ÿà§‡à¦¸à§à¦Ÿ à¦—à§à¦°à¦¹à¦£ à¦•à¦°à¦¾ à¦¹à§Ÿà§‡à¦›à§‡à¥¤",
+                                                    + " টাকা পাঠানোর রিকোয়েস্ট গ্রহণ করা হয়েছে।",
                                             Toast.LENGTH_LONG
                                     ).show();
 
@@ -5211,7 +5209,7 @@ public class MainActivity extends Activity {
 
             } catch(Exception e) {
 
-                amount.setError("à¦¸à¦ à¦¿à¦• à¦Ÿà¦¾à¦•à¦¾à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£ à¦¦à¦¿à¦¨");
+                amount.setError("সঠিক টাকার পরিমাণ দিন");
             }
         });
     }
@@ -5367,7 +5365,7 @@ public class MainActivity extends Activity {
 
             String clean =
                     value
-                            .replace("à§³","")
+                            .replace("৳","")
                             .replace(",","")
                             .trim();
 
@@ -5403,7 +5401,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(62))
         );
 
-        TextView back = tv("â€¹",38,Color.WHITE);
+        TextView back = tv("‹",38,Color.WHITE);
         back.setGravity(Gravity.CENTER);
 
         header.addView(
@@ -5415,7 +5413,7 @@ public class MainActivity extends Activity {
 
         TextView title =
                 tv(
-                        "à¦®à§‹à¦¬à¦¾à¦‡à¦² à¦°à¦¿à¦šà¦¾à¦°à§à¦œ",
+                        "মোবাইল রিচার্জ",
                         21,
                         Color.WHITE
                 );
@@ -5428,7 +5426,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(0,dp(62),1)
         );
 
-        TextView bell = tv("ðŸ””",19,Color.WHITE);
+        TextView bell = tv("🔔",19,Color.WHITE);
         bell.setGravity(Gravity.CENTER);
 
         header.addView(
@@ -5452,7 +5450,7 @@ public class MainActivity extends Activity {
 
         TextView operatorTitle =
                 tv(
-                        "à¦…à¦ªà¦¾à¦°à§‡à¦Ÿà¦° à¦¨à¦¿à¦°à§à¦¬à¦¾à¦šà¦¨ à¦•à¦°à§à¦¨",
+                        "অপারেটর নির্বাচন করুন",
                         16,
                         DARK
                 );
@@ -5475,9 +5473,9 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(72))
         );
 
-        addRechargeOperator(opRow1,"GP","ðŸŸ¢","GP");
-        addRechargeOperator(opRow1,"Robi","ðŸ”´","Robi");
-        addRechargeOperator(opRow1,"Airtel","ðŸ”µ","Airtel");
+        addRechargeOperator(opRow1,"GP","🟢","GP");
+        addRechargeOperator(opRow1,"Robi","🔴","Robi");
+        addRechargeOperator(opRow1,"Airtel","🔵","Airtel");
 
         LinearLayout opRow2 = new LinearLayout(this);
         opRow2.setGravity(Gravity.CENTER);
@@ -5490,14 +5488,14 @@ public class MainActivity extends Activity {
         addRechargeOperator(
                 opRow2,
                 "Banglalink",
-                "ðŸŸ ",
+                "🟠",
                 "Banglalink"
         );
 
         addRechargeOperator(
                 opRow2,
                 "Teletalk",
-                "ðŸŸ¢",
+                "🟢",
                 "Teletalk"
         );
 
@@ -5516,7 +5514,7 @@ public class MainActivity extends Activity {
 
         TextView selected =
                 tv(
-                        "âœ“ " + selectedRechargeOperator,
+                        "✓ " + selectedRechargeOperator,
                         20,
                         BLUE
                 );
@@ -5530,7 +5528,7 @@ public class MainActivity extends Activity {
         );
 
         TextView numberTitle =
-                tv("à¦®à§‹à¦¬à¦¾à¦‡à¦² à¦¨à¦®à§à¦¬à¦°",15,DARK);
+                tv("মোবাইল নম্বর",15,DARK);
 
         numberTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
 
@@ -5541,7 +5539,7 @@ public class MainActivity extends Activity {
 
         EditText number = new EditText(this);
 
-        number.setHint("à¦¯à§‡ à¦¨à¦®à§à¦¬à¦°à§‡ à¦°à¦¿à¦šà¦¾à¦°à§à¦œ à¦•à¦°à¦¬à§‡à¦¨");
+        number.setHint("যে নম্বরে রিচার্জ করবেন");
         number.setTextSize(17);
         number.setSingleLine(true);
         number.setTextColor(DARK);
@@ -5565,7 +5563,7 @@ public class MainActivity extends Activity {
         space(card,12);
 
         TextView typeTitle =
-                tv("à¦°à¦¿à¦šà¦¾à¦°à§à¦œà§‡à¦° à¦§à¦°à¦¨",15,DARK);
+                tv("রিচার্জের ধরন",15,DARK);
 
         typeTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
 
@@ -5583,10 +5581,10 @@ public class MainActivity extends Activity {
         );
 
         TextView prepaid =
-                rechargeTypeButton("à¦ªà§à¦°à¦¿à¦ªà§‡à¦‡à¦¡",true);
+                rechargeTypeButton("প্রিপেইড",true);
 
         TextView postpaid =
-                rechargeTypeButton("à¦ªà§‹à¦¸à§à¦Ÿà¦ªà§‡à¦‡à¦¡",false);
+                rechargeTypeButton("পোস্টপেইড",false);
 
         typeRow.addView(
                 prepaid,
@@ -5656,7 +5654,7 @@ public class MainActivity extends Activity {
         space(card,12);
 
         TextView amountTitle =
-                tv("à¦°à¦¿à¦šà¦¾à¦°à§à¦œà§‡à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£",15,DARK);
+                tv("রিচার্জের পরিমাণ",15,DARK);
 
         amountTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
 
@@ -5667,7 +5665,7 @@ public class MainActivity extends Activity {
 
         EditText amount = new EditText(this);
 
-        amount.setHint("à¦Ÿà¦¾à¦•à¦¾à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£ à¦²à¦¿à¦–à§à¦¨");
+        amount.setHint("টাকার পরিমাণ লিখুন");
         amount.setTextSize(17);
         amount.setSingleLine(true);
         amount.setTextColor(DARK);
@@ -5697,7 +5695,7 @@ public class MainActivity extends Activity {
 
         TextView quick =
                 tv(
-                        "à¦¦à§à¦°à§à¦¤ à¦ªà¦°à¦¿à¦®à¦¾à¦£ à¦¨à¦¿à¦°à§à¦¬à¦¾à¦šà¦¨ à¦•à¦°à§à¦¨",
+                        "দ্রুত পরিমাণ নির্বাচন করুন",
                         14,
                         Color.DKGRAY
                 );
@@ -5715,16 +5713,16 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(48))
         );
 
-        addQuickRechargeAmount(quickRow,amount,"à§³ à§«à§¦");
-        addQuickRechargeAmount(quickRow,amount,"à§³ à§§à§¦à§¦");
-        addQuickRechargeAmount(quickRow,amount,"à§³ à§¨à§¦à§¦");
-        addQuickRechargeAmount(quickRow,amount,"à§³ à§«à§¦à§¦");
+        addQuickRechargeAmount(quickRow,amount,"৳ ৫০");
+        addQuickRechargeAmount(quickRow,amount,"৳ ১০০");
+        addQuickRechargeAmount(quickRow,amount,"৳ ২০০");
+        addQuickRechargeAmount(quickRow,amount,"৳ ৫০০");
 
         space(card,18);
 
         TextView recharge =
                 button(
-                        "à¦°à¦¿à¦šà¦¾à¦°à§à¦œ à¦•à¦°à§à¦¨  â†’",
+                        "রিচার্জ করুন  →",
                         BLUE,
                         Color.WHITE
                 );
@@ -5749,7 +5747,7 @@ public class MainActivity extends Activity {
                             .trim();
 
             if (num.isEmpty()) {
-                number.setError("à¦®à§‹à¦¬à¦¾à¦‡à¦² à¦¨à¦®à§à¦¬à¦° à¦¦à¦¿à¦¨");
+                number.setError("মোবাইল নম্বর দিন");
                 return;
             }
 
@@ -5760,7 +5758,7 @@ public class MainActivity extends Activity {
             if (!num.matches("01[0-9]{9}")) {
 
                 number.setError(
-                        "à¦¸à¦ à¦¿à¦• à§§à§§ à¦¡à¦¿à¦œà¦¿à¦Ÿà§‡à¦° à¦®à§‹à¦¬à¦¾à¦‡à¦² à¦¨à¦®à§à¦¬à¦° à¦¦à¦¿à¦¨"
+                        "সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন"
                 );
 
                 return;
@@ -5769,7 +5767,7 @@ public class MainActivity extends Activity {
             if (money.isEmpty()) {
 
                 amount.setError(
-                        "à¦°à¦¿à¦šà¦¾à¦°à§à¦œà§‡à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£ à¦¦à¦¿à¦¨"
+                        "রিচার্জের পরিমাণ দিন"
                 );
 
                 return;
@@ -5783,7 +5781,7 @@ public class MainActivity extends Activity {
                 if (value < 20) {
 
                     amount.setError(
-                            "à¦¸à¦°à§à¦¬à¦¨à¦¿à¦®à§à¦¨ à§¨à§¦ à¦Ÿà¦¾à¦•à¦¾"
+                            "সর্বনিম্ন ২০ টাকা"
                     );
 
                     return;
@@ -5791,37 +5789,37 @@ public class MainActivity extends Activity {
 
                 String rechargeType =
                         isPrepaid[0]
-                                ? "à¦ªà§à¦°à¦¿à¦ªà§‡à¦‡à¦¡"
-                                : "à¦ªà§‹à¦¸à§à¦Ÿà¦ªà§‡à¦‡à¦¡";
+                                ? "প্রিপেইড"
+                                : "পোস্টপেইড";
 
                 final String finalRechargeNumber = num;
                 final String finalRechargeMoney = money;
 
                 new AlertDialog.Builder(this)
-                        .setTitle("à¦°à¦¿à¦šà¦¾à¦°à§à¦œ à¦¨à¦¿à¦¶à§à¦šà¦¿à¦¤ à¦•à¦°à§à¦¨")
+                        .setTitle("রিচার্জ নিশ্চিত করুন")
                         .setMessage(
-                                "à¦…à¦ªà¦¾à¦°à§‡à¦Ÿà¦°: "
+                                "অপারেটর: "
                                         + selectedRechargeOperator
-                                        + "\nà¦§à¦°à¦¨: "
+                                        + "\nধরন: "
                                         + rechargeType
-                                        + "\nà¦¨à¦®à§à¦¬à¦°: "
+                                        + "\nনম্বর: "
                                         + num
-                                        + "\nà¦ªà¦°à¦¿à¦®à¦¾à¦£: à§³ "
+                                        + "\nপরিমাণ: ৳ "
                                         + money
                                         + "\n\n"
-                                        + "à¦à¦Ÿà¦¿ à¦à¦•à¦Ÿà¦¿ à¦¡à§‡à¦®à§‹ à¦°à¦¿à¦šà¦¾à¦°à§à¦œ à¦°à¦¿à¦•à§‹à§Ÿà§‡à¦¸à§à¦Ÿà¥¤ à¦†à¦¸à¦² à¦°à¦¿à¦šà¦¾à¦°à§à¦œà§‡à¦° à¦œà¦¨à§à¦¯ Recharge API à¦¸à¦‚à¦¯à§à¦•à§à¦¤ à¦•à¦°à¦¤à§‡ à¦¹à¦¬à§‡à¥¤"
+                                        + "এটি একটি ডেমো রিচার্জ রিকোয়েস্ট। আসল রিচার্জের জন্য Recharge API সংযুক্ত করতে হবে।"
                         )
-                        .setNegativeButton("à¦¬à¦¾à¦¤à¦¿à¦²",null)
+                        .setNegativeButton("বাতিল",null)
                         .setPositiveButton(
-                                "à¦¨à¦¿à¦¶à§à¦šà¦¿à¦¤",
+                                "নিশ্চিত",
                                 (dialog,which) -> {
 
                                     if (transactionBlockedFor(Double.parseDouble(finalRechargeMoney))) return;
-                                    Map<String,Object> req = new HashMap<>(); req.put("operator", selectedRechargeOperator); req.put("destinationNumber", finalRechargeNumber); req.put("amount", Double.parseDouble(finalRechargeMoney)); req.put("rechargeType", rechargeType); submitFirestoreRequest("rechargeRequests", req); recordTransaction("à¦®à§‹à¦¬à¦¾à¦‡à¦² à¦°à¦¿à¦šà¦¾à¦°à§à¦œ",selectedRechargeOperator+" / "+finalRechargeNumber,Double.parseDouble(finalRechargeMoney),false,"PENDING");
+                                    Map<String,Object> req = new HashMap<>(); req.put("operator", selectedRechargeOperator); req.put("destinationNumber", finalRechargeNumber); req.put("amount", Double.parseDouble(finalRechargeMoney)); req.put("rechargeType", rechargeType); submitFirestoreRequest("rechargeRequests", req); recordTransaction("মোবাইল রিচার্জ",selectedRechargeOperator+" / "+finalRechargeNumber,Double.parseDouble(finalRechargeMoney),false,"PENDING");
                                     Toast.makeText(
                                             this,
                                             selectedRechargeOperator
-                                                    + " à¦°à¦¿à¦šà¦¾à¦°à§à¦œ à¦°à¦¿à¦•à§‹à§Ÿà§‡à¦¸à§à¦Ÿ à¦—à§à¦°à¦¹à¦£ à¦•à¦°à¦¾ à¦¹à§Ÿà§‡à¦›à§‡à¥¤",
+                                                    + " রিচার্জ রিকোয়েস্ট গ্রহণ করা হয়েছে।",
                                             Toast.LENGTH_LONG
                                     ).show();
 
@@ -5834,7 +5832,7 @@ public class MainActivity extends Activity {
             } catch(Exception e) {
 
                 amount.setError(
-                        "à¦¸à¦ à¦¿à¦• à¦Ÿà¦¾à¦•à¦¾à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£ à¦¦à¦¿à¦¨"
+                        "সঠিক টাকার পরিমাণ দিন"
                 );
             }
         });
@@ -5991,19 +5989,19 @@ public class MainActivity extends Activity {
 
             String clean =
                     value
-                            .replace("à§³","")
+                            .replace("৳","")
                             .replace(",","")
                             .replace(" ","")
-                            .replace("à§¦","0")
-                            .replace("à§§","1")
-                            .replace("à§¨","2")
-                            .replace("à§©","3")
-                            .replace("à§ª","4")
-                            .replace("à§«","5")
-                            .replace("à§¬","6")
-                            .replace("à§­","7")
-                            .replace("à§®","8")
-                            .replace("à§¯","9");
+                            .replace("০","0")
+                            .replace("১","1")
+                            .replace("২","2")
+                            .replace("৩","3")
+                            .replace("৪","4")
+                            .replace("৫","5")
+                            .replace("৬","6")
+                            .replace("৭","7")
+                            .replace("৮","8")
+                            .replace("৯","9");
 
             amount.setText(clean);
             amount.setSelection(amount.length());
@@ -6037,7 +6035,7 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(62))
         );
 
-        TextView back = tv("â€¹",38,Color.WHITE);
+        TextView back = tv("‹",38,Color.WHITE);
         back.setGravity(Gravity.CENTER);
 
         header.addView(
@@ -6072,7 +6070,7 @@ public class MainActivity extends Activity {
 
         TextView info =
                 tv(
-                        "à¦¬à¦¿à¦•à¦¾à¦¶ / à¦¨à¦—à¦¦ / à¦°à¦•à§‡à¦Ÿ / à¦‰à¦ªà¦¾à§Ÿ",
+                        "বিকাশ / নগদ / রকেট / উপায়",
                         16,
                         BLUE
                 );
@@ -6086,7 +6084,7 @@ public class MainActivity extends Activity {
 
         TextView min =
                 tv(
-                        "à¦¸à¦°à§à¦¬à¦¨à¦¿à¦®à§à¦¨ à¦²à§‡à¦¨à¦¦à§‡à¦¨: à§³ à§«à§¦à§¦",
+                        "সর্বনিম্ন লেনদেন: ৳ ৫০০",
                         15,
                         Color.DKGRAY
                 );
@@ -6100,9 +6098,9 @@ public class MainActivity extends Activity {
 
         EditText number =
                 input(
-                        type.equals("à¦•à§à¦¯à¦¾à¦¶ à¦†à¦‰à¦Ÿ")
-                                ? "à¦†à¦ªà¦¨à¦¾à¦° à¦®à§‹à¦¬à¦¾à¦‡à¦² à¦¨à¦®à§à¦¬à¦°"
-                                : "à¦¯à§‡ à¦¨à¦®à§à¦¬à¦°à§‡ à¦ªà¦¾à¦ à¦¾à¦¬à§‡à¦¨",
+                        type.equals("ক্যাশ আউট")
+                                ? "আপনার মোবাইল নম্বর"
+                                : "যে নম্বরে পাঠাবেন",
                         false
                 );
 
@@ -6115,7 +6113,7 @@ public class MainActivity extends Activity {
 
         EditText amount =
                 input(
-                        "à¦Ÿà¦¾à¦•à¦¾à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£ (à¦¸à¦°à§à¦¬à¦¨à¦¿à¦®à§à¦¨ à§³à§«à§¦à§¦)",
+                        "টাকার পরিমাণ (সর্বনিম্ন ৳৫০০)",
                         false
                 );
 
@@ -6133,7 +6131,7 @@ public class MainActivity extends Activity {
 
         EditText reference =
                 input(
-                        "à¦°à§‡à¦«à¦¾à¦°à§‡à¦¨à§à¦¸ (à¦à¦šà§à¦›à¦¿à¦•)",
+                        "রেফারেন্স (ঐচ্ছিক)",
                         false
                 );
 
@@ -6146,7 +6144,7 @@ public class MainActivity extends Activity {
 
         TextView confirm =
                 button(
-                        type + "  â†’",
+                        type + "  →",
                         BLUE,
                         Color.WHITE
                 );
@@ -6165,12 +6163,12 @@ public class MainActivity extends Activity {
                     amount.getText().toString().trim();
 
             if (num.isEmpty()) {
-                number.setError("à¦®à§‹à¦¬à¦¾à¦‡à¦² à¦¨à¦®à§à¦¬à¦° à¦¦à¦¿à¦¨");
+                number.setError("মোবাইল নম্বর দিন");
                 return;
             }
 
             if (raw.isEmpty()) {
-                amount.setError("à¦Ÿà¦¾à¦•à¦¾à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£ à¦¦à¦¿à¦¨");
+                amount.setError("টাকার পরিমাণ দিন");
                 return;
             }
 
@@ -6180,7 +6178,7 @@ public class MainActivity extends Activity {
                         Double.parseDouble(raw);
 
                 if (value < 500) {
-                    amount.setError("à¦¸à¦°à§à¦¬à¦¨à¦¿à¦®à§à¦¨ à§«à§¦à§¦ à¦Ÿà¦¾à¦•à¦¾");
+                    amount.setError("সর্বনিম্ন ৫০০ টাকা");
                     return;
                 }
 
@@ -6188,16 +6186,16 @@ public class MainActivity extends Activity {
                 final String finalProviderRaw = raw;
 
                 new AlertDialog.Builder(this)
-                        .setTitle(type + " à¦¨à¦¿à¦¶à§à¦šà¦¿à¦¤ à¦•à¦°à§à¦¨")
+                        .setTitle(type + " নিশ্চিত করুন")
                         .setMessage(
-                                "à¦¨à¦®à§à¦¬à¦°: "
+                                "নম্বর: "
                                         + num
-                                        + "\nà¦ªà¦°à¦¿à¦®à¦¾à¦£: à§³ "
+                                        + "\nপরিমাণ: ৳ "
                                         + raw
                                         + "\n\n"
-                                        + "à¦à¦Ÿà¦¿ à¦à¦•à¦Ÿà¦¿ à¦¡à§‡à¦®à§‹ à¦°à¦¿à¦•à§‹à§Ÿà§‡à¦¸à§à¦Ÿà¥¤ Provider API à¦¸à¦‚à¦¯à§à¦•à§à¦¤ à¦¹à¦²à§‡ à¦†à¦¸à¦² à¦²à§‡à¦¨à¦¦à§‡à¦¨ à¦¸à¦®à§à¦ªà¦¨à§à¦¨ à¦¹à¦¬à§‡à¥¤"
+                                        + "এটি একটি ডেমো রিকোয়েস্ট। Provider API সংযুক্ত হলে আসল লেনদেন সম্পন্ন হবে।"
                         )
-                        .setNegativeButton("à¦¬à¦¾à¦¤à¦¿à¦²",null)
+                        .setNegativeButton("বাতিল",null)
                         .setPositiveButton(
                                 "OK",
                                 (d,w) -> {
@@ -6206,7 +6204,7 @@ public class MainActivity extends Activity {
                                     recordTransaction(type,type+" / "+finalProviderNumber,Double.parseDouble(finalProviderRaw),false,"PENDING");
                                     Toast.makeText(
                                             this,
-                                            "à¦°à¦¿à¦•à§‹à§Ÿà§‡à¦¸à§à¦Ÿ à¦—à§à¦°à¦¹à¦£ à¦•à¦°à¦¾ à¦¹à§Ÿà§‡à¦›à§‡à¥¤",
+                                            "রিকোয়েস্ট গ্রহণ করা হয়েছে।",
                                             Toast.LENGTH_LONG
                                     ).show();
                                 }
@@ -6216,7 +6214,7 @@ public class MainActivity extends Activity {
             } catch(Exception e) {
 
                 amount.setError(
-                        "à¦¸à¦ à¦¿à¦• à¦Ÿà¦¾à¦•à¦¾à¦° à¦ªà¦°à¦¿à¦®à¦¾à¦£ à¦¦à¦¿à¦¨"
+                        "সঠিক টাকার পরিমাণ দিন"
                 );
             }
         });
@@ -6260,7 +6258,7 @@ public class MainActivity extends Activity {
 
         TextView country =
                 tv(
-                        "à¦¬à¦¾à¦‚à¦²à¦¾à¦¦à§‡à¦¶  ðŸ‡§ðŸ‡©",
+                        "বাংলাদেশ  🇧🇩",
                         18,
                         Color.GRAY
                 );
@@ -6277,7 +6275,7 @@ public class MainActivity extends Activity {
         space(root,9);
 
         EditText agent =
-                input("à¦°à¦¿à¦¸à§‡à¦²à¦¾à¦° à¦à¦œà§‡à¦¨à§à¦Ÿ à¦•à§‹à¦¡",false);
+                input("রিসেলার এজেন্ট কোড",false);
 
         root.addView(
                 agent,
@@ -6286,7 +6284,7 @@ public class MainActivity extends Activity {
 
         space(root,9);
 
-        EditText name = input("à¦ªà§‚à¦°à§à¦£ à¦¨à¦¾à¦®",false);
+        EditText name = input("পূর্ণ নাম",false);
 
         root.addView(
                 name,
@@ -6296,7 +6294,7 @@ public class MainActivity extends Activity {
         space(root,9);
 
         EditText phone =
-                input("+880 à¦«à§‹à¦¨ à¦¨à¦®à§à¦¬à¦°",false);
+                input("+880 ফোন নম্বর",false);
 
         root.addView(
                 phone,
@@ -6306,7 +6304,7 @@ public class MainActivity extends Activity {
         space(root,9);
 
         EditText pw =
-                input("à§¬ à¦¡à¦¿à¦œà¦¿à¦Ÿ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡",true);
+                input("৬ ডিজিট পাসওয়ার্ড",true);
 
         root.addView(
                 pw,
@@ -6317,7 +6315,7 @@ public class MainActivity extends Activity {
 
         EditText cpw =
                 input(
-                        "à§¬ à¦¡à¦¿à¦œà¦¿à¦Ÿ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦¨à¦¿à¦¶à§à¦šà¦¿à¦¤ à¦•à¦°à§à¦¨",
+                        "৬ ডিজিট পাসওয়ার্ড নিশ্চিত করুন",
                         true
                 );
 
@@ -6330,7 +6328,7 @@ public class MainActivity extends Activity {
 
         TextView next =
                 button(
-                        "à¦ªà¦°à¦¬à¦°à§à¦¤à§€",
+                        "পরবর্তী",
                         Color.WHITE,
                         BLUE
                 );
@@ -6352,22 +6350,22 @@ public class MainActivity extends Activity {
                     cpw.getText().toString().trim();
 
             if (name.getText().toString().trim().isEmpty()) {
-                name.setError("à¦ªà§‚à¦°à§à¦£ à¦¨à¦¾à¦® à¦¦à¦¿à¦¨");
+                name.setError("পূর্ণ নাম দিন");
                 return;
             }
 
             if (p.isEmpty()) {
-                phone.setError("à¦«à§‹à¦¨ à¦¨à¦®à§à¦¬à¦° à¦¦à¦¿à¦¨");
+                phone.setError("ফোন নম্বর দিন");
                 return;
             }
 
             if (a.length() != 6) {
-                pw.setError("à§¬ à¦¡à¦¿à¦œà¦¿à¦Ÿà§‡à¦° à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦¦à¦¿à¦¨");
+                pw.setError("৬ ডিজিটের পাসওয়ার্ড দিন");
                 return;
             }
 
             if (!a.equals(c)) {
-                cpw.setError("à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦à¦•à¦‡ à¦¨à¦¯à¦¼");
+                cpw.setError("পাসওয়ার্ড একই নয়");
                 return;
             }
 
@@ -6381,7 +6379,7 @@ public class MainActivity extends Activity {
 
         TextView back =
                 tv(
-                        "à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦†à¦›à§‡?  à¦²à¦—à¦‡à¦¨",
+                        "অ্যাকাউন্ট আছে?  লগইন",
                         16,
                         Color.WHITE
                 );
@@ -6405,9 +6403,9 @@ public class MainActivity extends Activity {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(8),dp(4),dp(8),0);
 
-        EditText current = input(tx("à¦¬à¦°à§à¦¤à¦®à¦¾à¦¨ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡","Current Password"),true);
-        EditText next = input(tx("à¦¨à¦¤à§à¦¨ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡","New Password"),true);
-        EditText confirm = input(tx("à¦¨à¦¤à§à¦¨ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦†à¦¬à¦¾à¦° à¦¦à¦¿à¦¨","Confirm New Password"),true);
+        EditText current = input(tx("বর্তমান পাসওয়ার্ড","Current Password"),true);
+        EditText next = input(tx("নতুন পাসওয়ার্ড","New Password"),true);
+        EditText confirm = input(tx("নতুন পাসওয়ার্ড আবার দিন","Confirm New Password"),true);
 
         box.addView(current,new LinearLayout.LayoutParams(-1,dp(58)));
         space(box,10);
@@ -6416,10 +6414,10 @@ public class MainActivity extends Activity {
         box.addView(confirm,new LinearLayout.LayoutParams(-1,dp(58)));
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle(tx("à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨","Change Password"))
+                .setTitle(tx("পাসওয়ার্ড পরিবর্তন","Change Password"))
                 .setView(box)
-                .setNegativeButton(tx("à¦¬à¦¾à¦¤à¦¿à¦²","Cancel"),null)
-                .setPositiveButton(tx("à¦¸à¦¾à¦¬à¦®à¦¿à¦Ÿ","Submit"),null)
+                .setNegativeButton(tx("বাতিল","Cancel"),null)
+                .setPositiveButton(tx("সাবমিট","Submit"),null)
                 .create();
 
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
@@ -6429,19 +6427,19 @@ public class MainActivity extends Activity {
             String saved = pref.getString("password","");
 
             if (oldPass.isEmpty()) {
-                current.setError(tx("à¦¬à¦°à§à¦¤à¦®à¦¾à¦¨ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦¦à¦¿à¦¨","Enter current password"));
+                current.setError(tx("বর্তমান পাসওয়ার্ড দিন","Enter current password"));
                 return;
             }
             if (!saved.isEmpty() && !saved.equals(oldPass)) {
-                current.setError(tx("à¦¬à¦°à§à¦¤à¦®à¦¾à¦¨ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦¸à¦ à¦¿à¦• à¦¨à¦¯à¦¼","Current password is incorrect"));
+                current.setError(tx("বর্তমান পাসওয়ার্ড সঠিক নয়","Current password is incorrect"));
                 return;
             }
             if (newPass.length() < 4) {
-                next.setError(tx("à¦•à¦®à¦ªà¦•à§à¦·à§‡ à§ª à¦…à¦•à§à¦·à¦° à¦¦à¦¿à¦¨","Use at least 4 characters"));
+                next.setError(tx("কমপক্ষে ৪ অক্ষর দিন","Use at least 4 characters"));
                 return;
             }
             if (!newPass.equals(confirmPass)) {
-                confirm.setError(tx("à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦®à¦¿à¦²à¦›à§‡ à¦¨à¦¾","Passwords do not match"));
+                confirm.setError(tx("পাসওয়ার্ড মিলছে না","Passwords do not match"));
                 return;
             }
 
@@ -6451,7 +6449,7 @@ public class MainActivity extends Activity {
                         .update("passwordHash", sha256(newPass), "updatedAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
             }
             dialog.dismiss();
-            Toast.makeText(this,tx("à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨ à¦¹à¦¯à¦¼à§‡à¦›à§‡","Password changed successfully"),Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,tx("পাসওয়ার্ড পরিবর্তন হয়েছে","Password changed successfully"),Toast.LENGTH_SHORT).show();
         }));
 
         dialog.show();
@@ -6462,9 +6460,9 @@ public class MainActivity extends Activity {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(8),dp(4),dp(8),0);
 
-        EditText current = pinInput(tx("à¦¬à¦°à§à¦¤à¦®à¦¾à¦¨ à§® à¦¡à¦¿à¦œà¦¿à¦Ÿ PIN","Current 8-digit PIN"));
-        EditText next = pinInput(tx("à¦¨à¦¤à§à¦¨ à§® à¦¡à¦¿à¦œà¦¿à¦Ÿ PIN","New 8-digit PIN"));
-        EditText confirm = pinInput(tx("à¦¨à¦¤à§à¦¨ PIN à¦†à¦¬à¦¾à¦° à¦¦à¦¿à¦¨","Confirm New PIN"));
+        EditText current = pinInput(tx("বর্তমান ৮ ডিজিট PIN","Current 8-digit PIN"));
+        EditText next = pinInput(tx("নতুন ৮ ডিজিট PIN","New 8-digit PIN"));
+        EditText confirm = pinInput(tx("নতুন PIN আবার দিন","Confirm New PIN"));
 
         box.addView(current,new LinearLayout.LayoutParams(-1,dp(58)));
         space(box,10);
@@ -6473,10 +6471,10 @@ public class MainActivity extends Activity {
         box.addView(confirm,new LinearLayout.LayoutParams(-1,dp(58)));
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle(tx("PIN à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨","Change PIN"))
+                .setTitle(tx("PIN পরিবর্তন","Change PIN"))
                 .setView(box)
-                .setNegativeButton(tx("à¦¬à¦¾à¦¤à¦¿à¦²","Cancel"),null)
-                .setPositiveButton(tx("à¦¸à¦¾à¦¬à¦®à¦¿à¦Ÿ","Submit"),null)
+                .setNegativeButton(tx("বাতিল","Cancel"),null)
+                .setPositiveButton(tx("সাবমিট","Submit"),null)
                 .create();
 
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
@@ -6486,21 +6484,21 @@ public class MainActivity extends Activity {
             String saved = pref.getString("pin","");
 
             if (!saved.isEmpty() && !saved.equals(oldPin)) {
-                current.setError(tx("à¦¬à¦°à§à¦¤à¦®à¦¾à¦¨ PIN à¦¸à¦ à¦¿à¦• à¦¨à¦¯à¦¼","Current PIN is incorrect"));
+                current.setError(tx("বর্তমান PIN সঠিক নয়","Current PIN is incorrect"));
                 return;
             }
             if (newPin.length() != 8) {
-                next.setError(tx("à§® à¦¡à¦¿à¦œà¦¿à¦Ÿà§‡à¦° PIN à¦¦à¦¿à¦¨","Enter an 8-digit PIN"));
+                next.setError(tx("৮ ডিজিটের PIN দিন","Enter an 8-digit PIN"));
                 return;
             }
             if (!newPin.equals(confirmPin)) {
-                confirm.setError(tx("PIN à¦®à¦¿à¦²à¦›à§‡ à¦¨à¦¾","PINs do not match"));
+                confirm.setError(tx("PIN মিলছে না","PINs do not match"));
                 return;
             }
 
             pref.edit().putString("pin",newPin).apply();
             dialog.dismiss();
-            Toast.makeText(this,tx("PIN à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨ à¦¹à¦¯à¦¼à§‡à¦›à§‡","PIN changed successfully"),Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,tx("PIN পরিবর্তন হয়েছে","PIN changed successfully"),Toast.LENGTH_SHORT).show();
         }));
 
         dialog.show();
