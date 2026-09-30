@@ -1,8 +1,5 @@
 package com.quickpay.app;
 
-// QUICK PAY FIREBASE FINAL FIX - 2026-09-30
-// Chat fallback method renamed to avoid stale-symbol build errors.
-
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
@@ -21,9 +18,8 @@ import android.view.Gravity;
 import android.widget.*;
 
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.ListenerRegistration;
 
 
 import org.json.JSONArray;
@@ -31,7 +27,9 @@ import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 public class MainActivity extends Activity {
 
@@ -41,9 +39,10 @@ public class MainActivity extends Activity {
     private static final int DARK = Color.rgb(35,35,35);
 
     private SharedPreferences pref;
+
+    /* Firebase user sync */
     private FirebaseAuth firebaseAuth;
     private FirebaseFirestore firestore;
-    private ListenerRegistration cloudProfileListener;
     private boolean firebaseReady = false;
 
     private String selectedMobileProvider = "বিকাশ";
@@ -112,6 +111,8 @@ public class MainActivity extends Activity {
                 Context.MODE_PRIVATE
         );
 
+        // Firebase is used here only to mirror the local Quick Pay account
+        // into Firestore so the Admin Panel can see the user.
         try {
             firebaseAuth = FirebaseAuth.getInstance();
             firestore = FirebaseFirestore.getInstance();
@@ -122,8 +123,6 @@ public class MainActivity extends Activity {
         }
 
         if (pref.getBoolean("logged_in", false)) {
-            syncProfileToFirestore();
-            listenToCloudProfile();
 
             if (pref.getString("pin", "").length() == 8) {
                 showPinUnlock();
@@ -134,6 +133,63 @@ public class MainActivity extends Activity {
         } else {
             showLogin();
         }
+    }
+
+    /* =========================================================
+       FIREBASE USER SYNC
+       ========================================================= */
+
+    private void ensureFirebaseSession() {
+        if (!firebaseReady || firebaseAuth == null) return;
+
+        FirebaseUser current = firebaseAuth.getCurrentUser();
+        if (current != null) {
+            syncLocalUserToFirebase();
+            return;
+        }
+
+        firebaseAuth.signInAnonymously()
+                .addOnSuccessListener(result -> syncLocalUserToFirebase())
+                .addOnFailureListener(e -> {
+                    // The app can still work locally; Admin Panel sync will retry
+                    // the next time the app starts or the user logs in.
+                });
+    }
+
+    private void syncLocalUserToFirebase() {
+        if (!firebaseReady || firestore == null || firebaseAuth == null) return;
+        FirebaseUser user = firebaseAuth.getCurrentUser();
+        if (user == null) return;
+
+        String phone = pref.getString("phone", "").trim();
+        String name = pref.getString("name", "").trim();
+        if (phone.isEmpty()) return;
+
+        String uid = user.getUid();
+        Map<String,Object> data = new HashMap<>();
+        data.put("uid", uid);
+        data.put("name", name);
+        data.put("phone", phone);
+        data.put("userId", phone);
+        data.put("mainBalance", getMainBalance());
+        data.put("driveBalance", getDriveBalance());
+        data.put("mainBalanceLocked", pref.getBoolean("main_balance_locked", false));
+        data.put("driveBalanceLocked", pref.getBoolean("drive_balance_locked", false));
+        data.put("accountLocked", pref.getBoolean("account_locked", false));
+        data.put("status", "ACTIVE");
+        data.put("updatedAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
+
+        firestore.collection("users").document(uid).get()
+                .addOnSuccessListener(snapshot -> {
+                    if (!snapshot.exists()) {
+                        data.put("createdAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
+                    }
+                    firestore.collection("users").document(uid).set(data,
+                            com.google.firebase.firestore.SetOptions.merge());
+                })
+                .addOnFailureListener(e -> {
+                    // Keep local app working if Firestore is temporarily unavailable.
+                });
     }
 
     /* =========================================================
@@ -221,140 +277,7 @@ public class MainActivity extends Activity {
     private String tx(String bn,String en){return isEnglish()?en:bn;}
     private void toggleLanguage(){pref.edit().putBoolean("language_english",!isEnglish()).apply();if(pref.getBoolean("logged_in",false))showHome();else showLogin();}
     private String now(){return new SimpleDateFormat("dd/MM/yyyy hh:mm a",Locale.getDefault()).format(new Date());}
-    private String accountKey(){
-        String p=pref.getString("phone","");
-        if(p==null)p="";
-        p=p.trim().replace("+","").replace(" ","").replace("-","");
-        if(p.startsWith("0") && p.length()==11)p="88"+p;
-        return p;
-    }
-
-    private void ensureFirebaseSession(){
-        if(!firebaseReady || firebaseAuth==null)return;
-        if(firebaseAuth.getCurrentUser()!=null){
-            syncProfileToFirestore();
-            syncPanelContent();
-            return;
-        }
-        firebaseAuth.signInAnonymously().addOnSuccessListener(r->{
-            syncProfileToFirestore();
-            listenToCloudProfile();
-            syncPanelContent();
-        });
-    }
-
-    private void syncProfileToFirestore(){
-        if(!firebaseReady || firestore==null)return;
-        String key=accountKey();
-        if(key.isEmpty())return;
-        java.util.Map<String,Object> data=new java.util.HashMap<>();
-        data.put("uid",key);
-        data.put("userId",key);
-        data.put("name",pref.getString("name",""));
-        data.put("phone",pref.getString("phone",""));
-        data.put("passwordHash",sha256Local(pref.getString("password","")));
-        data.put("mainBalance",getMainBalance());
-        data.put("driveBalance",getDriveBalance());
-        data.put("mainBalanceLocked",pref.getBoolean("main_balance_locked",false));
-        data.put("driveBalanceLocked",pref.getBoolean("drive_balance_locked",false));
-        data.put("accountLocked",pref.getBoolean("account_locked",false));
-        data.put("active",!pref.getBoolean("account_locked",false));
-        data.put("status",pref.getBoolean("account_locked",false)?"BLOCKED":"ACTIVE");
-        data.put("updatedAt",com.google.firebase.firestore.FieldValue.serverTimestamp());
-        firestore.collection("users").document(key).set(data,com.google.firebase.firestore.SetOptions.merge());
-    }
-
-    private String sha256Local(String value){
-        try{java.security.MessageDigest md=java.security.MessageDigest.getInstance("SHA-256");byte[] b=md.digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));StringBuilder x=new StringBuilder();for(byte z:b)x.append(String.format(Locale.US,"%02x",z));return x.toString();}catch(Exception e){return value==null?"":value;}
-    }
-
-    private void listenToCloudProfile(){
-        if(!firebaseReady || firestore==null)return;
-        String key=accountKey();
-        if(key.isEmpty())return;
-        if(cloudProfileListener!=null)cloudProfileListener.remove();
-        cloudProfileListener=firestore.collection("users").document(key).addSnapshotListener((snap,error)->{
-            if(error!=null || snap==null || !snap.exists())return;
-            boolean locked=Boolean.TRUE.equals(snap.getBoolean("accountLocked")) || Boolean.FALSE.equals(snap.getBoolean("active"));
-            boolean mainLocked=Boolean.TRUE.equals(snap.getBoolean("mainBalanceLocked")) || Boolean.TRUE.equals(snap.getBoolean("mainLocked"));
-            boolean driveLocked=Boolean.TRUE.equals(snap.getBoolean("driveBalanceLocked")) || Boolean.TRUE.equals(snap.getBoolean("driveLocked"));
-            Double main=snap.getDouble("mainBalance"), drive=snap.getDouble("driveBalance");
-            if(main!=null)pref.edit().putString("main_balance",String.valueOf(Math.max(0,main))).apply();
-            if(drive!=null)pref.edit().putString("drive_balance",String.valueOf(Math.max(0,drive))).apply();
-            pref.edit().putBoolean("account_locked",locked).putBoolean("main_balance_locked",mainLocked).putBoolean("drive_balance_locked",driveLocked).apply();
-            if(locked){Toast.makeText(this,"আপনার অ্যাকাউন্ট অ্যাডমিন দ্বারা বন্ধ করা হয়েছে।",Toast.LENGTH_LONG).show();}
-        });
-    }
-
-    private void syncPanelContent(){
-        if(!firebaseReady || firestore==null)return;
-        firestore.collection("settings").document("general").addSnapshotListener((snap,error)->{
-            if(error!=null || snap==null || !snap.exists())return;
-            for(java.util.Map.Entry<String,Object> e:snap.getData().entrySet()){
-                Object v=e.getValue(); if(v==null)continue;
-                pref.edit().putString(e.getKey(),String.valueOf(v)).apply();
-            }
-        });
-        firestore.collection("publicSettings").document("paymentNumbers").addSnapshotListener((snap,error)->{
-            if(error!=null || snap==null || !snap.exists())return;
-            for(java.util.Map.Entry<String,Object> e:snap.getData().entrySet()){Object v=e.getValue();if(v!=null)pref.edit().putString(e.getKey(),String.valueOf(v)).apply();}
-        });
-        firestore.collection("offers").addSnapshotListener((snap,error)->{
-            if(error!=null || snap==null)return;
-            JSONArray a=new JSONArray();
-            for(DocumentSnapshot d:snap.getDocuments()){JSONObject o=new JSONObject();try{o.put("operator",d.getString("operator"));o.put("logo",d.getString("logo"));o.put("data",d.getString("data"));o.put("minutes",d.getString("minutes"));o.put("sms",d.getString("sms"));o.put("price",String.valueOf(d.get("price")));o.put("bonus",String.valueOf(d.get("bonus")));o.put("validity",d.getString("validity"));o.put("description",d.getString("description"));o.put("visible",!Boolean.FALSE.equals(d.getBoolean("active")));a.put(o);}catch(Exception ignored){}}
-            pref.edit().putString("special_offers",a.toString()).apply();
-        });
-        firestore.collection("reviews").addSnapshotListener((snap,error)->{
-            if(error!=null || snap==null)return; JSONArray a=new JSONArray();
-            for(DocumentSnapshot d:snap.getDocuments()){JSONObject o=new JSONObject();try{o.put("title",d.getString("title"));o.put("description",d.getString("description"));o.put("url",d.getString("url"));o.put("visible",!Boolean.FALSE.equals(d.getBoolean("active")));a.put(o);}catch(Exception ignored){}}
-            pref.edit().putString("customer_reviews",a.toString()).apply();
-        });
-        firestore.collection("tutorials").addSnapshotListener((snap,error)->{
-            if(error!=null || snap==null)return; JSONArray a=new JSONArray();
-            for(DocumentSnapshot d:snap.getDocuments()){JSONObject o=new JSONObject();try{o.put("title",d.getString("title"));o.put("description",d.getString("description"));o.put("url",d.getString("url"));o.put("visible",!Boolean.FALSE.equals(d.getBoolean("active")));a.put(o);}catch(Exception ignored){}}
-            pref.edit().putString("video_tutorials",a.toString()).apply();
-        });
-        firestore.collection("liveActivities").whereEqualTo("active",true).addSnapshotListener((snap,error)->{
-            if(error!=null || snap==null)return; JSONArray a=new JSONArray();
-            for(DocumentSnapshot d:snap.getDocuments()){String text=d.getString("text");if(text==null||text.trim().isEmpty())text=d.getString("name");if(text!=null&&!text.trim().isEmpty())a.put(text);}
-            pref.edit().putString("live_activity_messages",a.toString()).apply();
-        });
-    }
-
-    private void writeCloudTransaction(String type,String detail,double amount,boolean credit,String status,String requestId){
-        if(!firebaseReady || firestore==null || accountKey().isEmpty())return;
-        java.util.Map<String,Object> t=new java.util.HashMap<>();
-        t.put("uid",accountKey()); t.put("userId",accountKey()); t.put("name",pref.getString("name","")); t.put("phone",pref.getString("phone",""));
-        t.put("type",type); t.put("detail",detail); t.put("amount",Math.max(0,amount)); t.put("credit",credit); t.put("status",status); t.put("createdAt",com.google.firebase.firestore.FieldValue.serverTimestamp());
-        if(requestId!=null)t.put("sourceRequestId",requestId);
-        firestore.collection("transactions").add(t);
-    }
-
-    private void createServiceRequest(String type,String detail,double amount,boolean credit){
-        if(!firebaseReady || firestore==null || accountKey().isEmpty() || credit)return;
-        java.util.Map<String,Object> r=new java.util.HashMap<>();
-        r.put("uid",accountKey()); r.put("userId",accountKey()); r.put("name",pref.getString("name","")); r.put("phone",pref.getString("phone",""));
-        r.put("type",type); r.put("detail",detail); r.put("amount",Math.max(0,amount)); r.put("status","PENDING"); r.put("createdAt",com.google.firebase.firestore.FieldValue.serverTimestamp());
-        firestore.collection("serviceRequests").add(r).addOnSuccessListener(d->writeCloudTransaction(type,detail,amount,false,"PENDING",d.getId()));
-    }
-
-    private void createDepositRequest(String detail,double amount){
-        if(!firebaseReady || firestore==null || accountKey().isEmpty())return;
-        String ref=detail==null?"":detail.replace("ডিপোজিট / ","");
-        java.util.Map<String,Object> r=new java.util.HashMap<>();
-        r.put("uid",accountKey()); r.put("userId",accountKey()); r.put("name",pref.getString("name","")); r.put("phone",pref.getString("phone","")); r.put("amount",Math.max(0,amount)); r.put("method","Manual Deposit"); r.put("transactionId",ref); r.put("status","PENDING"); r.put("createdAt",com.google.firebase.firestore.FieldValue.serverTimestamp());
-        firestore.collection("depositRequests").add(r).addOnSuccessListener(d->writeCloudTransaction("অ্যাড মানি",detail,amount,true,"PENDING",d.getId()));
-    }
-
-    private void recordTransaction(String type,String detail,double amount,boolean credit){
-        try{JSONArray a=new JSONArray(pref.getString("transaction_history","[]"));JSONObject o=new JSONObject();o.put("type",type);o.put("detail",detail);o.put("amount",amount);o.put("credit",credit);o.put("status",credit?"PENDING":"PENDING");o.put("time",now());a.put(0,o);pref.edit().putString("transaction_history",a.toString()).apply();}catch(Exception ignored){}
-        if(firebaseReady){
-            if("অ্যাড মানি".equals(type) || "Add Money".equalsIgnoreCase(type)) createDepositRequest(detail,amount);
-            else if(credit) writeCloudTransaction(type,detail,amount,true,"APPROVED",null);
-            else createServiceRequest(type,detail,amount,false);
-        }
-    }
+    private void recordTransaction(String type,String detail,double amount,boolean credit){try{JSONArray a=new JSONArray(pref.getString("transaction_history","[]"));JSONObject o=new JSONObject();o.put("type",type);o.put("detail",detail);o.put("amount",amount);o.put("credit",credit);o.put("status","SUCCESS");o.put("time",now());a.put(0,o);pref.edit().putString("transaction_history",a.toString()).apply();}catch(Exception ignored){}}
     private String panelText(String key,String fallback){String v=pref.getString(key,"");return v.trim().isEmpty()?fallback:v;}
     private JSONArray panelArray(String key){try{return new JSONArray(pref.getString(key,"[]"));}catch(Exception e){return new JSONArray();}}
     private void openExternal(String url){try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));}catch(Exception e){Toast.makeText(this,tx("লিংকটি খোলা যাচ্ছে না","Unable to open link"),Toast.LENGTH_SHORT).show();}}
@@ -543,9 +466,8 @@ public class MainActivity extends Activity {
                     .putString("password",pw)
                     .putBoolean("logged_in",true)
                     .apply();
+
             ensureFirebaseSession();
-            syncProfileToFirestore();
-            listenToCloudProfile();
 
             if (pref.getString("pin","").length() == 8) {
                 showHome();
@@ -718,6 +640,9 @@ public class MainActivity extends Activity {
                     .putString("pin",a)
                     .putBoolean("logged_in",true)
                     .apply();
+
+            ensureFirebaseSession();
+            syncLocalUserToFirebase();
 
             showHome();
         });
@@ -3451,16 +3376,50 @@ public class MainActivity extends Activity {
        ========================================================= */
 
     private void saveChatMessage(String text) {
-        if(text==null || text.trim().isEmpty())return;
+
         try {
-            String old=pref.getString("group_chat_messages","[]"); JSONArray array=new JSONArray(old); JSONObject object=new JSONObject();
-            object.put("name",pref.getString("name","User")); object.put("message",text.trim()); object.put("time",new SimpleDateFormat("hh:mm a",Locale.getDefault()).format(new Date())); object.put("status","Pending");
-            array.put(0,object); pref.edit().putString("group_chat_messages",array.toString()).apply();
-        } catch(Exception ignored){}
-        if(firebaseReady && firestore!=null && !accountKey().isEmpty()){
-            java.util.Map<String,Object> m=new java.util.HashMap<>();
-            m.put("uid",accountKey());m.put("userId",accountKey());m.put("name",pref.getString("name","User"));m.put("phone",pref.getString("phone",""));m.put("message",text.trim());m.put("status","Pending");m.put("createdAt",com.google.firebase.firestore.FieldValue.serverTimestamp());
-            firestore.collection("chatMessages").add(m);
+
+            String old =
+                    pref.getString(
+                            "group_chat_messages",
+                            "[]"
+                    );
+
+            JSONArray array = new JSONArray(old);
+
+            JSONObject object = new JSONObject();
+
+            object.put(
+                    "name",
+                    pref.getString("name","Rosy")
+            );
+
+            object.put("message",text);
+
+            object.put(
+                    "time",
+                    new SimpleDateFormat(
+                            "hh:mm a",
+                            Locale.getDefault()
+                    ).format(new Date())
+            );
+
+            array.put(object);
+
+            pref.edit()
+                    .putString(
+                            "group_chat_messages",
+                            array.toString()
+                    )
+                    .apply();
+
+        } catch (Exception e) {
+
+            Toast.makeText(
+                    this,
+                    "মেসেজ সেভ করা যায়নি",
+                    Toast.LENGTH_SHORT
+            ).show();
         }
     }
 
@@ -3468,39 +3427,146 @@ public class MainActivity extends Activity {
        LOAD CHAT
        ========================================================= */
 
-    private void loadChatMessages(LinearLayout chatBox, ScrollView scroll) {
-        if(firebaseReady && firestore!=null){
-            firestore.collection("chatMessages").whereEqualTo("status","Approved").get().addOnSuccessListener(snap->{
-                chatBox.removeAllViews();
-                if(snap.isEmpty()){
-                    loadLocalChatMessagesFixed(chatBox,scroll);
-                    return;
-                }
-                for(DocumentSnapshot d:snap.getDocuments()){String name=d.getString("name")==null?"User":d.getString("name");String msg=d.getString("message")==null?"":d.getString("message");String time="";com.google.firebase.Timestamp ts=d.getTimestamp("createdAt");if(ts!=null)time=new SimpleDateFormat("hh:mm a",Locale.getDefault()).format(ts.toDate());addChatMessage(chatBox,name,msg,time);}
-                chatBox.postDelayed(()->scroll.fullScroll(ScrollView.FOCUS_DOWN),100);
-            }).addOnFailureListener(e->loadLocalChatMessagesFixed(chatBox,scroll));
-        } else loadLocalChatMessagesFixed(chatBox,scroll);
-    }
+    private void loadChatMessages(
+            LinearLayout chatBox,
+            ScrollView scroll) {
 
-
-    private void loadLocalChatMessagesFixed(LinearLayout chatBox, ScrollView scroll) {
         chatBox.removeAllViews();
+
         try {
-            JSONArray array = new JSONArray(pref.getString("group_chat_messages", "[]"));
+
+            String data =
+                    pref.getString(
+                            "group_chat_messages",
+                            "[]"
+                    );
+
+            JSONArray array = new JSONArray(data);
+
             if (array.length() == 0) {
-                addChatEmptyState(chatBox);
+
+                LinearLayout empty =
+                        new LinearLayout(this);
+
+                empty.setOrientation(
+                        LinearLayout.VERTICAL
+                );
+
+                empty.setGravity(Gravity.CENTER);
+                empty.setPadding(dp(20),dp(60),dp(20),dp(60));
+
+                TextView icon = tv("💬",48,BLUE);
+                icon.setGravity(Gravity.CENTER);
+
+                empty.addView(
+                        icon,
+                        new LinearLayout.LayoutParams(
+                                -1,
+                                dp(70)
+                        )
+                );
+
+                TextView title =
+                        tv(
+                                "গ্রুপ চ্যাটে স্বাগতম",
+                                21,
+                                BLUE
+                        );
+
+                title.setGravity(Gravity.CENTER);
+                title.setTypeface(
+                        Typeface.DEFAULT,
+                        Typeface.BOLD
+                );
+
+                empty.addView(
+                        title,
+                        new LinearLayout.LayoutParams(
+                                -1,
+                                dp(40)
+                        )
+                );
+
+                TextView sub =
+                        tv(
+                                "প্রথম মেসেজটি আপনিই পাঠান।",
+                                15,
+                                Color.DKGRAY
+                        );
+
+                sub.setGravity(Gravity.CENTER);
+
+                empty.addView(
+                        sub,
+                        new LinearLayout.LayoutParams(
+                                -1,
+                                dp(35)
+                        )
+                );
+
+                chatBox.addView(
+                        empty,
+                        new LinearLayout.LayoutParams(
+                                -1,
+                                -2
+                        )
+                );
+
             } else {
+
                 for (int i = 0; i < array.length(); i++) {
-                    JSONObject object = array.getJSONObject(i);
-                    addChatMessage(chatBox, object.optString("name", "User"),
-                            object.optString("message", ""),
-                            object.optString("time", ""));
+
+                    JSONObject object =
+                            array.getJSONObject(i);
+
+                    String name =
+                            object.optString(
+                                    "name",
+                                    "User"
+                            );
+
+                    String message =
+                            object.optString(
+                                    "message",
+                                    ""
+                            );
+
+                    String time =
+                            object.optString(
+                                    "time",
+                                    ""
+                            );
+
+                    addChatMessage(
+                            chatBox,
+                            name,
+                            message,
+                            time
+                    );
                 }
             }
+
         } catch (Exception e) {
-            addChatEmptyState(chatBox);
+
+            TextView error =
+                    tv(
+                            "চ্যাট লোড করা যায়নি",
+                            16,
+                            Color.RED
+                    );
+
+            error.setGravity(Gravity.CENTER);
+
+            chatBox.addView(
+                    error,
+                    new LinearLayout.LayoutParams(-1,dp(60))
+            );
         }
-        chatBox.postDelayed(() -> scroll.fullScroll(ScrollView.FOCUS_DOWN), 100);
+
+        chatBox.postDelayed(
+                () -> scroll.fullScroll(ScrollView.FOCUS_DOWN),
+                100
+        );
     }
 
     /* =========================================================
@@ -6069,9 +6135,9 @@ public class MainActivity extends Activity {
                     .putString("password",a)
                     .putBoolean("logged_in",true)
                     .apply();
+
             ensureFirebaseSession();
-            syncProfileToFirestore();
-            listenToCloudProfile();
+            syncLocalUserToFirebase();
 
             showPinSetup();
         });
