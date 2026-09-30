@@ -176,19 +176,7 @@ public class MainActivity extends Activity {
 
     private void ensureFirebaseSession() {
         if (!firebaseReady || firebaseAuth == null) return;
-
-        FirebaseUser currentUser = firebaseAuth.getCurrentUser();
-        if (currentUser != null) {
-            syncCurrentProfile();
-            return;
-        }
-
-        firebaseAuth.signInAnonymously()
-                .addOnSuccessListener(result -> syncCurrentProfile())
-                .addOnFailureListener(e -> {
-                    // Do not block the local app if Firebase sign-in fails.
-                    // Deposit submit will show the actual Firebase error to the user.
-                });
+        if (firebaseAuth.getCurrentUser() != null) syncCurrentProfile();
     }
 
     private String sha256(String value) {
