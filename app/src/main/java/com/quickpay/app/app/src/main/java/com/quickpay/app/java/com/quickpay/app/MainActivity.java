@@ -3720,7 +3720,7 @@ public class MainActivity extends Activity {
         object.put("status", "PENDING");
         object.put("createdAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
 
-        firestore.collection("groupChatMessages").add(object)
+        firestore.collection("chatMessages").add(object)
                 .addOnSuccessListener(v -> Toast.makeText(this,
                         "মেসেজ পাঠানো হয়েছে। অ্যাডমিন অনুমোদনের পর সবাই দেখতে পাবে।",
                         Toast.LENGTH_SHORT).show())
@@ -3744,7 +3744,7 @@ public class MainActivity extends Activity {
 
         if (chatListener != null) chatListener.remove();
 
-        chatListener = firestore.collection("groupChatMessages")
+        chatListener = firestore.collection("chatMessages")
                 .whereEqualTo("status", "APPROVED")
                 .addSnapshotListener((snap, error) -> {
                     if (error != null || snap == null) {
