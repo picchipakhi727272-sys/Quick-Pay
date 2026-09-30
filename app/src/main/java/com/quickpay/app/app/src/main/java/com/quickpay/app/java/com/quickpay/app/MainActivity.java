@@ -1,5 +1,8 @@
 package com.quickpay.app;
 
+// QUICK PAY FIREBASE FINAL FIX - 2026-09-30
+// Chat fallback method renamed to avoid stale-symbol build errors.
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
@@ -3470,15 +3473,35 @@ public class MainActivity extends Activity {
             firestore.collection("chatMessages").whereEqualTo("status","Approved").get().addOnSuccessListener(snap->{
                 chatBox.removeAllViews();
                 if(snap.isEmpty()){
-                    loadLocalChatMessages(chatBox,scroll);
+                    loadLocalChatMessagesFixed(chatBox,scroll);
                     return;
                 }
                 for(DocumentSnapshot d:snap.getDocuments()){String name=d.getString("name")==null?"User":d.getString("name");String msg=d.getString("message")==null?"":d.getString("message");String time="";com.google.firebase.Timestamp ts=d.getTimestamp("createdAt");if(ts!=null)time=new SimpleDateFormat("hh:mm a",Locale.getDefault()).format(ts.toDate());addChatMessage(chatBox,name,msg,time);}
                 chatBox.postDelayed(()->scroll.fullScroll(ScrollView.FOCUS_DOWN),100);
-            }).addOnFailureListener(e->loadLocalChatMessages(chatBox,scroll));
-        } else loadLocalChatMessages(chatBox,scroll);
+            }).addOnFailureListener(e->loadLocalChatMessagesFixed(chatBox,scroll));
+        } else loadLocalChatMessagesFixed(chatBox,scroll);
     }
 
+
+    private void loadLocalChatMessagesFixed(LinearLayout chatBox, ScrollView scroll) {
+        chatBox.removeAllViews();
+        try {
+            JSONArray array = new JSONArray(pref.getString("group_chat_messages", "[]"));
+            if (array.length() == 0) {
+                addChatEmptyState(chatBox);
+            } else {
+                for (int i = 0; i < array.length(); i++) {
+                    JSONObject object = array.getJSONObject(i);
+                    addChatMessage(chatBox, object.optString("name", "User"),
+                            object.optString("message", ""),
+                            object.optString("time", ""));
+                }
+            }
+        } catch (Exception e) {
+            addChatEmptyState(chatBox);
+        }
+        chatBox.postDelayed(() -> scroll.fullScroll(ScrollView.FOCUS_DOWN), 100);
+    }
 
     /* =========================================================
        CHAT MESSAGE DESIGN
