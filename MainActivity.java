@@ -3,16 +3,36 @@ package com.quickpay.app;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
+import android.view.View;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.widget.*;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.PhoneAuthCredential;
+import com.google.firebase.auth.PhoneAuthOptions;
+import com.google.firebase.auth.PhoneAuthProvider;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.Query;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.security.MessageDigest;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -20,10 +40,6 @@ import org.json.JSONObject;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
-
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.FieldValue;
 
 public class MainActivity extends Activity {
 
@@ -33,8 +49,42 @@ public class MainActivity extends Activity {
     private static final int DARK = Color.rgb(35,35,35);
 
     private SharedPreferences pref;
+
+    /* =========================================================
+       FIREBASE BACKEND
+       ========================================================= */
     private FirebaseAuth firebaseAuth;
     private FirebaseFirestore firestore;
+    private ListenerRegistration chatListener;
+    private ListenerRegistration profileListener;
+    private ListenerRegistration liveListener;
+    private final Handler liveHandler = new Handler(Looper.getMainLooper());
+    private boolean firebaseReady = false;
+    private String verificationId = "";
+    private PhoneAuthProvider.ForceResendingToken resendToken;
+    private boolean pendingRegistration = false;
+    private String pendingName = "";
+    private String pendingPhone = "";
+    private String pendingPassword = "";
+
+    private String firebaseUid() {
+        FirebaseUser u = firebaseAuth == null ? null : firebaseAuth.getCurrentUser();
+        return u == null ? "" : u.getUid();
+    }
+
+    private String cleanPhone(String phone) {
+        if (phone == null) return "";
+        String p = phone.trim().replace(" ", "").replace("-", "");
+        if (p.startsWith("+880")) return p;
+        if (p.startsWith("880")) return "+" + p;
+        if (p.startsWith("0") && p.length() == 11) return "+88" + p;
+        return p;
+    }
+
+    private String firebaseError(Exception e) {
+        if (e == null || e.getMessage() == null) return "Firebase error";
+        return e.getMessage();
+    }
 
     private String selectedMobileProvider = "বিকাশ";
     private String selectedAccountType = "পার্সোনাল";
@@ -102,9 +152,9 @@ public class MainActivity extends Activity {
                 Context.MODE_PRIVATE
         );
 
-        // Firebase is used for admin-visible requests. Keep local login flow unchanged.
         firebaseAuth = FirebaseAuth.getInstance();
         firestore = FirebaseFirestore.getInstance();
+        firebaseReady = true;
         ensureFirebaseSession();
 
         if (pref.getBoolean("logged_in", false)) {
@@ -120,86 +170,330 @@ public class MainActivity extends Activity {
         }
     }
 
+    /* =========================================================
+       FIREBASE SESSION / PROFILE
+       ========================================================= */
+
     private void ensureFirebaseSession() {
-        if (firebaseAuth.getCurrentUser() != null) {
-            return;
-        }
-
-        firebaseAuth.signInAnonymously()
-                .addOnFailureListener(e ->
-                        Toast.makeText(
-                                this,
-                                "Firebase সংযোগ করা যায়নি: " + e.getMessage(),
-                                Toast.LENGTH_LONG
-                        ).show()
-                );
+        if (!firebaseReady || firebaseAuth == null) return;
+        if (firebaseAuth.getCurrentUser() != null) syncCurrentProfile();
     }
 
-    private void submitDepositRequestToFirebase(
-            String money,
-            String transactionId,
-            String method
-    ) {
-        if (firebaseAuth.getCurrentUser() != null) {
-            writeDepositRequest(money, transactionId, method);
-            return;
-        }
-
-        firebaseAuth.signInAnonymously()
-                .addOnSuccessListener(result ->
-                        writeDepositRequest(money, transactionId, method)
-                )
-                .addOnFailureListener(e ->
-                        Toast.makeText(
-                                this,
-                                "ডিপোজিট পাঠানো যায়নি: Firebase লগইন ব্যর্থ।",
-                                Toast.LENGTH_LONG
-                        ).show()
-                );
+    private String sha256(String value) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] bytes = md.digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : bytes) sb.append(String.format(Locale.US, "%02x", b));
+            return sb.toString();
+        } catch (Exception e) { return value; }
     }
 
-    private void writeDepositRequest(
-            String money,
-            String transactionId,
-            String method
-    ) {
-        if (firebaseAuth.getCurrentUser() == null) {
-            Toast.makeText(
-                    this,
-                    "Firebase user পাওয়া যায়নি। আবার চেষ্টা করুন।",
-                    Toast.LENGTH_LONG
-            ).show();
+    private void startPhoneVerification(String rawPhone, boolean registration, String name, String password) {
+        String phone = cleanPhone(rawPhone);
+        if (!phone.matches("\\+8801[3-9][0-9]{8}")) {
+            Toast.makeText(this, "সঠিক বাংলাদেশি মোবাইল নম্বর দিন", Toast.LENGTH_SHORT).show();
             return;
         }
+        pendingRegistration = registration;
+        pendingName = name == null ? "" : name;
+        pendingPhone = phone;
+        pendingPassword = password == null ? "" : password;
 
-        String uid = firebaseAuth.getCurrentUser().getUid();
-        java.util.HashMap<String, Object> data = new java.util.HashMap<>();
+        PhoneAuthOptions options = PhoneAuthOptions.newBuilder(firebaseAuth)
+                .setPhoneNumber(phone)
+                .setTimeout(60L, TimeUnit.SECONDS)
+                .setActivity(this)
+                .setCallbacks(new PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
+                    @Override public void onVerificationCompleted(PhoneAuthCredential credential) {
+                        signInWithPhoneCredential(credential);
+                    }
+                    @Override public void onVerificationFailed(com.google.firebase.FirebaseException e) {
+                        Toast.makeText(MainActivity.this,
+                                "OTP পাঠানো যায়নি: " + firebaseError(e), Toast.LENGTH_LONG).show();
+                    }
+                    @Override public void onCodeSent(String id, PhoneAuthProvider.ForceResendingToken token) {
+                        verificationId = id;
+                        resendToken = token;
+                        showOtpDialog();
+                    }
+                }).build();
+        PhoneAuthProvider.verifyPhoneNumber(options);
+    }
+
+    private void showOtpDialog() {
+        final EditText otp = input("৬ ডিজিট OTP", false);
+        otp.setInputType(InputType.TYPE_CLASS_NUMBER);
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("OTP যাচাই")
+                .setMessage("" + pendingPhone + " নম্বরে পাঠানো OTP লিখুন।")
+                .setView(otp)
+                .setNegativeButton("বাতিল", null)
+                .setPositiveButton("যাচাই", null)
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String code = otp.getText().toString().trim();
+            if (code.length() != 6) { otp.setError("৬ ডিজিটের OTP দিন"); return; }
+            if (verificationId.isEmpty()) { Toast.makeText(this,"OTP session পাওয়া যায়নি। আবার চেষ্টা করুন।",Toast.LENGTH_SHORT).show(); return; }
+            PhoneAuthCredential credential = PhoneAuthProvider.getCredential(verificationId, code);
+            signInWithPhoneCredential(credential);
+            dialog.dismiss();
+        }));
+        dialog.show();
+    }
+
+    private void signInWithPhoneCredential(PhoneAuthCredential credential) {
+        firebaseAuth.signInWithCredential(credential)
+                .addOnSuccessListener(result -> {
+                    FirebaseUser user = result.getUser();
+                    if (user == null) return;
+                    firebaseReady = true;
+                    if (pendingRegistration) {
+                        createRegisteredProfile(user.getUid());
+                    } else {
+                        verifyExistingProfileAfterPhoneLogin(user.getUid());
+                    }
+                })
+                .addOnFailureListener(e -> Toast.makeText(this,
+                        "OTP যাচাই ব্যর্থ হয়েছে।", Toast.LENGTH_LONG).show());
+    }
+
+    private void createRegisteredProfile(String uid) {
+        Map<String,Object> data = new HashMap<>();
         data.put("uid", uid);
-        data.put("userId", uid);
+        data.put("name", pendingName);
+        data.put("phone", pendingPhone);
+        data.put("passwordHash", sha256(pendingPassword));
+        data.put("userId", uid.substring(0, Math.min(8, uid.length())).toUpperCase(Locale.US));
+        data.put("mainBalance", 0.0);
+        data.put("driveBalance", 0.0);
+        data.put("mainBalanceLocked", false);
+        data.put("driveBalanceLocked", false);
+        data.put("accountLocked", false);
+        data.put("status", "ACTIVE");
+        data.put("createdAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
+        data.put("updatedAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
+        firestore.collection("users").document(uid).set(data)
+                .addOnSuccessListener(v -> {
+                    pref.edit().putString("name", pendingName).putString("phone", pendingPhone)
+                            .putString("password", pendingPassword).putBoolean("logged_in", true).apply();
+                    cacheProfile(0,0,false,false,false);
+                    Toast.makeText(this,"অ্যাকাউন্ট তৈরি হয়েছে।",Toast.LENGTH_SHORT).show();
+                    showPinSetup();
+                    listenToProfile();
+                })
+                .addOnFailureListener(e -> Toast.makeText(this,
+                        "প্রোফাইল তৈরি করা যায়নি: " + firebaseError(e), Toast.LENGTH_LONG).show());
+    }
+
+    private void verifyExistingProfileAfterPhoneLogin(String uid) {
+        firestore.collection("users").document(uid).get()
+                .addOnSuccessListener(snapshot -> {
+                    if (!snapshot.exists()) {
+                        firebaseAuth.signOut();
+                        Toast.makeText(this,"এই নম্বরের Quick Pay অ্যাকাউন্ট পাওয়া যায়নি। রেজিস্টার করুন।",Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    String savedHash = snapshot.getString("passwordHash");
+                    if (savedHash != null && !savedHash.equals(sha256(pendingPassword))) {
+                        firebaseAuth.signOut();
+                        Toast.makeText(this,"পাসওয়ার্ড সঠিক নয়।",Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    pref.edit().putString("name", snapshot.getString("name") == null ? "" : snapshot.getString("name"))
+                            .putString("phone", pendingPhone)
+                            .putString("password", pendingPassword)
+                            .putBoolean("logged_in", true).apply();
+                    cacheProfile(
+                            snapshot.getDouble("mainBalance") == null ? 0 : snapshot.getDouble("mainBalance"),
+                            snapshot.getDouble("driveBalance") == null ? 0 : snapshot.getDouble("driveBalance"),
+                            Boolean.TRUE.equals(snapshot.getBoolean("mainBalanceLocked")),
+                            Boolean.TRUE.equals(snapshot.getBoolean("driveBalanceLocked")),
+                            Boolean.TRUE.equals(snapshot.getBoolean("accountLocked")));
+                    listenToProfile();
+                    if (pref.getString("pin", "").length() == 8) showHome(); else showPinSetup();
+                })
+                .addOnFailureListener(e -> Toast.makeText(this,"অ্যাকাউন্ট তথ্য পড়া যায়নি।",Toast.LENGTH_LONG).show());
+    }
+
+    private void syncCurrentProfile() {
+        if (!firebaseReady || firestore == null || firebaseUid().isEmpty()) return;
+        String uid = firebaseUid();
+        Map<String,Object> data = new HashMap<>();
+        data.put("uid", uid);
         data.put("name", pref.getString("name", ""));
         data.put("phone", pref.getString("phone", ""));
-        data.put("amount", money);
-        data.put("method", method);
-        data.put("transactionId", transactionId);
-        data.put("status", "PENDING");
-        data.put("createdAt", FieldValue.serverTimestamp());
+        data.put("userId", uid.substring(0, Math.min(8, uid.length())).toUpperCase(Locale.US));
+        data.put("updatedAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
 
-        firestore.collection("depositRequests")
-                .add(data)
-                .addOnSuccessListener(ref ->
-                        Toast.makeText(
-                                this,
-                                "ডিপোজিট রিকোয়েস্ট অ্যাডমিনের কাছে পাঠানো হয়েছে।",
-                                Toast.LENGTH_LONG
-                        ).show()
-                )
-                .addOnFailureListener(e ->
-                        Toast.makeText(
-                                this,
-                                "ডিপোজিট রিকোয়েস্ট পাঠানো যায়নি: " + e.getMessage(),
-                                Toast.LENGTH_LONG
-                        ).show()
-                );
+        firestore.collection("users").document(uid)
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    if (!snapshot.exists()) {
+                        data.put("mainBalance", 0.0);
+                        data.put("driveBalance", 0.0);
+                        data.put("mainBalanceLocked", false);
+                        data.put("driveBalanceLocked", false);
+                        data.put("accountLocked", false);
+                        data.put("status", "ACTIVE");
+                        data.put("createdAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
+                        firestore.collection("users").document(uid).set(data)
+                                .addOnSuccessListener(v -> cacheProfile(0,0,false,false,false));
+                    } else {
+                        cacheProfile(
+                                snapshot.getDouble("mainBalance") == null ? 0 : snapshot.getDouble("mainBalance"),
+                                snapshot.getDouble("driveBalance") == null ? 0 : snapshot.getDouble("driveBalance"),
+                                Boolean.TRUE.equals(snapshot.getBoolean("mainBalanceLocked")),
+                                Boolean.TRUE.equals(snapshot.getBoolean("driveBalanceLocked")),
+                                Boolean.TRUE.equals(snapshot.getBoolean("accountLocked"))
+                        );
+                    }
+                    listenToProfile();
+                });
+    }
+
+    private void cacheProfile(double main, double drive, boolean mainLocked, boolean driveLocked, boolean accountLocked) {
+        pref.edit()
+                .putString("main_balance", String.valueOf(Math.max(0, main)))
+                .putString("drive_balance", String.valueOf(Math.max(0, drive)))
+                .putBoolean("main_balance_locked", mainLocked)
+                .putBoolean("drive_balance_locked", driveLocked)
+                .putBoolean("account_locked", accountLocked)
+                .apply();
+    }
+
+    private void listenToProfile() {
+        if (!firebaseReady || firestore == null || firebaseUid().isEmpty()) return;
+        if (profileListener != null) profileListener.remove();
+        profileListener = firestore.collection("users").document(firebaseUid())
+                .addSnapshotListener((snapshot, error) -> {
+                    if (error != null || snapshot == null || !snapshot.exists()) return;
+                    double main = snapshot.getDouble("mainBalance") == null ? 0 : snapshot.getDouble("mainBalance");
+                    double drive = snapshot.getDouble("driveBalance") == null ? 0 : snapshot.getDouble("driveBalance");
+                    cacheProfile(main, drive,
+                            Boolean.TRUE.equals(snapshot.getBoolean("mainBalanceLocked")),
+                            Boolean.TRUE.equals(snapshot.getBoolean("driveBalanceLocked")),
+                            Boolean.TRUE.equals(snapshot.getBoolean("accountLocked")));
+                });
+    }
+
+    private boolean transactionBlocked() {
+        if (pref.getBoolean("account_locked", false) || pref.getBoolean("main_balance_locked", false)) {
+            Toast.makeText(this, "আপনার অ্যাকাউন্টে পর্যাপ্ত ব্যালেন্স নাই", Toast.LENGTH_LONG).show();
+            return true;
+        }
+        return false;
+    }
+
+    private boolean transactionBlockedFor(double amount) {
+        if (transactionBlocked()) return true;
+        double balance = getMainBalance();
+        if (amount > 0 && balance < amount) {
+            Toast.makeText(this, "আপনার অ্যাকাউন্টে পর্যাপ্ত ব্যালেন্স নাই", Toast.LENGTH_LONG).show();
+            return true;
+        }
+        return false;
+    }
+
+    private void writeFirestoreTransaction(String type, String detail, double amount, boolean credit, String status) {
+        if (!firebaseReady || firestore == null || firebaseUid().isEmpty()) return;
+        Map<String,Object> m = new HashMap<>();
+        m.put("uid", firebaseUid());
+        m.put("userId", pref.getString("phone", ""));
+        m.put("name", pref.getString("name", ""));
+        m.put("phone", pref.getString("phone", ""));
+        m.put("type", type);
+        m.put("detail", detail);
+        m.put("amount", Math.max(0, amount));
+        m.put("credit", credit);
+        m.put("status", status);
+        m.put("createdAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
+        firestore.collection("transactions").add(m);
+    }
+
+    private void submitDepositRequestToFirebase(double amount, String transactionId) {
+        if (!firebaseReady || firestore == null || firebaseAuth == null) {
+            Toast.makeText(this, "Firebase সংযোগ নেই। পরে আবার চেষ্টা করুন।", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        FirebaseUser current = firebaseAuth.getCurrentUser();
+        if (current == null) {
+            firebaseAuth.signInAnonymously()
+                    .addOnSuccessListener(result -> writeDepositRequest(amount, transactionId))
+                    .addOnFailureListener(e -> Toast.makeText(this,
+                            "Firebase লগইন করা যায়নি: " + firebaseError(e), Toast.LENGTH_LONG).show());
+            return;
+        }
+        writeDepositRequest(amount, transactionId);
+    }
+
+    private void writeDepositRequest(double amount, String transactionId) {
+        String uid = firebaseUid();
+        if (uid.isEmpty()) {
+            Toast.makeText(this, "Firebase ইউজার সেশন পাওয়া যায়নি।", Toast.LENGTH_LONG).show();
+            return;
+        }
+        Map<String,Object> m = new HashMap<>();
+        m.put("uid", uid);
+        m.put("name", pref.getString("name", ""));
+        m.put("phone", pref.getString("phone", ""));
+        m.put("amount", amount);
+        m.put("method", "Manual Deposit");
+        m.put("transactionId", transactionId);
+        m.put("status", "PENDING");
+        m.put("createdAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
+        firestore.collection("depositRequests").add(m)
+                .addOnSuccessListener(v -> {
+                    recordTransaction("অ্যাড মানি", "ডিপোজিট / " + transactionId, amount, true, "PENDING");
+                    Toast.makeText(this,
+                            "ডিপোজিট রিকোয়েস্ট অ্যাডমিনের কাছে পাঠানো হয়েছে।",
+                            Toast.LENGTH_LONG).show();
+                })
+                .addOnFailureListener(e -> Toast.makeText(this,
+                        "ডিপোজিট রিকোয়েস্ট পাঠানো যায়নি: " + firebaseError(e),
+                        Toast.LENGTH_LONG).show());
+    }
+
+    private void submitFirestoreRequest(String collection, Map<String,Object> data) {
+        if (!firebaseReady || firestore == null || firebaseUid().isEmpty()) {
+            Toast.makeText(this, "Firebase সংযোগ নেই। পরে আবার চেষ্টা করুন।", Toast.LENGTH_LONG).show();
+            return;
+        }
+        data.put("userId", firebaseUid());
+        data.put("uid", firebaseUid());
+        data.put("name", pref.getString("name", ""));
+        data.put("phone", pref.getString("phone", ""));
+        if (!data.containsKey("status")) data.put("status", "PENDING");
+        if (!data.containsKey("createdAt")) data.put("createdAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
+        firestore.collection(collection).add(data);
+    }
+
+    private void refreshPaymentNumbers() {
+        if (!firebaseReady || firestore == null) return;
+        firestore.collection("settings").document("paymentNumbers").get().addOnSuccessListener(doc -> {
+            if (doc.exists()) {
+                cachePaymentNumber("bkash", doc.getString("bkash"), doc.getBoolean("bkashActive"));
+                cachePaymentNumber("nagad", doc.getString("nagad"), doc.getBoolean("nagadActive"));
+                cachePaymentNumber("rocket", doc.getString("rocket"), doc.getBoolean("rocketActive"));
+            }
+            firestore.collection("paymentNumbers").document("bkash").get().addOnSuccessListener(d -> { if (d.exists()) cachePaymentNumber("bkash", d.getString("number"), d.getBoolean("active")); });
+            firestore.collection("paymentNumbers").document("nagad").get().addOnSuccessListener(d -> { if (d.exists()) cachePaymentNumber("nagad", d.getString("number"), d.getBoolean("active")); });
+            firestore.collection("paymentNumbers").document("rocket").get().addOnSuccessListener(d -> { if (d.exists()) cachePaymentNumber("rocket", d.getString("number"), d.getBoolean("active")); });
+        });
+    }
+
+    private void cachePaymentNumber(String key, String number, Boolean active) {
+        if (number != null) pref.edit().putString("payment_" + key, number).apply();
+        if (active != null) pref.edit().putBoolean("payment_" + key + "_active", active).apply();
+    }
+
+    private String paymentNumberFor(String name) {
+        String key = name.toLowerCase(Locale.US);
+        if (key.contains("bkash") || key.contains("বিকাশ")) return pref.getBoolean("payment_bkash_active", true) ? pref.getString("payment_bkash", "") : "";
+        if (key.contains("nagad") || key.contains("নগদ")) return pref.getBoolean("payment_nagad_active", true) ? pref.getString("payment_nagad", "") : "";
+        if (key.contains("rocket") || key.contains("রকেট")) return pref.getBoolean("payment_rocket_active", true) ? pref.getString("payment_rocket", "") : "";
+        return "";
     }
 
     /* =========================================================
@@ -281,6 +575,61 @@ public class MainActivity extends Activity {
     }
 
     /* =========================================================
+       USER REQUESTED FEATURES
+       ========================================================= */
+    private boolean isEnglish(){return pref.getBoolean("language_english",false);}
+    private String tx(String bn,String en){return isEnglish()?en:bn;}
+    private void toggleLanguage(){pref.edit().putBoolean("language_english",!isEnglish()).apply();if(pref.getBoolean("logged_in",false))showHome();else showLogin();}
+    private String now(){return new SimpleDateFormat("dd/MM/yyyy hh:mm a",Locale.getDefault()).format(new Date());}
+    private void recordTransaction(String type,String detail,double amount,boolean credit){
+        recordTransaction(type,detail,amount,credit,"SUCCESS");
+    }
+
+    private void recordTransaction(String type,String detail,double amount,boolean credit,String status){
+        try {
+            JSONArray a=new JSONArray(pref.getString("transaction_history","[]"));
+            JSONObject o=new JSONObject();
+            o.put("type",type);
+            o.put("detail",detail);
+            o.put("amount",Math.max(0,amount));
+            o.put("credit",credit);
+            o.put("status",status);
+            o.put("time",now());
+            a.put(0,o);
+            pref.edit().putString("transaction_history",a.toString()).apply();
+        } catch(Exception ignored) {}
+        writeFirestoreTransaction(type,detail,amount,credit,status);
+    }
+    private String panelText(String key,String fallback){String v=pref.getString(key,"");return v.trim().isEmpty()?fallback:v;}
+    private JSONArray panelArray(String key){try{return new JSONArray(pref.getString(key,"[]"));}catch(Exception e){return new JSONArray();}}
+    private void openExternal(String url){try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));}catch(Exception e){Toast.makeText(this,tx("লিংকটি খোলা যাচ্ছে না","Unable to open link"),Toast.LENGTH_SHORT).show();}}
+    private void addLiveActivityTicker(LinearLayout header){
+        LinearLayout live=new LinearLayout(this); live.setGravity(Gravity.CENTER_VERTICAL); live.setBackground(bg(Color.WHITE,14)); live.setPadding(dp(8),0,dp(8),0);
+        TextView badge=tv("● LIVE",12,Color.RED); badge.setTypeface(Typeface.DEFAULT,Typeface.BOLD); live.addView(badge,new LinearLayout.LayoutParams(dp(62),dp(38)));
+        TextView a=tv("Quick Pay Live Activity",12,Color.DKGRAY); a.setSingleLine(true); a.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE); a.setMarqueeRepeatLimit(-1); a.setSelected(true); live.addView(a,new LinearLayout.LayoutParams(0,dp(38),1));
+        header.addView(live,new LinearLayout.LayoutParams(-1,dp(38)));
+        if (!firebaseReady || firestore == null || firebaseUid().isEmpty()) return;
+        if (liveListener != null) liveListener.remove();
+        liveListener=firestore.collection("liveActivities").whereEqualTo("active",true).limit(500).addSnapshotListener((snap,error)->{
+            if(error!=null || snap==null || snap.isEmpty()){ a.setText("Quick Pay Live Activity"); return; }
+            java.util.ArrayList<String> items=new java.util.ArrayList<>();
+            for(DocumentSnapshot d:snap.getDocuments()){
+                String text=d.getString("text");
+                if(text==null || text.trim().isEmpty()){ String name=d.getString("name"); String phone=d.getString("phone"); String type=d.getString("type"); Double amount=d.getDouble("amount"); String when=d.getString("displayTime"); StringBuilder b=new StringBuilder(); if(name!=null)b.append(name); if(phone!=null&&!phone.isEmpty())b.append(" (").append(phone).append(")"); if(amount!=null)b.append(" ").append(String.format(Locale.getDefault(),"৳ %.0f",amount)); if(type!=null&&!type.isEmpty())b.append(" ").append(type); if(when!=null&&!when.isEmpty())b.append(" • ").append(when); text=b.toString().trim(); }
+                if(!text.isEmpty()) items.add(text);
+            }
+            if(items.isEmpty()){a.setText("Quick Pay Live Activity");return;}
+            liveHandler.removeCallbacksAndMessages(null); int[] ix={0};
+            Runnable rotate=new Runnable(){public void run(){ if(items.isEmpty())return; a.setText(items.get(ix[0]%items.size())); ix[0]++; int sec=Math.max(3,Math.min(60,pref.getInt("live_rotate_seconds",5))); liveHandler.postDelayed(this,sec*1000L); }}; rotate.run();
+        });
+        firestore.collection("settings").document("general").get().addOnSuccessListener(d->{Long sec=d.getLong("liveRotateSeconds"); if(sec!=null)pref.edit().putInt("live_rotate_seconds",Math.max(3,Math.min(60,sec.intValue()))).apply();});
+    }
+    private void addProfileItem(LinearLayout parent,String icon,String text,View.OnClickListener click){LinearLayout r=new LinearLayout(this);r.setGravity(Gravity.CENTER_VERTICAL);r.setPadding(dp(14),0,dp(10),0);r.setBackground(bg(Color.WHITE,14));TextView i=tv(icon,22,DARK);i.setGravity(Gravity.CENTER);r.addView(i,new LinearLayout.LayoutParams(dp(55),dp(62)));TextView t=tv(text,18,DARK);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);r.addView(t,new LinearLayout.LayoutParams(0,dp(62),1));TextView a=tv("›",30,Color.GRAY);a.setGravity(Gravity.CENTER);r.addView(a,new LinearLayout.LayoutParams(dp(35),dp(62)));parent.addView(r,new LinearLayout.LayoutParams(-1,dp(62)));space(parent,1);r.setOnClickListener(click);}
+    private void showTransactionHistory(){getWindow().setStatusBarColor(BLUE);getWindow().setNavigationBarColor(Color.WHITE);LinearLayout main=new LinearLayout(this);main.setOrientation(LinearLayout.VERTICAL);main.setBackgroundColor(Color.rgb(247,248,250));setContentView(main);LinearLayout h=new LinearLayout(this);h.setGravity(Gravity.CENTER_VERTICAL);h.setBackgroundColor(BLUE);main.addView(h,new LinearLayout.LayoutParams(-1,dp(62)));TextView b=tv("‹",38,Color.WHITE);b.setGravity(Gravity.CENTER);h.addView(b,new LinearLayout.LayoutParams(dp(52),dp(62)));b.setOnClickListener(v->showHome());TextView t=tv(tx("লেনদেন","Transactions"),21,Color.WHITE);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);h.addView(t,new LinearLayout.LayoutParams(0,dp(62),1));ScrollView sc=new ScrollView(this);LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);list.setPadding(dp(12),dp(12),dp(12),dp(20));sc.addView(list);main.addView(sc,new LinearLayout.LayoutParams(-1,0,1));JSONArray a=panelArray("transaction_history");if(a.length()==0){TextView e=tv(tx("এখনও কোনো লেনদেন নেই","No transactions yet"),17,Color.GRAY);e.setGravity(Gravity.CENTER);list.addView(e,new LinearLayout.LayoutParams(-1,dp(100)));return;}for(int i=0;i<a.length();i++)try{JSONObject o=a.getJSONObject(i);String type=o.optString("type","Transaction"),detail=o.optString("detail",""),time=o.optString("time","");double amount=o.optDouble("amount",0);boolean credit=o.optBoolean("credit",false);LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(16),dp(12),dp(16),dp(12));c.setBackground(bg(Color.WHITE,16));LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.setMargins(0,0,0,dp(10));list.addView(c,cp);LinearLayout r=new LinearLayout(this);r.setGravity(Gravity.CENTER_VERTICAL);TextView tt=tv(type,16,DARK);tt.setTypeface(Typeface.DEFAULT,Typeface.BOLD);r.addView(tt,new LinearLayout.LayoutParams(0,dp(28),1));TextView am=tv((credit?"+ ":"- ")+String.format(Locale.getDefault(),"৳ %.2f",amount),16,credit?Color.rgb(30,150,80):Color.rgb(190,45,45));am.setTypeface(Typeface.DEFAULT,Typeface.BOLD);r.addView(am,new LinearLayout.LayoutParams(-2,dp(28)));c.addView(r);c.addView(tv(detail,13,Color.DKGRAY),new LinearLayout.LayoutParams(-1,dp(26)));c.addView(tv(time+"   •   SUCCESS",11,Color.GRAY),new LinearLayout.LayoutParams(-1,dp(22)));}catch(Exception ignored){}}
+    private void showProfile(){getWindow().setStatusBarColor(BLUE);getWindow().setNavigationBarColor(Color.WHITE);LinearLayout main=new LinearLayout(this);main.setOrientation(LinearLayout.VERTICAL);main.setBackgroundColor(Color.rgb(247,248,250));setContentView(main);LinearLayout h=new LinearLayout(this);h.setGravity(Gravity.CENTER_VERTICAL);h.setBackgroundColor(BLUE);main.addView(h,new LinearLayout.LayoutParams(-1,dp(62)));TextView title=tv(tx("প্রোফাইল","Profile"),24,Color.WHITE);title.setGravity(Gravity.CENTER);title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);h.addView(title,new LinearLayout.LayoutParams(0,dp(62),1));TextView out=tv("⇥",28,Color.WHITE);out.setGravity(Gravity.CENTER);h.addView(out,new LinearLayout.LayoutParams(dp(60),dp(62)));out.setOnClickListener(v->{pref.edit().putBoolean("logged_in",false).apply();showLogin();});ScrollView sc=new ScrollView(this);LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(16),dp(16),dp(16),dp(20));sc.addView(c);main.addView(sc,new LinearLayout.LayoutParams(-1,0,1));LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(20),dp(18),dp(20),dp(18));card.setBackground(bg(Color.WHITE,18));c.addView(card,new LinearLayout.LayoutParams(-1,-2));TextView n=tv(pref.getString("name","Rosy"),25,DARK);n.setTypeface(Typeface.DEFAULT,Typeface.BOLD);card.addView(n,new LinearLayout.LayoutParams(-1,dp(40)));card.addView(tv(pref.getString("phone",""),16,Color.GRAY),new LinearLayout.LayoutParams(-1,dp(30)));card.addView(tv("রেফার কোড: "+getInviteCode(),15,Color.DKGRAY),new LinearLayout.LayoutParams(-1,dp(30)));space(c,12);addProfileItem(c,"🛡",tx("পাসওয়ার্ড পরিবর্তন","Change Password"),v->showChangePassword());addProfileItem(c,"🛡",tx("পিন পরিবর্তন","Change PIN"),v->showChangePin());addProfileItem(c,"🎧",tx("কাস্টমার কেয়ার","Customer Care"),v->showCustomerCare());addProfileItem(c,"🌐",tx("আমাদের সম্পর্কে","About Us"),v->showAboutUs());TextView ver=tv("ভার্সন 1.0.0",15,Color.GRAY);ver.setGravity(Gravity.CENTER);c.addView(ver,new LinearLayout.LayoutParams(-1,dp(60)));}
+    private void showAboutUs(){getWindow().setStatusBarColor(BLUE);getWindow().setNavigationBarColor(Color.WHITE);LinearLayout main=new LinearLayout(this);main.setOrientation(LinearLayout.VERTICAL);main.setBackgroundColor(Color.rgb(247,248,250));setContentView(main);LinearLayout h=new LinearLayout(this);h.setGravity(Gravity.CENTER_VERTICAL);h.setBackgroundColor(BLUE);main.addView(h,new LinearLayout.LayoutParams(-1,dp(62)));TextView b=tv("‹",38,Color.WHITE);b.setGravity(Gravity.CENTER);h.addView(b,new LinearLayout.LayoutParams(dp(52),dp(62)));b.setOnClickListener(v->showProfile());TextView t=tv(tx("আমাদের সম্পর্কে","About Us"),21,Color.WHITE);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);h.addView(t,new LinearLayout.LayoutParams(0,dp(62),1));ScrollView sc=new ScrollView(this);LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(16),dp(16),dp(16),dp(30));sc.addView(c);main.addView(sc,new LinearLayout.LayoutParams(-1,0,1));String[] keys={"about_company_name","about_intro","about_status","about_license","about_registration","about_validity","about_address","about_phone","about_extra"};String[] labels={"প্রতিষ্ঠানের নাম","পরিচিতি","প্রতিষ্ঠানের ধরন/স্ট্যাটাস","লাইসেন্স তথ্য","রেজিস্ট্রেশন তথ্য","লাইসেন্স/রেজিস্ট্রেশনের মেয়াদ","ঠিকানা","যোগাযোগ","অতিরিক্ত তথ্য"};int added=0;for(int i=0;i<keys.length;i++){String v=pref.getString(keys[i],"");if(v.trim().isEmpty())continue;added++;TextView l=tv(labels[i],13,BLUE);l.setTypeface(Typeface.DEFAULT,Typeface.BOLD);c.addView(l,new LinearLayout.LayoutParams(-1,dp(26)));TextView val=tv(v,16,DARK);val.setPadding(dp(14),dp(12),dp(14),dp(12));val.setBackground(bg(Color.WHITE,14));c.addView(val,new LinearLayout.LayoutParams(-1,-2));space(c,10);}if(added==0){TextView v=tv(tx("আমাদের সম্পর্কে তথ্য Panel থেকে যোগ করা হবে।","About information will be provided from the panel."),16,Color.GRAY);c.addView(v,new LinearLayout.LayoutParams(-1,dp(100)));}}
+
+    /* =========================================================
        LOGIN
        ========================================================= */
 
@@ -310,11 +659,12 @@ public class MainActivity extends Activity {
 
         setContentView(scroll);
 
-        TextView lang = tv("বাংলা     EN",16,Color.WHITE);
+        TextView lang = tv(isEnglish()?"BN     English":"বাংলা     EN",16,Color.WHITE);
 
         lang.setGravity(Gravity.CENTER);
         lang.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
         lang.setBackground(bg(Color.rgb(55,130,205),40));
+        lang.setOnClickListener(v -> toggleLanguage());
 
         LinearLayout.LayoutParams lp =
                 new LinearLayout.LayoutParams(
@@ -436,32 +786,7 @@ public class MainActivity extends Activity {
                 return;
             }
 
-            String sp = pref.getString("phone","");
-            String sw = pref.getString("password","");
-
-            if (!sp.isEmpty() &&
-                    (!sp.equals(p) || !sw.equals(pw))) {
-
-                Toast.makeText(
-                        this,
-                        "ফোন নম্বর বা পাসওয়ার্ড সঠিক নয়",
-                        Toast.LENGTH_SHORT
-                ).show();
-
-                return;
-            }
-
-            pref.edit()
-                    .putString("phone",p)
-                    .putString("password",pw)
-                    .putBoolean("logged_in",true)
-                    .apply();
-
-            if (pref.getString("pin","").length() == 8) {
-                showHome();
-            } else {
-                showPinSetup();
-            }
+            startPhoneVerification(p, false, pref.getString("name", ""), pw);
         });
 
         TextView forgot =
@@ -903,17 +1228,7 @@ public class MainActivity extends Activity {
         parent.addView(b,p);
     }
 
-    private void nav(LinearLayout parent,String s) {
-
-        TextView n = tv(s,14,DARK);
-
-        n.setGravity(Gravity.CENTER);
-
-        parent.addView(
-                n,
-                new LinearLayout.LayoutParams(0,dp(58),1)
-        );
-    }
+    private void nav(LinearLayout parent,String s,View.OnClickListener click){TextView n=tv(s,14,DARK);n.setGravity(Gravity.CENTER);parent.addView(n,new LinearLayout.LayoutParams(0,dp(58),1));n.setOnClickListener(click);}
 
     /* =========================================================
        HOME
@@ -966,13 +1281,14 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(0,1,1)
         );
 
-        TextView en = tv("EN",15,Color.WHITE);
+        TextView en = tv(isEnglish()?"BN":"EN",15,Color.WHITE);
         en.setGravity(Gravity.CENTER);
 
         top.addView(
                 en,
                 new LinearLayout.LayoutParams(dp(38),dp(45))
         );
+        en.setOnClickListener(v -> toggleLanguage());
 
         TextView bell = tv("🔔",19,Color.WHITE);
         bell.setGravity(Gravity.CENTER);
@@ -982,22 +1298,6 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(dp(42),dp(45))
         );
 
-        TextView out = tv("⇥",25,Color.WHITE);
-        out.setGravity(Gravity.CENTER);
-
-        top.addView(
-                out,
-                new LinearLayout.LayoutParams(dp(42),dp(45))
-        );
-
-        out.setOnClickListener(v -> {
-
-            pref.edit()
-                    .putBoolean("logged_in",false)
-                    .apply();
-
-            showLogin();
-        });
 
         LinearLayout user = new LinearLayout(this);
         user.setGravity(Gravity.CENTER_VERTICAL);
@@ -1022,9 +1322,9 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(0,dp(62),1)
         );
 
-        TextView bal =
+        final TextView bal =
                 tv(
-                        "Main Balance  ৳ ১২,৫০০\nDrive Balance  ৳ ১৮০",
+                        "",
                         12,
                         DARK
                 );
@@ -1033,27 +1333,34 @@ public class MainActivity extends Activity {
         bal.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
         bal.setBackground(bg(YELLOW,30));
 
+        final boolean[] balanceVisible = {pref.getBoolean("balance_visible", false)};
+
+        Runnable refreshBalance = () -> {
+            if (balanceVisible[0]) {
+                bal.setText(
+                        "Main Balance  ৳ " + formatMoney(getMainBalance())
+                                + "\nDrive Balance  ৳ " + formatMoney(getDriveBalance())
+                                + "  👁"
+                );
+            } else {
+                bal.setText("Main Balance  • • • •  /  Drive Balance  • • • •  👁");
+            }
+        };
+
+        refreshBalance.run();
+
+        bal.setOnClickListener(v -> {
+            balanceVisible[0] = !balanceVisible[0];
+            pref.edit().putBoolean("balance_visible", balanceVisible[0]).apply();
+            refreshBalance.run();
+        });
+
         user.addView(
                 bal,
                 new LinearLayout.LayoutParams(dp(190),dp(56))
         );
 
-        TextView notice =
-                tv(
-                        "●  সর্বশেষ আপডেট: Quick Pay-এ স্বাগতম",
-                        12,
-                        Color.DKGRAY
-                );
-
-        notice.setGravity(Gravity.CENTER_VERTICAL);
-        notice.setPadding(dp(10),0,dp(5),0);
-        notice.setSingleLine(true);
-        notice.setBackground(bg(Color.WHITE,12));
-
-        header.addView(
-                notice,
-                new LinearLayout.LayoutParams(-1,dp(38))
-        );
+        addLiveActivityTicker(header);
 
         LinearLayout services = new LinearLayout(this);
 
@@ -1086,55 +1393,12 @@ public class MainActivity extends Activity {
         service(r,"▶","ভিডিও\nটিউটোরিয়াল");
         service(r,"👥","কন্টাক্ট\nআস");
 
-        LinearLayout bonus = new LinearLayout(this);
-
-        bonus.setOrientation(LinearLayout.VERTICAL);
-        bonus.setPadding(dp(10),dp(2),dp(10),dp(3));
-        bonus.setBackground(bg(GREEN,16));
-
-        main.addView(
-                bonus,
-                new LinearLayout.LayoutParams(-1,dp(98))
-        );
-
-        TextView bt =
-                tv(
-                        "🎁  ডিপোজিট বোনাস অফার",
-                        18,
-                        Color.WHITE
-                );
-
-        bt.setGravity(Gravity.CENTER_VERTICAL);
-        bt.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
-
-        bonus.addView(
-                bt,
-                new LinearLayout.LayoutParams(-1,dp(32))
-        );
-
-        TextView bs =
-                tv(
-                        "এখনই করুন, বোনাস নিয়ে নিন!",
-                        11,
-                        Color.WHITE
-                );
-
-        bonus.addView(
-                bs,
-                new LinearLayout.LayoutParams(-1,dp(20))
-        );
-
-        LinearLayout bb = new LinearLayout(this);
-        bb.setGravity(Gravity.CENTER);
-
-        bonus.addView(
-                bb,
-                new LinearLayout.LayoutParams(-1,dp(42))
-        );
-
-        bonusBox(bb,"৳ ৫০০","বোনাস ৳ ৫০");
-        bonusBox(bb,"৳ ১০০০","বোনাস ৳ ১০০");
-        bonusBox(bb,"৳ ২০০০","বোনাস ৳ ২০০");
+        String bannerUri=pref.getString("deposit_banner_uri","");
+        if(!bannerUri.isEmpty()){
+            ImageView iv=new ImageView(this);iv.setScaleType(ImageView.ScaleType.CENTER_CROP);try{iv.setImageURI(Uri.parse(bannerUri));}catch(Exception ignored){}main.addView(iv,new LinearLayout.LayoutParams(-1,dp(118)));iv.setOnClickListener(v->{String action=pref.getString("deposit_banner_action","");if(!action.isEmpty())openExternal(action);});
+        }else{
+            LinearLayout bonus=new LinearLayout(this);bonus.setOrientation(LinearLayout.VERTICAL);bonus.setPadding(dp(10),dp(2),dp(10),dp(3));bonus.setBackground(bg(GREEN,16));main.addView(bonus,new LinearLayout.LayoutParams(-1,dp(98)));TextView bt=tv(tx("🎁  ডিপোজিট বোনাস অফার","🎁  Deposit Bonus Offer"),18,Color.WHITE);bt.setGravity(Gravity.CENTER_VERTICAL);bt.setTypeface(Typeface.DEFAULT,Typeface.BOLD);bonus.addView(bt,new LinearLayout.LayoutParams(-1,dp(32)));TextView bs=tv(tx("এখনই করুন, বোনাস নিয়ে নিন!","Deposit now and get bonus!"),11,Color.WHITE);bonus.addView(bs,new LinearLayout.LayoutParams(-1,dp(20)));LinearLayout bb=new LinearLayout(this);bb.setGravity(Gravity.CENTER);bonus.addView(bb,new LinearLayout.LayoutParams(-1,dp(42)));bonusBox(bb,panelText("deposit_bonus_1_amount","৳ ৫০০"),panelText("deposit_bonus_1_bonus","বোনাস ৳ ৫০"));bonusBox(bb,panelText("deposit_bonus_2_amount","৳ ১০০০"),panelText("deposit_bonus_2_bonus","বোনাস ৳ ১০০"));bonusBox(bb,panelText("deposit_bonus_3_amount","৳ ২০০০"),panelText("deposit_bonus_3_bonus","বোনাস ৳ ২০০"));
+        }
 
         LinearLayout bottom = new LinearLayout(this);
 
@@ -1146,9 +1410,9 @@ public class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(-1,dp(58))
         );
 
-        nav(bottom,"⌂\nহোম");
-        nav(bottom,"◷\nলেনদেন");
-        nav(bottom,"♙\nপ্রোফাইল");
+        nav(bottom,"⌂\n"+tx("হোম","Home"),v->showHome());
+        nav(bottom,"◷\n"+tx("লেনদেন","Transactions"),v->showTransactionHistory());
+        nav(bottom,"♙\n"+tx("প্রোফাইল","Profile"),v->showProfile());
     }
 
     /* =========================================================
@@ -1966,6 +2230,9 @@ public class MainActivity extends Activity {
                 return;
             }
 
+            final String finalBillNumber = number;
+            final String finalBillMoney = money;
+
             new AlertDialog.Builder(this)
                     .setTitle(
                             "বিল পেমেন্ট নিশ্চিত করুন"
@@ -1991,6 +2258,8 @@ public class MainActivity extends Activity {
                             "নিশ্চিত করুন",
                             (dialog,which) -> {
 
+                                if (transactionBlockedFor(Double.parseDouble(finalBillMoney))) return;
+                                Map<String,Object> req = new HashMap<>(); req.put("billType", selectedBillType); req.put("billNumber", finalBillNumber); req.put("amount", Double.parseDouble(finalBillMoney)); submitFirestoreRequest("billPayRequests", req); recordTransaction("বিল পে",selectedBillType+" / "+finalBillNumber,Double.parseDouble(finalBillMoney),false,"PENDING");
                                 Toast.makeText(
                                         this,
                                         selectedBillType
@@ -2083,6 +2352,15 @@ public class MainActivity extends Activity {
     /* =========================================================
        BILL BALANCE
        ========================================================= */
+
+    private double getDriveBalance() {
+        String saved = pref.getString("drive_balance", "0");
+        try {
+            return Double.parseDouble(saved);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
 
     private double getMainBalance() {
 
@@ -2235,6 +2513,7 @@ public class MainActivity extends Activity {
     }
 
     private void showInviteBonus() {
+        syncInviteBonusTransaction();
 
         getWindow().setStatusBarColor(BLUE);
         getWindow().setNavigationBarColor(Color.WHITE);
@@ -2580,6 +2859,8 @@ public class MainActivity extends Activity {
         );
     }
 
+    private void syncInviteBonusTransaction(){try{double earned=getInviteEarned();double recorded=Double.parseDouble(pref.getString("invite_earned_recorded","0"));if(earned>recorded){recordTransaction("ইনভাইট বোনাস","Invite Bonus",earned-recorded,true);pref.edit().putString("invite_earned_recorded",String.valueOf(earned)).apply();}}catch(Exception ignored){}}
+
     private void showInviteHistory() {
 
         getWindow().setStatusBarColor(BLUE);
@@ -2863,7 +3144,7 @@ public class MainActivity extends Activity {
         header.addView(back,new LinearLayout.LayoutParams(dp(52),dp(62)));
         back.setOnClickListener(v -> showHome());
 
-        TextView title = tv("বিশেষ অফার",21,Color.WHITE);
+        TextView title = tv(tx("বিশেষ অফার","Special Offers"),21,Color.WHITE);
         title.setGravity(Gravity.CENTER);
         title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
         header.addView(title,new LinearLayout.LayoutParams(0,dp(62),1));
@@ -2876,70 +3157,229 @@ public class MainActivity extends Activity {
         scroll.addView(content);
         main.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
 
-        TextView intro = tv("📱  সিমের বিশেষ অফার",18,DARK);
+        TextView intro = tv(tx("অফার নির্বাচন করুন","Select Offer"),18,DARK);
         intro.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
-        intro.setPadding(dp(4),dp(2),dp(4),dp(10));
-        content.addView(intro,new LinearLayout.LayoutParams(-1,dp(45)));
+        intro.setPadding(dp(4),0,dp(4),dp(10));
+        content.addView(intro,new LinearLayout.LayoutParams(-1,dp(42)));
 
-        JSONArray offers = getSpecialOfferData();
-        String[] operators = {"গ্রামীণফোন","বাংলালিংক","Airtel","Robi","Teletalk"};
+        final String[] operators = {"গ্রামীণফোন","বাংলালিংক","Robi","Airtel","Teletalk"};
+        final JSONArray offers = getSpecialOfferData();
 
-        for (String operator : operators) {
-            boolean hasOffer = false;
+        HorizontalScrollView opScroll = new HorizontalScrollView(this);
+        opScroll.setHorizontalScrollBarEnabled(false);
+        LinearLayout opRow = new LinearLayout(this);
+        opRow.setPadding(dp(2),0,dp(2),dp(8));
+        opScroll.addView(opRow);
+        content.addView(opScroll,new LinearLayout.LayoutParams(-1,dp(66)));
+
+        LinearLayout offerList = new LinearLayout(this);
+        offerList.setOrientation(LinearLayout.VERTICAL);
+        content.addView(offerList,new LinearLayout.LayoutParams(-1,-2));
+
+        final TextView[] tabs = new TextView[operators.length];
+
+        Runnable[] render = new Runnable[1];
+        final String[] selected = {operators[0]};
+
+        render[0] = () -> {
+            offerList.removeAllViews();
+
+            TextView selectedLabel = tv(
+                    tx("অফার নির্বাচন করুন","Choose an offer"),
+                    16,
+                    DARK
+            );
+            selectedLabel.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+            selectedLabel.setPadding(dp(4),dp(2),dp(4),dp(10));
+            offerList.addView(selectedLabel,new LinearLayout.LayoutParams(-1,dp(38)));
+
+            int count = 0;
+
             for (int i=0;i<offers.length();i++) {
-                JSONObject o=offers.optJSONObject(i);
-                if (o!=null && offerVisible(o) && operator.equalsIgnoreCase(offerText(o,"operator"))) { hasOffer=true; break; }
-            }
-            if (!hasOffer) continue;
+                JSONObject o = offers.optJSONObject(i);
+                if (o == null || !offerVisible(o)) continue;
 
-            TextView opTitle = tv(operator,18,BLUE);
-            opTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
-            opTitle.setPadding(dp(4),dp(8),dp(4),dp(8));
-            content.addView(opTitle,new LinearLayout.LayoutParams(-1,dp(42)));
+                String operator = offerText(o,"operator");
+                if (!selected[0].equalsIgnoreCase(operator)) continue;
 
-            for (int i=0;i<offers.length();i++) {
-                JSONObject o=offers.optJSONObject(i);
-                if (o==null || !offerVisible(o) || !operator.equalsIgnoreCase(offerText(o,"operator"))) continue;
+                count++;
 
                 LinearLayout card = new LinearLayout(this);
                 card.setOrientation(LinearLayout.VERTICAL);
-                card.setPadding(dp(15),dp(13),dp(15),dp(13));
-                card.setBackground(bg(Color.WHITE,16));
-                LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);
+                card.setPadding(dp(16),dp(14),dp(16),dp(14));
+                card.setBackground(outline(Color.WHITE,Color.rgb(225,228,232),16));
+
+                LinearLayout.LayoutParams cp =
+                        new LinearLayout.LayoutParams(-1,-2);
                 cp.setMargins(0,0,0,dp(10));
-                content.addView(card,cp);
+                offerList.addView(card,cp);
 
-                String logo=offerText(o,"logo");
-                TextView name=tv((logo.isEmpty()?"📱  ":logo+"  ")+operator,16,DARK);
+                String logo = offerText(o,"logo");
+                String offerName = offerText(o,"offer_name");
+                TextView name = tv(
+                        (logo.isEmpty() ? "📱 " : logo+"  ")
+                                + (offerName.isEmpty() ? selected[0] : offerName),
+                        17,
+                        DARK
+                );
                 name.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
-                card.addView(name);
+                card.addView(name,new LinearLayout.LayoutParams(-1,dp(32)));
 
-                String data=offerText(o,"data"), minutes=offerText(o,"minutes"), sms=offerText(o,"sms");
-                if(!data.isEmpty()) { TextView x=tv("📶  "+data,15,DARK); x.setPadding(0,dp(9),0,0); card.addView(x); }
-                if(!minutes.isEmpty()) { TextView x=tv("📞  "+minutes,15,DARK); x.setPadding(0,dp(5),0,0); card.addView(x); }
-                if(!sms.isEmpty()) { TextView x=tv("✉  "+sms,15,DARK); x.setPadding(0,dp(5),0,0); card.addView(x); }
+                String data = offerText(o,"data");
+                String minutes = offerText(o,"minutes");
+                String sms = offerText(o,"sms");
+                String price = offerText(o,"price");
+                String bonus = offerText(o,"bonus");
+                String validity = offerText(o,"validity");
+                String description = offerText(o,"description");
 
-                String price=offerText(o,"price"), bonus=offerText(o,"bonus"), validity=offerText(o,"validity"), description=offerText(o,"description");
-                if(!price.isEmpty()) { TextView x=tv("মূল্য: ৳ "+price,16,BLUE); x.setTypeface(Typeface.DEFAULT,Typeface.BOLD); x.setPadding(0,dp(9),0,0); card.addView(x); }
-                if(!bonus.isEmpty() && !bonus.equals("0")) { TextView x=tv("🎁 বোনাস: ৳ "+bonus,15,GREEN); x.setTypeface(Typeface.DEFAULT,Typeface.BOLD); x.setPadding(0,dp(5),0,0); card.addView(x); }
-                if(!validity.isEmpty()) { TextView x=tv("মেয়াদ: "+validity,14,Color.DKGRAY); x.setPadding(0,dp(5),0,0); card.addView(x); }
-                if(!description.isEmpty()) { TextView x=tv(description,13,Color.GRAY); x.setPadding(0,dp(7),0,dp(7)); card.addView(x); }
+                StringBuilder mainLine = new StringBuilder();
+                if (!data.isEmpty()) mainLine.append(data);
+                if (!minutes.isEmpty()) {
+                    if (mainLine.length() > 0) mainLine.append("  ");
+                    mainLine.append(minutes);
+                }
+                if (!sms.isEmpty()) {
+                    if (mainLine.length() > 0) mainLine.append("  ");
+                    mainLine.append(sms);
+                }
 
-                TextView take=button("অফার নিন",GREEN,Color.WHITE);
-                card.addView(take,new LinearLayout.LayoutParams(-1,dp(50)));
+                if (mainLine.length() > 0) {
+                    TextView x = tv(mainLine.toString(),16,DARK);
+                    x.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+                    card.addView(x,new LinearLayout.LayoutParams(-1,dp(34)));
+                }
+
+                if (!validity.isEmpty()) {
+                    TextView x = tv(
+                            tx("মেয়াদ: ","Validity: ") + validity,
+                            14,
+                            Color.DKGRAY
+                    );
+                    card.addView(x,new LinearLayout.LayoutParams(-1,dp(26)));
+                }
+
+                LinearLayout priceRow = new LinearLayout(this);
+                priceRow.setGravity(Gravity.CENTER_VERTICAL);
+
+                if (!price.isEmpty()) {
+                    TextView x = tv("৳ "+price,19,BLUE);
+                    x.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+                    priceRow.addView(x,new LinearLayout.LayoutParams(0,dp(34),1));
+                } else {
+                    priceRow.addView(new Space(this),new LinearLayout.LayoutParams(0,dp(34),1));
+                }
+
+                if (!bonus.isEmpty() && !bonus.equals("0")) {
+                    TextView x = tv(
+                            tx("বোনাস ৳ "+bonus,"Bonus ৳ "+bonus),
+                            14,
+                            GREEN
+                    );
+                    x.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+                    priceRow.addView(x,new LinearLayout.LayoutParams(-2,dp(34)));
+                }
+
+                card.addView(priceRow);
+
+                if (!description.isEmpty()) {
+                    TextView x = tv(description,13,Color.GRAY);
+                    x.setPadding(0,dp(4),0,dp(7));
+                    card.addView(x,new LinearLayout.LayoutParams(-1,-2));
+                }
+
+                TextView take = button(
+                        tx("অফার নিন","Get Offer"),
+                        GREEN,
+                        Color.WHITE
+                );
+                card.addView(take,new LinearLayout.LayoutParams(-1,dp(48)));
+
+                final String fOperator = selected[0];
+                final String fData = data;
+                final String fMinutes = minutes;
+                final String fPrice = price;
+                final String fBonus = bonus;
+                final String fValidity = validity;
+
                 take.setOnClickListener(v -> {
-                    String msg="অপারেটর: "+operator
-                            +(data.isEmpty()?"":"\n"+data)
-                            +(minutes.isEmpty()?"":"\n"+minutes)
-                            +(sms.isEmpty()?"":"\n"+sms)
-                            +(price.isEmpty()?"":"\nমূল্য: ৳ "+price)
-                            +(bonus.isEmpty()||bonus.equals("0")?"":"\nবোনাস: ৳ "+bonus)
-                            +(validity.isEmpty()?"":"\nমেয়াদ: "+validity);
-                    new AlertDialog.Builder(this).setTitle("অফার").setMessage(msg)
-                            .setNegativeButton("বন্ধ",null).setPositiveButton("ঠিক আছে",null).show();
+                    double amount = 0;
+                    try { amount = Double.parseDouble(fPrice); }
+                    catch (Exception ignored) {}
+
+                    if (transactionBlockedFor(amount)) return;
+                    Map<String,Object> offerReq = new HashMap<>();
+                    offerReq.put("offer", fOperator); offerReq.put("data", fData); offerReq.put("minutes", fMinutes); offerReq.put("price", amount); offerReq.put("bonus", fBonus); offerReq.put("validity", fValidity);
+                    submitFirestoreRequest("specialOfferRequests", offerReq);
+                    recordTransaction(
+                            "বিশেষ অফার",
+                            fOperator+" / "+fData+" / "+fMinutes,
+                            amount,
+                            false,
+                            "PENDING"
+                    );
+
+                    String msg = fOperator
+                            + (fData.isEmpty() ? "" : "\n"+fData)
+                            + (fMinutes.isEmpty() ? "" : "\n"+fMinutes)
+                            + (fPrice.isEmpty() ? "" : "\nমূল্য: ৳ "+fPrice)
+                            + (fBonus.isEmpty() || fBonus.equals("0") ? "" : "\nবোনাস: ৳ "+fBonus)
+                            + (fValidity.isEmpty() ? "" : "\nমেয়াদ: "+fValidity);
+
+                    new AlertDialog.Builder(this)
+                            .setTitle(tx("অফার","Offer"))
+                            .setMessage(msg)
+                            .setNegativeButton(tx("বন্ধ","Close"),null)
+                            .setPositiveButton(tx("ঠিক আছে","OK"),null)
+                            .show();
                 });
             }
+
+            if (count == 0) {
+                TextView empty = tv(
+                        tx("এই অপারেটরের কোনো অফার নেই","No offers available for this operator"),
+                        15,
+                        Color.GRAY
+                );
+                empty.setGravity(Gravity.CENTER);
+                offerList.addView(empty,new LinearLayout.LayoutParams(-1,dp(90)));
+            }
+        };
+
+        for (int i=0;i<operators.length;i++) {
+            final int index = i;
+            TextView tab = tv(operators[i],14,DARK);
+            tab.setGravity(Gravity.CENTER);
+            tab.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+            tab.setPadding(dp(14),0,dp(14),0);
+            opRow.addView(
+                    tab,
+                    new LinearLayout.LayoutParams(dp(118),dp(48))
+            );
+            tabs[i] = tab;
+
+            tab.setOnClickListener(v -> {
+                selected[0] = operators[index];
+                for (int j=0;j<tabs.length;j++) {
+                    if (j == index) {
+                        tabs[j].setTextColor(BLUE);
+                        tabs[j].setBackground(outline(Color.WHITE,BLUE,22));
+                    } else {
+                        tabs[j].setTextColor(DARK);
+                        tabs[j].setBackground(bg(Color.WHITE,22));
+                    }
+                }
+                render[0].run();
+            });
         }
+
+        tabs[0].setTextColor(BLUE);
+        tabs[0].setBackground(outline(Color.WHITE,BLUE,22));
+        for (int i=1;i<tabs.length;i++) {
+            tabs[i].setBackground(bg(Color.WHITE,22));
+        }
+
+        render[0].run();
     }
 
     /* =========================================================
@@ -3252,51 +3692,41 @@ public class MainActivity extends Activity {
        ========================================================= */
 
     private void saveChatMessage(String text) {
+        String name = pref.getString("name","Rosy");
+        String time = new SimpleDateFormat("hh:mm a", Locale.getDefault()).format(new Date());
 
+        // Keep the sender's own pending message visible locally.
         try {
-
-            String old =
-                    pref.getString(
-                            "group_chat_messages",
-                            "[]"
-                    );
-
-            JSONArray array = new JSONArray(old);
-
+            JSONArray array = new JSONArray(pref.getString("group_chat_messages","[]"));
             JSONObject object = new JSONObject();
-
-            object.put(
-                    "name",
-                    pref.getString("name","Rosy")
-            );
-
-            object.put("message",text);
-
-            object.put(
-                    "time",
-                    new SimpleDateFormat(
-                            "hh:mm a",
-                            Locale.getDefault()
-                    ).format(new Date())
-            );
-
+            object.put("name", name);
+            object.put("message", text);
+            object.put("time", time);
+            object.put("status", "PENDING");
             array.put(object);
+            pref.edit().putString("group_chat_messages", array.toString()).apply();
+        } catch (Exception ignored) {}
 
-            pref.edit()
-                    .putString(
-                            "group_chat_messages",
-                            array.toString()
-                    )
-                    .apply();
-
-        } catch (Exception e) {
-
-            Toast.makeText(
-                    this,
-                    "মেসেজ সেভ করা যায়নি",
-                    Toast.LENGTH_SHORT
-            ).show();
+        if (!firebaseReady || firestore == null || firebaseUid().isEmpty()) {
+            Toast.makeText(this,"Firebase সংযোগ নেই। মেসেজটি শুধু এই ফোনে আছে।",Toast.LENGTH_SHORT).show();
+            return;
         }
+
+        Map<String,Object> object = new HashMap<>();
+        object.put("uid", firebaseUid());
+        object.put("name", name);
+        object.put("phone", pref.getString("phone", ""));
+        object.put("message", text);
+        object.put("status", "PENDING");
+        object.put("createdAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
+
+        firestore.collection("groupChatMessages").add(object)
+                .addOnSuccessListener(v -> Toast.makeText(this,
+                        "মেসেজ পাঠানো হয়েছে। অ্যাডমিন অনুমোদনের পর সবাই দেখতে পাবে।",
+                        Toast.LENGTH_SHORT).show())
+                .addOnFailureListener(e -> Toast.makeText(this,
+                        "মেসেজ সার্ভারে পাঠানো যায়নি।",
+                        Toast.LENGTH_SHORT).show());
     }
 
     /* =========================================================
@@ -3307,142 +3737,73 @@ public class MainActivity extends Activity {
             LinearLayout chatBox,
             ScrollView scroll) {
 
-        chatBox.removeAllViews();
-
-        try {
-
-            String data =
-                    pref.getString(
-                            "group_chat_messages",
-                            "[]"
-                    );
-
-            JSONArray array = new JSONArray(data);
-
-            if (array.length() == 0) {
-
-                LinearLayout empty =
-                        new LinearLayout(this);
-
-                empty.setOrientation(
-                        LinearLayout.VERTICAL
-                );
-
-                empty.setGravity(Gravity.CENTER);
-                empty.setPadding(dp(20),dp(60),dp(20),dp(60));
-
-                TextView icon = tv("💬",48,BLUE);
-                icon.setGravity(Gravity.CENTER);
-
-                empty.addView(
-                        icon,
-                        new LinearLayout.LayoutParams(
-                                -1,
-                                dp(70)
-                        )
-                );
-
-                TextView title =
-                        tv(
-                                "গ্রুপ চ্যাটে স্বাগতম",
-                                21,
-                                BLUE
-                        );
-
-                title.setGravity(Gravity.CENTER);
-                title.setTypeface(
-                        Typeface.DEFAULT,
-                        Typeface.BOLD
-                );
-
-                empty.addView(
-                        title,
-                        new LinearLayout.LayoutParams(
-                                -1,
-                                dp(40)
-                        )
-                );
-
-                TextView sub =
-                        tv(
-                                "প্রথম মেসেজটি আপনিই পাঠান।",
-                                15,
-                                Color.DKGRAY
-                        );
-
-                sub.setGravity(Gravity.CENTER);
-
-                empty.addView(
-                        sub,
-                        new LinearLayout.LayoutParams(
-                                -1,
-                                dp(35)
-                        )
-                );
-
-                chatBox.addView(
-                        empty,
-                        new LinearLayout.LayoutParams(
-                                -1,
-                                -2
-                        )
-                );
-
-            } else {
-
-                for (int i = 0; i < array.length(); i++) {
-
-                    JSONObject object =
-                            array.getJSONObject(i);
-
-                    String name =
-                            object.optString(
-                                    "name",
-                                    "User"
-                            );
-
-                    String message =
-                            object.optString(
-                                    "message",
-                                    ""
-                            );
-
-                    String time =
-                            object.optString(
-                                    "time",
-                                    ""
-                            );
-
-                    addChatMessage(
-                            chatBox,
-                            name,
-                            message,
-                            time
-                    );
-                }
-            }
-
-        } catch (Exception e) {
-
-            TextView error =
-                    tv(
-                            "চ্যাট লোড করা যায়নি",
-                            16,
-                            Color.RED
-                    );
-
-            error.setGravity(Gravity.CENTER);
-
-            chatBox.addView(
-                    error,
-                    new LinearLayout.LayoutParams(-1,dp(60))
-            );
+        if (!firebaseReady || firestore == null || firebaseUid().isEmpty()) {
+            loadLocalChatMessages(chatBox, scroll);
+            return;
         }
 
-        chatBox.postDelayed(
-                () -> scroll.fullScroll(ScrollView.FOCUS_DOWN),
-                100
-        );
+        if (chatListener != null) chatListener.remove();
+
+        chatListener = firestore.collection("groupChatMessages")
+                .whereEqualTo("status", "APPROVED")
+                .addSnapshotListener((snap, error) -> {
+                    if (error != null || snap == null) {
+                        loadLocalChatMessages(chatBox, scroll);
+                        return;
+                    }
+                    chatBox.removeAllViews();
+                    if (snap.isEmpty()) {
+                        addChatEmptyState(chatBox);
+                    } else {
+                        for (DocumentSnapshot doc : snap.getDocuments()) {
+                            addChatMessage(chatBox,
+                                    doc.getString("name") == null ? "User" : doc.getString("name"),
+                                    doc.getString("message") == null ? "" : doc.getString("message"),
+                                    formatFirestoreTime(doc));
+                        }
+                    }
+                    chatBox.postDelayed(() -> scroll.fullScroll(ScrollView.FOCUS_DOWN), 100);
+                });
+    }
+
+    private String formatFirestoreTime(DocumentSnapshot doc) {
+        try {
+            com.google.firebase.Timestamp ts = doc.getTimestamp("createdAt");
+            if (ts != null) return new SimpleDateFormat("hh:mm a", Locale.getDefault()).format(ts.toDate());
+        } catch (Exception ignored) {}
+        return "";
+    }
+
+    private void addChatEmptyState(LinearLayout chatBox) {
+        LinearLayout empty = new LinearLayout(this);
+        empty.setOrientation(LinearLayout.VERTICAL);
+        empty.setGravity(Gravity.CENTER);
+        empty.setPadding(dp(20),dp(60),dp(20),dp(60));
+        TextView icon = tv("💬",48,BLUE); icon.setGravity(Gravity.CENTER);
+        empty.addView(icon,new LinearLayout.LayoutParams(-1,dp(70)));
+        TextView title = tv("গ্রুপ চ্যাটে স্বাগতম",21,BLUE);
+        title.setGravity(Gravity.CENTER); title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        empty.addView(title,new LinearLayout.LayoutParams(-1,dp(40)));
+        TextView sub = tv("অ্যাডমিন অনুমোদিত মেসেজ এখানে দেখা যাবে।",15,Color.DKGRAY);
+        sub.setGravity(Gravity.CENTER);
+        empty.addView(sub,new LinearLayout.LayoutParams(-1,dp(45)));
+        chatBox.addView(empty,new LinearLayout.LayoutParams(-1,-2));
+    }
+
+    private void loadLocalChatMessages(LinearLayout chatBox, ScrollView scroll) {
+        chatBox.removeAllViews();
+        try {
+            JSONArray array = new JSONArray(pref.getString("group_chat_messages","[]"));
+            if (array.length() == 0) {
+                addChatEmptyState(chatBox);
+            } else {
+                for (int i=0;i<array.length();i++) {
+                    JSONObject object=array.getJSONObject(i);
+                    addChatMessage(chatBox,object.optString("name","User"),object.optString("message",""),object.optString("time",""));
+                }
+            }
+        } catch(Exception e) { addChatEmptyState(chatBox); }
+        chatBox.postDelayed(() -> scroll.fullScroll(ScrollView.FOCUS_DOWN),100);
     }
 
     /* =========================================================
@@ -3747,6 +4108,8 @@ public class MainActivity extends Activity {
 
     private void showAutoDeposit() {
 
+        refreshPaymentNumbers();
+
         getWindow().setStatusBarColor(BLUE);
         getWindow().setNavigationBarColor(Color.WHITE);
 
@@ -3948,6 +4311,9 @@ public class MainActivity extends Activity {
                 return;
             }
 
+            final String finalDepositMoney = money;
+            final String finalDepositTransaction = transaction;
+
             new AlertDialog.Builder(this)
                     .setTitle("ডিপোজিট সাবমিট")
                     .setMessage(
@@ -3962,12 +4328,7 @@ public class MainActivity extends Activity {
                             "সাবমিট",
                             (dialog,which) -> {
 
-                                String method = "";
-                                submitDepositRequestToFirebase(
-                                        money,
-                                        transaction,
-                                        method
-                                );
+                                submitDepositRequestToFirebase(Double.parseDouble(finalDepositMoney), finalDepositTransaction);
 
                                 amount.setText("");
                                 trx.setText("");
@@ -3986,6 +4347,9 @@ public class MainActivity extends Activity {
             String name,
             String subtitle,
             String number) {
+
+        String adminNumber = paymentNumberFor(name);
+        if (!adminNumber.isEmpty()) number = adminNumber;
 
         LinearLayout card = new LinearLayout(this);
 
@@ -4401,6 +4765,10 @@ public class MainActivity extends Activity {
                         )
                                 + "ট্রান্সফার তথ্যগুলো সঠিক কিনা যাচাই করুন।";
 
+                final String finalBankName = bankName;
+                final String finalAccountNumber = accountNumber;
+                final String finalAmountValue = amountValue;
+
                 new AlertDialog.Builder(this)
                         .setTitle("ব্যাংক ট্রান্সফার নিশ্চিত করুন")
                         .setMessage(message)
@@ -4409,6 +4777,8 @@ public class MainActivity extends Activity {
                                 "নিশ্চিত",
                                 (dialog,which) -> {
 
+                                    if (transactionBlockedFor(Double.parseDouble(finalAmountValue))) return;
+                                    Map<String,Object> req = new HashMap<>(); req.put("bank", finalBankName); req.put("accountNumber", finalAccountNumber); req.put("amount", Double.parseDouble(finalAmountValue)); req.put("holderName", holder.getText().toString().trim()); req.put("branch", branch.getText().toString().trim()); req.put("reference", reference.getText().toString().trim()); submitFirestoreRequest("bankTransferRequests", req); recordTransaction("ব্যাংক ট্রান্সফার",finalBankName+" / "+finalAccountNumber,Double.parseDouble(finalAmountValue),false,"PENDING");
                                     Toast.makeText(
                                             this,
                                             "ব্যাংক ট্রান্সফার রিকোয়েস্ট গ্রহণ করা হয়েছে।",
@@ -4798,6 +5168,9 @@ public class MainActivity extends Activity {
                     return;
                 }
 
+                final String finalSendNumber = num;
+                final String finalSendMoney = money;
+
                 new AlertDialog.Builder(this)
                         .setTitle("টাকা পাঠানো নিশ্চিত করুন")
                         .setMessage(
@@ -4817,6 +5190,8 @@ public class MainActivity extends Activity {
                                 "নিশ্চিত",
                                 (dialog,which) -> {
 
+                                    if (transactionBlockedFor(Double.parseDouble(finalSendMoney))) return;
+                                    Map<String,Object> req = new HashMap<>(); req.put("method", selectedMobileProvider); req.put("accountType", selectedAccountType); req.put("destinationNumber", finalSendNumber); req.put("amount", Double.parseDouble(finalSendMoney)); submitFirestoreRequest("mobileBankingRequests", req); recordTransaction("মোবাইল ব্যাংকিং",selectedMobileProvider+" / "+finalSendNumber,Double.parseDouble(finalSendMoney),false,"PENDING");
                                     Toast.makeText(
                                             this,
                                             selectedMobileProvider
@@ -5415,6 +5790,9 @@ public class MainActivity extends Activity {
                                 ? "প্রিপেইড"
                                 : "পোস্টপেইড";
 
+                final String finalRechargeNumber = num;
+                final String finalRechargeMoney = money;
+
                 new AlertDialog.Builder(this)
                         .setTitle("রিচার্জ নিশ্চিত করুন")
                         .setMessage(
@@ -5434,6 +5812,8 @@ public class MainActivity extends Activity {
                                 "নিশ্চিত",
                                 (dialog,which) -> {
 
+                                    if (transactionBlockedFor(Double.parseDouble(finalRechargeMoney))) return;
+                                    Map<String,Object> req = new HashMap<>(); req.put("operator", selectedRechargeOperator); req.put("destinationNumber", finalRechargeNumber); req.put("amount", Double.parseDouble(finalRechargeMoney)); req.put("rechargeType", rechargeType); submitFirestoreRequest("rechargeRequests", req); recordTransaction("মোবাইল রিচার্জ",selectedRechargeOperator+" / "+finalRechargeNumber,Double.parseDouble(finalRechargeMoney),false,"PENDING");
                                     Toast.makeText(
                                             this,
                                             selectedRechargeOperator
@@ -5800,6 +6180,9 @@ public class MainActivity extends Activity {
                     return;
                 }
 
+                final String finalProviderNumber = num;
+                final String finalProviderRaw = raw;
+
                 new AlertDialog.Builder(this)
                         .setTitle(type + " নিশ্চিত করুন")
                         .setMessage(
@@ -5815,6 +6198,8 @@ public class MainActivity extends Activity {
                                 "OK",
                                 (d,w) -> {
 
+                                    if (transactionBlockedFor(Double.parseDouble(finalProviderRaw))) return;
+                                    recordTransaction(type,type+" / "+finalProviderNumber,Double.parseDouble(finalProviderRaw),false,"PENDING");
                                     Toast.makeText(
                                             this,
                                             "রিকোয়েস্ট গ্রহণ করা হয়েছে।",
@@ -5982,17 +6367,12 @@ public class MainActivity extends Activity {
                 return;
             }
 
-            pref.edit()
-                    .putString(
-                            "name",
-                            name.getText().toString().trim()
-                    )
-                    .putString("phone",p)
-                    .putString("password",a)
-                    .putBoolean("logged_in",true)
-                    .apply();
-
-            showPinSetup();
+            startPhoneVerification(
+                    p,
+                    true,
+                    name.getText().toString().trim(),
+                    a
+            );
         });
 
         TextView back =
@@ -6016,36 +6396,121 @@ public class MainActivity extends Activity {
        FORGOT PASSWORD
        ========================================================= */
 
+    private void showChangePassword() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(8),dp(4),dp(8),0);
+
+        EditText current = input(tx("বর্তমান পাসওয়ার্ড","Current Password"),true);
+        EditText next = input(tx("নতুন পাসওয়ার্ড","New Password"),true);
+        EditText confirm = input(tx("নতুন পাসওয়ার্ড আবার দিন","Confirm New Password"),true);
+
+        box.addView(current,new LinearLayout.LayoutParams(-1,dp(58)));
+        space(box,10);
+        box.addView(next,new LinearLayout.LayoutParams(-1,dp(58)));
+        space(box,10);
+        box.addView(confirm,new LinearLayout.LayoutParams(-1,dp(58)));
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(tx("পাসওয়ার্ড পরিবর্তন","Change Password"))
+                .setView(box)
+                .setNegativeButton(tx("বাতিল","Cancel"),null)
+                .setPositiveButton(tx("সাবমিট","Submit"),null)
+                .create();
+
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String oldPass = current.getText().toString();
+            String newPass = next.getText().toString();
+            String confirmPass = confirm.getText().toString();
+            String saved = pref.getString("password","");
+
+            if (oldPass.isEmpty()) {
+                current.setError(tx("বর্তমান পাসওয়ার্ড দিন","Enter current password"));
+                return;
+            }
+            if (!saved.isEmpty() && !saved.equals(oldPass)) {
+                current.setError(tx("বর্তমান পাসওয়ার্ড সঠিক নয়","Current password is incorrect"));
+                return;
+            }
+            if (newPass.length() < 4) {
+                next.setError(tx("কমপক্ষে ৪ অক্ষর দিন","Use at least 4 characters"));
+                return;
+            }
+            if (!newPass.equals(confirmPass)) {
+                confirm.setError(tx("পাসওয়ার্ড মিলছে না","Passwords do not match"));
+                return;
+            }
+
+            pref.edit().putString("password",newPass).apply();
+            if (firebaseReady && firestore != null && !firebaseUid().isEmpty()) {
+                firestore.collection("users").document(firebaseUid())
+                        .update("passwordHash", sha256(newPass), "updatedAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
+            }
+            dialog.dismiss();
+            Toast.makeText(this,tx("পাসওয়ার্ড পরিবর্তন হয়েছে","Password changed successfully"),Toast.LENGTH_SHORT).show();
+        }));
+
+        dialog.show();
+    }
+
+    private void showChangePin() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(8),dp(4),dp(8),0);
+
+        EditText current = pinInput(tx("বর্তমান ৮ ডিজিট PIN","Current 8-digit PIN"));
+        EditText next = pinInput(tx("নতুন ৮ ডিজিট PIN","New 8-digit PIN"));
+        EditText confirm = pinInput(tx("নতুন PIN আবার দিন","Confirm New PIN"));
+
+        box.addView(current,new LinearLayout.LayoutParams(-1,dp(58)));
+        space(box,10);
+        box.addView(next,new LinearLayout.LayoutParams(-1,dp(58)));
+        space(box,10);
+        box.addView(confirm,new LinearLayout.LayoutParams(-1,dp(58)));
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(tx("PIN পরিবর্তন","Change PIN"))
+                .setView(box)
+                .setNegativeButton(tx("বাতিল","Cancel"),null)
+                .setPositiveButton(tx("সাবমিট","Submit"),null)
+                .create();
+
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String oldPin = current.getText().toString().trim();
+            String newPin = next.getText().toString().trim();
+            String confirmPin = confirm.getText().toString().trim();
+            String saved = pref.getString("pin","");
+
+            if (!saved.isEmpty() && !saved.equals(oldPin)) {
+                current.setError(tx("বর্তমান PIN সঠিক নয়","Current PIN is incorrect"));
+                return;
+            }
+            if (newPin.length() != 8) {
+                next.setError(tx("৮ ডিজিটের PIN দিন","Enter an 8-digit PIN"));
+                return;
+            }
+            if (!newPin.equals(confirmPin)) {
+                confirm.setError(tx("PIN মিলছে না","PINs do not match"));
+                return;
+            }
+
+            pref.edit().putString("pin",newPin).apply();
+            dialog.dismiss();
+            Toast.makeText(this,tx("PIN পরিবর্তন হয়েছে","PIN changed successfully"),Toast.LENGTH_SHORT).show();
+        }));
+
+        dialog.show();
+    }
+
     private void showForgotPassword() {
+        showChangePassword();
+    }
 
-        final EditText p = new EditText(this);
-
-        p.setHint("ফোন নম্বর");
-
-        p.setInputType(
-                InputType.TYPE_CLASS_PHONE
-        );
-
-        new AlertDialog.Builder(this)
-                .setTitle("পাসওয়ার্ড পুনরুদ্ধার")
-                .setMessage(
-                        "আপনার রেজিস্টার করা ফোন নম্বর দিন।"
-                )
-                .setView(p)
-                .setPositiveButton(
-                        "পরবর্তী",
-                        (d,w) ->
-                                Toast.makeText(
-                                        this,
-                                        "পাসওয়ার্ড রিসেট ফিচার পরে যুক্ত হবে",
-                                        Toast.LENGTH_SHORT
-                                ).show()
-                )
-                .setNegativeButton(
-                        "বাতিল",
-                        null
-                )
-                .show();
+    @Override
+    protected void onDestroy() {
+        if (chatListener != null) chatListener.remove();
+        if (profileListener != null) profileListener.remove();
+        super.onDestroy();
     }
 
     /* =========================================================
