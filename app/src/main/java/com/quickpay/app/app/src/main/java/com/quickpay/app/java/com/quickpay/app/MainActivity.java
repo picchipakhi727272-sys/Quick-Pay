@@ -20,6 +20,7 @@ import android.widget.*;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 
 
 import org.json.JSONArray;
@@ -44,6 +45,18 @@ public class MainActivity extends Activity {
     private FirebaseAuth firebaseAuth;
     private FirebaseFirestore firestore;
     private boolean firebaseReady = false;
+    private ListenerRegistration userListener;
+    private ListenerRegistration settingsListener;
+    private ListenerRegistration offersListener;
+    private ListenerRegistration liveListener;
+    private ListenerRegistration reviewsListener;
+    private ListenerRegistration tutorialsListener;
+    private ListenerRegistration chatListener;
+    private ListenerRegistration transactionsListener;
+
+    // Home balance view is kept so Firebase changes can appear immediately.
+    private TextView homeBalanceView;
+    private boolean homeBalanceVisible = false;
 
     private String selectedMobileProvider = "বিকাশ";
     private String selectedAccountType = "পার্সোনাল";
@@ -136,7 +149,7 @@ public class MainActivity extends Activity {
     }
 
     /* =========================================================
-       FIREBASE USER SYNC
+       FIREBASE USER + APP SYNC
        ========================================================= */
 
     private void ensureFirebaseSession() {
@@ -145,14 +158,17 @@ public class MainActivity extends Activity {
         FirebaseUser current = firebaseAuth.getCurrentUser();
         if (current != null) {
             syncLocalUserToFirebase();
+            startFirebaseSync();
             return;
         }
 
         firebaseAuth.signInAnonymously()
-                .addOnSuccessListener(result -> syncLocalUserToFirebase())
+                .addOnSuccessListener(result -> {
+                    syncLocalUserToFirebase();
+                    startFirebaseSync();
+                })
                 .addOnFailureListener(e -> {
-                    // The app can still work locally; Admin Panel sync will retry
-                    // the next time the app starts or the user logs in.
+                    // Keep the app usable offline.
                 });
     }
 
@@ -171,25 +187,260 @@ public class MainActivity extends Activity {
         data.put("name", name);
         data.put("phone", phone);
         data.put("userId", phone);
-        data.put("mainBalance", getMainBalance());
-        data.put("driveBalance", getDriveBalance());
-        data.put("mainBalanceLocked", pref.getBoolean("main_balance_locked", false));
-        data.put("driveBalanceLocked", pref.getBoolean("drive_balance_locked", false));
-        data.put("accountLocked", pref.getBoolean("account_locked", false));
-        data.put("status", "ACTIVE");
         data.put("updatedAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
 
         firestore.collection("users").document(uid).get()
                 .addOnSuccessListener(snapshot -> {
                     if (!snapshot.exists()) {
+                        data.put("mainBalance", getMainBalance());
+                        data.put("driveBalance", getDriveBalance());
+                        data.put("mainBalanceLocked", pref.getBoolean("main_balance_locked", false));
+                        data.put("driveBalanceLocked", pref.getBoolean("drive_balance_locked", false));
+                        data.put("accountLocked", pref.getBoolean("account_locked", false));
+                        data.put("active", !pref.getBoolean("account_locked", false));
+                        data.put("status", "ACTIVE");
                         data.put("createdAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
                     }
                     firestore.collection("users").document(uid).set(data,
                             com.google.firebase.firestore.SetOptions.merge());
-                })
-                .addOnFailureListener(e -> {
-                    // Keep local app working if Firestore is temporarily unavailable.
                 });
+    }
+
+    private void startFirebaseSync() {
+        if (!firebaseReady || firestore == null || firebaseAuth == null) return;
+        FirebaseUser user = firebaseAuth.getCurrentUser();
+        if (user == null) return;
+        stopFirebaseSync();
+
+        final String uid = user.getUid();
+
+        userListener = firestore.collection("users").document(uid)
+                .addSnapshotListener((snap, e) -> {
+                    if (e != null || snap == null || !snap.exists()) return;
+                    applyRemoteUser(snap);
+                });
+
+        settingsListener = firestore.collection("settings").document("general")
+                .addSnapshotListener((snap, e) -> {
+                    if (e != null || snap == null || !snap.exists()) return;
+                    applyRemoteSettings(snap);
+                });
+
+        offersListener = firestore.collection("offers")
+                .addSnapshotListener((snap, e) -> {
+                    if (e != null || snap == null) return;
+                    JSONArray a = new JSONArray();
+                    for (com.google.firebase.firestore.DocumentSnapshot d : snap.getDocuments()) {
+                        try {
+                            Map<String,Object> m = d.getData();
+                            if (m == null) continue;
+                            JSONObject o = new JSONObject(m);
+                            o.put("id", d.getId());
+                            a.put(o);
+                        } catch (Exception ignored) {}
+                    }
+                    pref.edit().putString("special_offers", a.toString()).apply();
+                });
+
+        liveListener = firestore.collection("liveActivities")
+                .addSnapshotListener((snap, e) -> {
+                    if (e != null || snap == null) return;
+                    JSONArray a = new JSONArray();
+                    for (com.google.firebase.firestore.DocumentSnapshot d : snap.getDocuments()) {
+                        try {
+                            if (Boolean.FALSE.equals(d.getBoolean("active"))) continue;
+                            String msg = d.getString("message");
+                            if (msg == null || msg.trim().isEmpty()) {
+                                msg = d.getString("title");
+                            }
+                            if (msg != null && !msg.trim().isEmpty()) a.put(msg);
+                        } catch (Exception ignored) {}
+                    }
+                    pref.edit().putString("live_activity_messages", a.toString()).apply();
+                });
+
+        reviewsListener = firestore.collection("reviews")
+                .addSnapshotListener((snap, e) -> syncMediaCollection(snap, "customer_reviews"));
+
+        tutorialsListener = firestore.collection("tutorials")
+                .addSnapshotListener((snap, e) -> syncMediaCollection(snap, "video_tutorials"));
+
+        chatListener = firestore.collection("chatMessages")
+                .addSnapshotListener((snap, e) -> {
+                    if (e != null || snap == null) return;
+                    JSONArray a = new JSONArray();
+                    for (com.google.firebase.firestore.DocumentSnapshot d : snap.getDocuments()) {
+                        try {
+                            String status = d.getString("status");
+                            if (!"Approved".equalsIgnoreCase(status)) continue;
+                            JSONObject o = new JSONObject();
+                            o.put("name", String.valueOf(d.get("name") == null ? "User" : d.get("name")));
+                            o.put("message", String.valueOf(d.get("message") == null ? "" : d.get("message")));
+                            Object ts = d.get("createdAt");
+                            o.put("time", ts == null ? "" : String.valueOf(ts));
+                            a.put(o);
+                        } catch (Exception ignored) {}
+                    }
+                    pref.edit().putString("group_chat_messages", a.toString()).apply();
+                });
+
+        transactionsListener = firestore.collection("transactions")
+                .addSnapshotListener((snap, e) -> {
+                    if (e != null || snap == null) return;
+                    JSONArray a = new JSONArray();
+                    for (com.google.firebase.firestore.DocumentSnapshot d : snap.getDocuments()) {
+                        try {
+                            String owner = d.getString("userId");
+                            if (owner == null) owner = d.getString("uid");
+                            if (owner == null || (!uid.equals(owner))) continue;
+                            JSONObject o = new JSONObject();
+                            o.put("type", String.valueOf(d.get("type") == null ? "Transaction" : d.get("type")));
+                            o.put("detail", String.valueOf(d.get("details") == null ? (d.get("detail") == null ? "" : d.get("detail")) : d.get("details")));
+                            Object amount = d.get("amount");
+                            if (amount instanceof Number) o.put("amount", ((Number)amount).doubleValue());
+                            o.put("credit", Boolean.TRUE.equals(d.getBoolean("credit")));
+                            o.put("status", String.valueOf(d.get("status") == null ? "SUCCESS" : d.get("status")));
+                            Object time = d.get("createdAt");
+                            o.put("time", time == null ? now() : String.valueOf(time));
+                            a.put(o);
+                        } catch (Exception ignored) {}
+                    }
+                    pref.edit().putString("transaction_history", a.toString()).apply();
+                });
+    }
+
+    private void stopFirebaseSync() {
+        if (userListener != null) userListener.remove();
+        if (settingsListener != null) settingsListener.remove();
+        if (offersListener != null) offersListener.remove();
+        if (liveListener != null) liveListener.remove();
+        if (reviewsListener != null) reviewsListener.remove();
+        if (tutorialsListener != null) tutorialsListener.remove();
+        if (chatListener != null) chatListener.remove();
+        if (transactionsListener != null) transactionsListener.remove();
+        userListener = settingsListener = offersListener = liveListener = reviewsListener = tutorialsListener = chatListener = transactionsListener = null;
+    }
+
+    private void applyRemoteUser(com.google.firebase.firestore.DocumentSnapshot d) {
+        SharedPreferences.Editor ed = pref.edit();
+
+        String remoteName = d.getString("name");
+        String remotePhone = d.getString("phone");
+        if (remoteName != null) ed.putString("name", remoteName);
+        if (remotePhone != null) ed.putString("phone", remotePhone);
+
+        // Firestore can return numeric fields as different Number types.
+        Object mainValue = d.get("mainBalance");
+        Object driveValue = d.get("driveBalance");
+        if (mainValue instanceof Number) {
+            ed.putString("main_balance", String.valueOf(((Number) mainValue).doubleValue()));
+        }
+        if (driveValue instanceof Number) {
+            ed.putString("drive_balance", String.valueOf(((Number) driveValue).doubleValue()));
+        }
+
+        Boolean ml = d.getBoolean("mainBalanceLocked");
+        if (ml == null) ml = d.getBoolean("mainLocked");
+        Boolean dl = d.getBoolean("driveBalanceLocked");
+        if (dl == null) dl = d.getBoolean("driveLocked");
+        if (ml != null) ed.putBoolean("main_balance_locked", ml);
+        if (dl != null) ed.putBoolean("drive_balance_locked", dl);
+
+        Boolean active = d.getBoolean("active");
+        if (active == null) {
+            Boolean accountLocked = d.getBoolean("accountLocked");
+            active = accountLocked == null ? null : !accountLocked;
+        }
+        if (active != null) ed.putBoolean("account_locked", !active);
+
+        ed.apply();
+
+        // The home screen may already be open when Admin changes a balance.
+        // Refresh only the balance view, without navigating/rebuilding the app.
+        runOnUiThread(this::refreshHomeBalanceView);
+    }
+
+    private void refreshHomeBalanceView() {
+        if (homeBalanceView == null) return;
+        if (homeBalanceVisible) {
+            homeBalanceView.setText(
+                    "Main Balance  ৳ " + formatMoney(getMainBalance())
+                            + "\nDrive Balance  ৳ " + formatMoney(getDriveBalance())
+                            + "  👁"
+            );
+        } else {
+            homeBalanceView.setText("Main Balance  • • • •  /  Drive Balance  • • • •  👁");
+        }
+    }
+
+    private void applyRemoteSettings(com.google.firebase.firestore.DocumentSnapshot d) {
+        SharedPreferences.Editor ed = pref.edit();
+        copySetting(d, ed, "bkashNumber", "bkash_number");
+        copySetting(d, ed, "nagadNumber", "nagad_number");
+        copySetting(d, ed, "rocketNumber", "rocket_number");
+        copySetting(d, ed, "upayNumber", "upay_number");
+        copySetting(d, ed, "careWhatsapp", "customer_care_whatsapp");
+        copySetting(d, ed, "aboutName", "about_company_name");
+        copySetting(d, ed, "aboutLicense", "about_license");
+        copySetting(d, ed, "aboutAddress", "about_address");
+        copySetting(d, ed, "aboutPhone", "about_phone");
+        copySetting(d, ed, "aboutIntro", "about_intro");
+        copySetting(d, ed, "aboutDetails", "about_extra");
+        copySetting(d, ed, "inviteAmount", "invite_amount");
+        copySetting(d, ed, "inviteRules", "invite_rules");
+        copySetting(d, ed, "bannerImage", "banner_image");
+        copySetting(d, ed, "bannerLink", "banner_link");
+        copySetting(d, ed, "liveRotateSeconds", "live_rotate_seconds");
+        if (d.contains("liveEnabled")) ed.putBoolean("live_enabled", Boolean.TRUE.equals(d.getBoolean("liveEnabled")));
+        if (d.contains("bannerActive")) ed.putBoolean("banner_active", Boolean.TRUE.equals(d.getBoolean("bannerActive")));
+        ed.apply();
+    }
+
+    private void copySetting(com.google.firebase.firestore.DocumentSnapshot d, SharedPreferences.Editor ed, String remote, String local) {
+        Object v = d.get(remote);
+        if (v != null) ed.putString(local, String.valueOf(v));
+    }
+
+    private void syncMediaCollection(com.google.firebase.firestore.QuerySnapshot snap, String key) {
+        if (snap == null) return;
+        JSONArray a = new JSONArray();
+        for (com.google.firebase.firestore.DocumentSnapshot d : snap.getDocuments()) {
+            try {
+                Map<String,Object> m = d.getData();
+                if (m == null) continue;
+                JSONObject o = new JSONObject(m);
+                o.put("id", d.getId());
+                if (!o.has("visible")) o.put("visible", !Boolean.FALSE.equals(d.getBoolean("active")));
+                a.put(o);
+            } catch (Exception ignored) {}
+        }
+        pref.edit().putString(key, a.toString()).apply();
+    }
+
+    private void uploadTransactionToFirebase(String type, String detail, double amount, boolean credit) {
+        if (!firebaseReady || firestore == null || firebaseAuth == null) return;
+        FirebaseUser user = firebaseAuth.getCurrentUser();
+        if (user == null) return;
+        Map<String,Object> data = new HashMap<>();
+        data.put("userId", user.getUid());
+        data.put("uid", user.getUid());
+        data.put("name", pref.getString("name", "User"));
+        data.put("phone", pref.getString("phone", ""));
+        data.put("type", type);
+        data.put("details", detail);
+        data.put("detail", detail);
+        data.put("amount", amount);
+        data.put("credit", credit);
+        data.put("status", "SUCCESS");
+        data.put("createdAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
+        firestore.collection("transactions").add(data);
+    }
+
+    @Override
+    protected void onDestroy() {
+        homeBalanceView = null;
+        stopFirebaseSync();
+        super.onDestroy();
     }
 
     /* =========================================================
@@ -277,7 +528,7 @@ public class MainActivity extends Activity {
     private String tx(String bn,String en){return isEnglish()?en:bn;}
     private void toggleLanguage(){pref.edit().putBoolean("language_english",!isEnglish()).apply();if(pref.getBoolean("logged_in",false))showHome();else showLogin();}
     private String now(){return new SimpleDateFormat("dd/MM/yyyy hh:mm a",Locale.getDefault()).format(new Date());}
-    private void recordTransaction(String type,String detail,double amount,boolean credit){try{JSONArray a=new JSONArray(pref.getString("transaction_history","[]"));JSONObject o=new JSONObject();o.put("type",type);o.put("detail",detail);o.put("amount",amount);o.put("credit",credit);o.put("status","SUCCESS");o.put("time",now());a.put(0,o);pref.edit().putString("transaction_history",a.toString()).apply();}catch(Exception ignored){}}
+    private void recordTransaction(String type,String detail,double amount,boolean credit){try{JSONArray a=new JSONArray(pref.getString("transaction_history","[]"));JSONObject o=new JSONObject();o.put("type",type);o.put("detail",detail);o.put("amount",amount);o.put("credit",credit);o.put("status","SUCCESS");o.put("time",now());a.put(0,o);pref.edit().putString("transaction_history",a.toString()).apply();uploadTransactionToFirebase(type,detail,amount,credit);}catch(Exception ignored){}}
     private String panelText(String key,String fallback){String v=pref.getString(key,"");return v.trim().isEmpty()?fallback:v;}
     private JSONArray panelArray(String key){try{return new JSONArray(pref.getString(key,"[]"));}catch(Exception e){return new JSONArray();}}
     private void openExternal(String url){try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));}catch(Exception e){Toast.makeText(this,tx("লিংকটি খোলা যাচ্ছে না","Unable to open link"),Toast.LENGTH_SHORT).show();}}
@@ -1023,26 +1274,14 @@ public class MainActivity extends Activity {
         bal.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
         bal.setBackground(bg(YELLOW,30));
 
-        final boolean[] balanceVisible = {pref.getBoolean("balance_visible", false)};
-
-        Runnable refreshBalance = () -> {
-            if (balanceVisible[0]) {
-                bal.setText(
-                        "Main Balance  ৳ " + formatMoney(getMainBalance())
-                                + "\nDrive Balance  ৳ " + formatMoney(getDriveBalance())
-                                + "  👁"
-                );
-            } else {
-                bal.setText("Main Balance  • • • •  /  Drive Balance  • • • •  👁");
-            }
-        };
-
-        refreshBalance.run();
+        homeBalanceView = bal;
+        homeBalanceVisible = pref.getBoolean("balance_visible", false);
+        refreshHomeBalanceView();
 
         bal.setOnClickListener(v -> {
-            balanceVisible[0] = !balanceVisible[0];
-            pref.edit().putBoolean("balance_visible", balanceVisible[0]).apply();
-            refreshBalance.run();
+            homeBalanceVisible = !homeBalanceVisible;
+            pref.edit().putBoolean("balance_visible", homeBalanceVisible).apply();
+            refreshHomeBalanceView();
         });
 
         user.addView(
@@ -3413,6 +3652,17 @@ public class MainActivity extends Activity {
                     )
                     .apply();
 
+            if (firebaseReady && firestore != null && firebaseAuth != null && firebaseAuth.getCurrentUser() != null) {
+                Map<String,Object> msg = new HashMap<>();
+                msg.put("userId", firebaseAuth.getCurrentUser().getUid());
+                msg.put("uid", firebaseAuth.getCurrentUser().getUid());
+                msg.put("name", pref.getString("name","Rosy"));
+                msg.put("message", text);
+                msg.put("status", "Pending");
+                msg.put("createdAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
+                firestore.collection("chatMessages").add(msg);
+            }
+
         } catch (Exception e) {
 
             Toast.makeText(
@@ -3948,28 +4198,28 @@ public class MainActivity extends Activity {
                 content,
                 "bKash",
                 "বিকাশ পার্সোনাল",
-                ""
+                pref.getString("bkash_number", "")
         );
 
         addDepositProvider(
                 content,
                 "Nagad",
                 "নগদ পার্সোনাল",
-                ""
+                pref.getString("nagad_number", "")
         );
 
         addDepositProvider(
                 content,
                 "Rocket",
                 "রকেট পার্সোনাল",
-                ""
+                pref.getString("rocket_number", "")
         );
 
         addDepositProvider(
                 content,
                 "Upay",
                 "উপায় পার্সোনাল",
-                ""
+                pref.getString("upay_number", "")
         );
 
         space(content,12);
