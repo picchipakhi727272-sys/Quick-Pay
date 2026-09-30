@@ -390,20 +390,40 @@ public class MainActivity extends Activity {
         try{JSONArray a=new JSONArray(pref.getString("transaction_history","[]"));JSONObject o=new JSONObject();o.put("type",type);o.put("detail",detail);o.put("amount",amount);o.put("credit",credit);o.put("status",status);o.put("time",now());a.put(0,o);pref.edit().putString("transaction_history",a.toString()).apply();}catch(Exception ignored){}
     }
 
+    private boolean hasEnoughBalance(double amount){
+        double balance=getMainBalance();
+        if(amount<=0){
+            Toast.makeText(this,"সঠিক টাকার পরিমাণ দিন।",Toast.LENGTH_LONG).show();
+            return false;
+        }
+        if(balance < amount){
+            Toast.makeText(this,"আপনার অ্যাকাউন্টে পর্যাপ্ত ব্যালেন্স নেই। বর্তমান ব্যালেন্স: ৳ "+formatMoney(balance),Toast.LENGTH_LONG).show();
+            return false;
+        }
+        return true;
+    }
+
     private void recordTransaction(String type,String detail,double amount,boolean credit){
-        if(firebaseReady){
-            if("অ্যাড মানি".equals(type) || "Add Money".equalsIgnoreCase(type)){
-                appendLocalTransaction(type,detail,amount,true,"PENDING");
-                createDepositRequest(detail,amount);
-            } else if(credit){
-                appendLocalTransaction(type,detail,amount,true,"APPROVED");
-                writeCloudTransaction(type,detail,amount,true,"APPROVED",null);
-            } else {
-                createServiceRequest(type,detail,amount,false);
-            }
+        if(!firebaseReady){
+            Toast.makeText(this,credit?"Firebase সংযোগ পাওয়া যাচ্ছে না।":"Firebase সংযোগ ছাড়া এই লেনদেন করা যাবে না।",Toast.LENGTH_LONG).show();
+            return;
+        }
+        if(amount<=0){
+            Toast.makeText(this,"সঠিক টাকার পরিমাণ দিন।",Toast.LENGTH_LONG).show();
+            return;
+        }
+        if("অ্যাড মানি".equals(type) || "Add Money".equalsIgnoreCase(type)){
+            // Add Money never creates balance by itself. It becomes a pending request and only Admin approval can credit it.
+            if(!hasEnoughBalance(amount)) return;
+            appendLocalTransaction(type,detail,amount,true,"PENDING");
+            createDepositRequest(detail,amount);
+        } else if(credit){
+            appendLocalTransaction(type,detail,amount,true,"APPROVED");
+            writeCloudTransaction(type,detail,amount,true,"APPROVED",null);
         } else {
-            if(credit) appendLocalTransaction(type,detail,amount,true,"APPROVED");
-            else Toast.makeText(this,"Firebase সংযোগ ছাড়া এই পেমেন্ট করা যাবে না।",Toast.LENGTH_LONG).show();
+            // Every money-out service must have sufficient balance. createServiceRequest also re-checks atomically in Firestore.
+            if(!hasEnoughBalance(amount)) return;
+            createServiceRequest(type,detail,amount,false);
         }
     }
 
@@ -2064,7 +2084,7 @@ public class MainActivity extends Activity {
                                     + money
                                     + "\n\n"
                                     + "এই ভার্সনে এটি Demo Bill Payment Request। "
-                                    + "আসল বিল পরিশোধের জন্য সংশ্লিষ্ট Provider API/Backend সংযুক্ত করতে হবে।"
+                                    + "অ্যাডমিন রিকোয়েস্ট যাচাই করার পর বিল পেমেন্ট প্রক্রিয়া করা হবে।"
                     )
                     .setNegativeButton(
                             "বাতিল",
@@ -2074,13 +2094,9 @@ public class MainActivity extends Activity {
                             "নিশ্চিত করুন",
                             (dialog,which) -> {
 
-                                recordTransaction("বিল পে",selectedBillType+" / "+finalBillNumber,Double.parseDouble(finalBillMoney),false);
-                                Toast.makeText(
-                                        this,
-                                        selectedBillType
-                                                + " বিল পেমেন্ট রিকোয়েস্ট গ্রহণ করা হয়েছে।",
-                                        Toast.LENGTH_LONG
-                                ).show();
+                                double billValue=Double.parseDouble(finalBillMoney);
+                                if(!hasEnoughBalance(billValue)) return;
+                                recordTransaction("বিল পে",selectedBillType+" / "+finalBillNumber,billValue,false);
 
                                 billNumber.setText("");
                                 billAmount.setText("");
@@ -3122,6 +3138,7 @@ public class MainActivity extends Activity {
                     try { amount = Double.parseDouble(fPrice); }
                     catch (Exception ignored) {}
 
+                    if(!hasEnoughBalance(amount)) return;
                     recordTransaction(
                             "বিশেষ অফার",
                             fOperator+" / "+fData+" / "+fMinutes,
@@ -3522,7 +3539,7 @@ public class MainActivity extends Activity {
     private void loadChatMessages(LinearLayout chatBox, ScrollView scroll) {
         if(firebaseReady && firestore!=null){
             firestore.collection("chatMessages")
-                    .whereIn("status",java.util.Arrays.asList("Approved","APPROVED"))
+                    .whereIn("status",java.util.Arrays.asList("Approved","APPROVED","approved"))
                     .get().addOnSuccessListener(snap->{
                         chatBox.removeAllViews();
                         if(snap.isEmpty()){ loadLocalChatMessages(chatBox,scroll); return; }
@@ -4531,12 +4548,9 @@ public class MainActivity extends Activity {
                                 "নিশ্চিত",
                                 (dialog,which) -> {
 
-                                    recordTransaction("ব্যাংক ট্রান্সফার",finalBankName+" / "+finalAccountNumber,Double.parseDouble(finalAmountValue),false);
-                                    Toast.makeText(
-                                            this,
-                                            "ব্যাংক ট্রান্সফার রিকোয়েস্ট গ্রহণ করা হয়েছে।",
-                                            Toast.LENGTH_LONG
-                                    ).show();
+                                    double transferValue=Double.parseDouble(finalAmountValue);
+                                    if(!hasEnoughBalance(transferValue)) return;
+                                    recordTransaction("ব্যাংক ট্রান্সফার",finalBankName+" / "+finalAccountNumber,transferValue,false);
 
                                     bank.setText("");
                                     holder.setText("");
@@ -4936,21 +4950,16 @@ public class MainActivity extends Activity {
                                         + "\nপরিমাণ: ৳ "
                                         + money
                                         + "\n\n"
-                                        + "এটি একটি ডেমো রিকোয়েস্ট। আসল টাকা পাঠানোর জন্য Provider API সংযুক্ত করতে হবে।"
+                                        + "এটি একটি রিকোয়েস্ট। এই অ্যাপ থেকে সরাসরি API দিয়ে টাকা পাঠানো হবে না; অ্যাডমিন রিকোয়েস্ট যাচাই করবেন।"
                         )
                         .setNegativeButton("বাতিল",null)
                         .setPositiveButton(
                                 "নিশ্চিত",
                                 (dialog,which) -> {
 
-                                    recordTransaction("মোবাইল ব্যাংকিং",selectedMobileProvider+" / "+finalSendNumber,Double.parseDouble(finalSendMoney),false);
-                                    Toast.makeText(
-                                            this,
-                                            selectedMobileProvider
-                                                    + " টাকা পাঠানোর রিকোয়েস্ট গ্রহণ করা হয়েছে।",
-                                            Toast.LENGTH_LONG
-                                    ).show();
-
+                                    double sendValue=Double.parseDouble(finalSendMoney);
+                                    if(!hasEnoughBalance(sendValue)) return;
+                                    recordTransaction("মোবাইল ব্যাংকিং",selectedMobileProvider+" / "+finalSendNumber,sendValue,false);
                                     number.setText("");
                                     amount.setText("");
                                 }
@@ -5557,20 +5566,16 @@ public class MainActivity extends Activity {
                                         + "\nপরিমাণ: ৳ "
                                         + money
                                         + "\n\n"
-                                        + "এটি একটি ডেমো রিচার্জ রিকোয়েস্ট। আসল রিচার্জের জন্য Recharge API সংযুক্ত করতে হবে।"
+                                        + "এটি একটি রিচার্জ রিকোয়েস্ট। এই অ্যাপ থেকে সরাসরি API দিয়ে রিচার্জ করা হবে না; অ্যাডমিন রিকোয়েস্ট যাচাই করবেন।"
                         )
                         .setNegativeButton("বাতিল",null)
                         .setPositiveButton(
                                 "নিশ্চিত",
                                 (dialog,which) -> {
 
-                                    recordTransaction("মোবাইল রিচার্জ",selectedRechargeOperator+" / "+finalRechargeNumber,Double.parseDouble(finalRechargeMoney),false);
-                                    Toast.makeText(
-                                            this,
-                                            selectedRechargeOperator
-                                                    + " রিচার্জ রিকোয়েস্ট গ্রহণ করা হয়েছে।",
-                                            Toast.LENGTH_LONG
-                                    ).show();
+                                    double rechargeValue=Double.parseDouble(finalRechargeMoney);
+                                    if(!hasEnoughBalance(rechargeValue)) return;
+                                    recordTransaction("মোবাইল রিচার্জ",selectedRechargeOperator+" / "+finalRechargeNumber,rechargeValue,false);
 
                                     number.setText("");
                                     amount.setText("");
@@ -5942,7 +5947,7 @@ public class MainActivity extends Activity {
                                         + "\nপরিমাণ: ৳ "
                                         + raw
                                         + "\n\n"
-                                        + "এটি একটি ডেমো রিকোয়েস্ট। Provider API সংযুক্ত হলে আসল লেনদেন সম্পন্ন হবে।"
+                                        + "এটি একটি রিকোয়েস্ট। এই অ্যাপ থেকে সরাসরি Provider API দিয়ে লেনদেন করা হবে না; অ্যাডমিন রিকোয়েস্ট যাচাই করবেন।"
                         )
                         .setNegativeButton("বাতিল",null)
                         .setPositiveButton(
